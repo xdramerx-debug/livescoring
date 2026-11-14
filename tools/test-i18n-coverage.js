@@ -56,7 +56,7 @@ const htmlFiles = fs.readdirSync(ROOT).filter(function (f) { return f.endsWith('
 const dataI18n = new Map(); // key -> [pages]
 for (const page of htmlFiles) {
     const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
-    const re = /data-i18n="([^"]+)"/g;
+    const re = /data-i18n(?:-placeholder|-title|-aria-label)?="([^"]+)"/g;
     let m;
     while ((m = re.exec(html)) !== null) {
         if (!dataI18n.has(m[1])) dataI18n.set(m[1], []);

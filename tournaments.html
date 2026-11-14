@@ -25,7 +25,7 @@
 <link rel="stylesheet" href="css/product-ux.css?v=ad3d977a">
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=ee5b2563">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=eb25787a">
 </head>
 <body class="pv-ux pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
@@ -37,7 +37,7 @@
         </a>
         <div id="nav-weather-container"></div>
     </div>
-    <button class="nav-toggle" id="nav-toggle" aria-label="Открыть меню"><span></span><span></span><span></span></button>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Открыть меню" data-i18n-aria-label="ui_b2bbe98857"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
@@ -61,40 +61,40 @@
         <div class="tn-public-toolbar" data-screen-display="tournaments" data-display-key="toolbar">
             <div>
 
-                <h2 id="tn-catalog-title" class="clarity-sr">Турниры и результаты</h2>
-                <p class="tn-public-status" id="tn-public-status" role="status" aria-live="polite">Загрузка турниров…</p>
+                <h2 id="tn-catalog-title" class="clarity-sr" data-i18n="ui_1b19144ee0">Турниры и результаты</h2>
+                <p class="tn-public-status" id="tn-public-status" role="status" aria-live="polite" data-i18n="ui_106957f5af">Загрузка турниров…</p>
             </div>
             <label class="tn-search" for="tn-public-search" data-screen-display="tournaments" data-display-key="search">
                 <i class="fas fa-search" aria-hidden="true"></i>
-                <input id="tn-public-search" type="search" autocomplete="off" placeholder="Поиск по названию" aria-label="Поиск по названию">
+                <input id="tn-public-search" type="search" autocomplete="off" placeholder="Поиск по названию" aria-label="Поиск по названию" data-i18n-aria-label="ui_ad7cd87bea" data-i18n-placeholder="ui_ad7cd87bea">
             </label>
         </div>
 
         <section class="tn-catalog-section tn-active-section" aria-labelledby="tn-active-title" data-screen-display="tournaments" data-display-key="activeSection" data-display-section="active">
             <div class="tn-catalog-section-head">
-                <div><div class="tn-public-eyebrow">LIVE</div><h2 id="tn-active-title"><i class="fas fa-circle"></i> Активный турнир</h2></div>
-                <span class="tn-public-chip"><i class="fas fa-rotate"></i> Лидерборд обновляется автоматически</span>
+                <div><div class="tn-public-eyebrow">LIVE</div><h2 id="tn-active-title"><i class="fas fa-circle"></i> <span data-i18n="ui_958ca6ecb7">Активный турнир</span></h2></div>
+                <span class="tn-public-chip"><i class="fas fa-rotate"></i> <span data-i18n="ui_c115a87773">Лидерборд обновляется автоматически</span></span>
             </div>
             <div id="tn-active-list" aria-live="polite"></div>
         </section>
 
         <section class="tn-catalog-section" aria-labelledby="tn-upcoming-title" data-screen-display="tournaments" data-display-key="upcomingSection" data-display-section="upcoming">
             <div class="tn-catalog-section-head">
-                <div><h2 id="tn-upcoming-title">Предстоящие старты</h2></div>
+                <div><h2 id="tn-upcoming-title" data-i18n="ui_e4c1a21426">Предстоящие старты</h2></div>
             </div>
             <div id="tn-list" class="tn-public-grid" aria-live="polite"></div>
         </section>
 
         <section class="tn-catalog-section tn-past-section" aria-labelledby="tn-past-title" data-screen-display="tournaments" data-display-key="archiveSection" data-display-section="archive">
             <div class="tn-catalog-section-head">
-                <div><h2 id="tn-past-title">Прошедшие турниры</h2></div>
+                <div><h2 id="tn-past-title" data-i18n="ui_c94979019a">Прошедшие турниры</h2></div>
             </div>
             <div id="tn-past-list" class="tn-past-list"></div>
         </section>
     </section>
 
     <section id="tn-public-detail" class="tn-public-view hidden" aria-labelledby="tn-detail-title">
-        <button type="button" class="tn-back-link" id="tn-detail-back"><i class="fas fa-arrow-left"></i> Все турниры</button>
+        <button type="button" class="tn-back-link" id="tn-detail-back"><i class="fas fa-arrow-left"></i> <span data-i18n="all_tournaments">Все турниры</span></button>
         <div id="tn-detail-content"></div>
     </section>
     <div id="tn-player-card-overlay" style="display:none;position:fixed;inset:0;background:rgba(11,26,14,.55);z-index:200;align-items:center;justify-content:center;padding:16px;" data-act="pestovoHideSelf" data-ev="1">
@@ -106,12 +106,12 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.138.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.139.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=d079085c"></script>
+<script type="module" src="dist/livescoring-modules.js?v=9dd82553"></script>
     <script defer src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script defer src="js/qr-code.js?v=2a26e819"></script>
@@ -128,6 +128,6 @@
 <script defer src="js/tournament-public.js?v=ee857497"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
-<script defer src="js/product-ux.js?v=ba65f386"></script>
+<script defer src="js/product-ux.js?v=73b591eb"></script>
 </body>
 </html>

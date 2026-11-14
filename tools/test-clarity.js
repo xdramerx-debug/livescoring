@@ -25,7 +25,7 @@ const code = fs.readFileSync(path.join(root, 'js/clarity.js'), 'utf8');
         }
         if (page === 'leaderboard.html') assert(w.document.getElementById('lb-status').closest('[hidden]'));
         if (page === 'setup-round.html') {
-            assert(w.document.querySelector('#setup > details #fio-resume-card'));
+            assert(!w.document.getElementById('fio-resume-card'), 'unfinished-round search removed');
             assert(w.document.querySelector('#grp-timing-preview').closest('details'));
             assert(!w.document.getElementById('save-hole-btn').closest('details'));
         }

@@ -515,6 +515,6 @@ function loadStats(refresh) {
     }).catch(function(err){
         if (generation !== statsLoadGeneration) return;
         console.error('[stats] load failed', err);
-        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-triangle-exclamation"></i><p>Ошибка загрузки статистики</p></div>');
+        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-triangle-exclamation"></i><p>' + (typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Unable to load statistics. Please try again.' : 'Ошибка загрузки статистики. Попробуйте ещё раз.') + '</p></div>');
     });
 }

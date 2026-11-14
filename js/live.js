@@ -386,12 +386,12 @@ function bindPlayerSlotsAccordion() {
     container.addEventListener('click', function(e) {
         var head = e.target && e.target.closest ? e.target.closest('.setup-player-head') : null;
         // Клики по полям внутри карточки раскрытие не переключают.
-        if (head && container.contains(head)) toggle(head);
+        if (head && container.contains(head) && !e.target.closest('button, input, select, a')) toggle(head);
     });
     container.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         var head = e.target && e.target.closest ? e.target.closest('.setup-player-head') : null;
-        if (head && container.contains(head)) { e.preventDefault(); toggle(head); }
+        if (head && e.target === head && container.contains(head)) { e.preventDefault(); toggle(head); }
     });
 }
 
@@ -399,6 +399,7 @@ function bindPlayerSlotsAccordion() {
 // см. docs/mobile-audit.md). Раньше создавался в initP0MobileEnhancements() по
 // таймингу DOMContentLoaded — до отрисовки слотов — и потому не появлялся вовсе.
 function ensurePlayerWizardSteps(playerCount) {
+    if (document.getElementById('unified-setup-card')) return; // Unified setup shows all settings without a step bar.
     if (!(playerCount > 1)) return;
     // Мастер «По шагам» (админ-вариант 5) ведёт свой степпер —
     // статический мобильный не дублируем.

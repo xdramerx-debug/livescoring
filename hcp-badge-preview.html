@@ -33,77 +33,77 @@
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=ee5b2563">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=eb25787a">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;">
         <a href="index.html" class="nav-brand">
             <img src="img/logo.png" alt="Pestovo" class="nav-logo">
-            <span class="nav-brand-text">Пестово</span>
+            <span class="nav-brand-text" data-i18n="solo_sub">Пестово</span>
         </a>
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-circle-check" style="color:#2ecc71;"></i> Галочка гандикапа: выбор варианта</h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-circle-check" style="color:#2ecc71;"></i> <span data-i18n="ui_b60aec20f0">Галочка гандикапа: выбор варианта</span></h1></div></div>
 
 <main class="hcp-preview-main">
     <div class="card">
-        <h2><i class="fas fa-info-circle"></i> Как это работает</h2>
+        <h2><i class="fas fa-info-circle"></i> <span data-i18n="ui_b9f1fffef4">Как это работает</span></h2>
         <p class="hcp-preview-note">
-            <b>Зелёная галочка</b> появляется, когда гандикап игрока <b>синхронизирован и изменён</b>:
+            <b data-i18n="ui_3d8a25781e">Зелёная галочка</b> <span data-i18n="ui_3ea256e8e5">появляется, когда гандикап игрока</span> <b data-i18n="ui_ecb734a856">синхронизирован и изменён</b><span data-i18n="ui_4e3aac4cb1">:
             при синхронизации с базой АГР России (RUSGOLF), при импорте Excel или при ручном изменении в админ-панели.
-            Рядом показывается <b>дата последнего обновления</b> гандикапа, а источник — при наведении
-            (в профиле — открыто). Игроки, у которых гандикап ещё не синхронизирован, галочку <b>не получают</b>
-            (см. карточку «Иван Кузнецов» в каждом варианте).<br><br>
-            Вариант отображается: во <b>вкладке «Игроки»</b>, в <b>личном профиле игрока</b> и в
-            <b>админ-панели</b> («Игроки и роли»). Ниже — живые примеры на реальных данных разметки сайта.
-            Кнопка <b>«Выбрать этот вариант»</b> включает его <b>в этом браузере</b> для предпросмотра.
-            <b>Глобальный выбор для всех игроков</b> — в <a href="admin.html" style="color:var(--gold);">Админ-панели</a>,
-            вкладка <b>«Данные» → «Стиль галочки гандикапа»</b>: он сохраняется в облако и мгновенно
-            применяется на всех устройствах (эта страница подхватит его при обновлении).
+            Рядом показывается</span> <b data-i18n="ui_5612b79e93">дата последнего обновления</b> <span data-i18n="ui_d932268240">гандикапа, а источник — при наведении
+            (в профиле — открыто). Игроки, у которых гандикап ещё не синхронизирован, галочку</span> <b data-i18n="ui_3c86ea8bd6">не получают</b>
+            <span data-i18n="ui_64ddfe38d8">(см. карточку «Иван Кузнецов» в каждом варианте).</span><br><br>
+            <span data-i18n="ui_ba17dc61c0">Вариант отображается: во</span> <b data-i18n="ui_e2a152f678">вкладке «Игроки»</b><span data-i18n="ui_2b1f8a0919">, в</span> <b data-i18n="ui_7e38742eb5">личном профиле игрока</b> <span data-i18n="ui_4370f56467">и в</span>
+            <b data-i18n="ui_14b9794b43">админ-панели</b> <span data-i18n="ui_5fbd949349">(«Игроки и роли»). Ниже — живые примеры на реальных данных разметки сайта.
+            Кнопка</span> <b data-i18n="ui_da950719bc">«Выбрать этот вариант»</b> <span data-i18n="ui_5d732dd44b">включает его</span> <b data-i18n="ui_12d296173f">в этом браузере</b> <span data-i18n="ui_8af581ead5">для предпросмотра.</span>
+            <b data-i18n="ui_f7b3462438">Глобальный выбор для всех игроков</b> <span data-i18n="ui_0974cf527b">— в</span> <a href="admin.html" style="color:var(--gold);" data-i18n="ui_3e23e0c898">Админ-панели</a><span data-i18n="ui_a64a2db415">,
+            вкладка</span> <b data-i18n="ui_7c6da828ce">«Данные» → «Стиль галочки гандикапа»</b><span data-i18n="ui_63669f17cf">: он сохраняется в облако и мгновенно
+            применяется на всех устройствах (эта страница подхватит его при обновлении).</span>
         </p>
     </div>
 
     <div class="variant-section" data-variant="1">
-        <div class="variant-title"><span class="variant-num">1</span> Компактная галочка <span style="font-size:12px;color:var(--muted);font-weight:500;">— минимализм</span></div>
-        <p class="variant-desc">Небольшая зелёная галочка <i class="fas fa-circle-check" style="color:#2ecc71;"></i> и дата обновления (ДД.ММ.ГГ) сразу после значения HCP. Не загромождает карточку, но статус и дата всегда на виду. В профиле — полная дата и источник обновления.</p>
+        <div class="variant-title"><span class="variant-num">1</span> <span data-i18n="ui_04589d0f49">Компактная галочка</span> <span style="font-size:12px;color:var(--muted);font-weight:500;" data-i18n="ui_7f8a03d69e">— минимализм</span></div>
+        <p class="variant-desc"><span data-i18n="ui_1c6adb3f41">Небольшая зелёная галочка</span> <i class="fas fa-circle-check" style="color:#2ecc71;"></i> <span data-i18n="ui_90641a8e61">и дата обновления (ДД.ММ.ГГ) сразу после значения HCP. Не загромождает карточку, но статус и дата всегда на виду. В профиле — полная дата и источник обновления.</span></p>
         <div class="variant-grid">
-            <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
-            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-users"></i> <span data-i18n="ui_8e6ae01d92">Вкладка «Игроки»</span></div><div class="mock-cards"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> <span data-i18n="ui_d2151bdbf0">Личный профиль игрока</span></div><div class="mock-profile"></div></div>
         </div>
-        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="1"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="1"><i class="fas fa-hand-pointer"></i> <span data-i18n="ui_ef4e961f6a">Выбрать этот вариант</span></button>
     </div>
 
     <div class="variant-section" data-variant="2">
-        <div class="variant-title"><span class="variant-num">2</span> Светящийся бейдж «пилюля» <span style="font-size:12px;color:var(--muted);font-weight:500;">— максимальная заметность</span></div>
-        <p class="variant-desc">Зелёная «пилюля» <span class="hcp-sync-pill"><i class="fas fa-circle-check"></i> обновлён</span> с лёгким свечением рядом с HCP. В профиле — отдельный крупный зелёный баннер «Гандикап синхронизирован» с полной датой обновления и источником (RUSGOLF / Excel / вручную).</p>
+        <div class="variant-title"><span class="variant-num">2</span> <span data-i18n="ui_5136e92f25">Светящийся бейдж «пилюля»</span> <span style="font-size:12px;color:var(--muted);font-weight:500;" data-i18n="ui_8a1f20cd03">— максимальная заметность</span></div>
+        <p class="variant-desc"><span data-i18n="ui_1d0841a615">Зелёная «пилюля»</span> <span class="hcp-sync-pill"><i class="fas fa-circle-check"></i> <span data-i18n="ui_0ad04468e5">обновлён</span></span> <span data-i18n="ui_622f083bfd">с лёгким свечением рядом с HCP. В профиле — отдельный крупный зелёный баннер «Гандикап синхронизирован» с полной датой обновления и источником (RUSGOLF / Excel / вручную).</span></p>
         <div class="variant-grid">
-            <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
-            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-users"></i> <span data-i18n="ui_8e6ae01d92">Вкладка «Игроки»</span></div><div class="mock-cards"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> <span data-i18n="ui_d2151bdbf0">Личный профиль игрока</span></div><div class="mock-profile"></div></div>
         </div>
-        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="2"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="2"><i class="fas fa-hand-pointer"></i> <span data-i18n="ui_ef4e961f6a">Выбрать этот вариант</span></button>
     </div>
 
     <div class="variant-section" data-variant="3">
-        <div class="variant-title"><span class="variant-num">3</span> «Верифицированный» аватар <span style="font-size:12px;color:var(--muted);font-weight:500;">— как в соцсетях</span></div>
-        <p class="variant-desc">Зелёная галочка-«верификация» закрепляется на углу аватара игрока (как подтверждённый аккаунт), а дата обновления показывается рядом с HCP в списке и профиле. Статус виден «с первого взгляда» по аватару.</p>
+        <div class="variant-title"><span class="variant-num">3</span> <span data-i18n="ui_fdbcebcc6c">«Верифицированный» аватар</span> <span style="font-size:12px;color:var(--muted);font-weight:500;" data-i18n="ui_7f81d13850">— как в соцсетях</span></div>
+        <p class="variant-desc" data-i18n="ui_bc6cc166b2">Зелёная галочка-«верификация» закрепляется на углу аватара игрока (как подтверждённый аккаунт), а дата обновления показывается рядом с HCP в списке и профиле. Статус виден «с первого взгляда» по аватару.</p>
         <div class="variant-grid">
-            <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
-            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-users"></i> <span data-i18n="ui_8e6ae01d92">Вкладка «Игроки»</span></div><div class="mock-cards"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> <span data-i18n="ui_d2151bdbf0">Личный профиль игрока</span></div><div class="mock-profile"></div></div>
         </div>
-        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="3"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="3"><i class="fas fa-hand-pointer"></i> <span data-i18n="ui_ef4e961f6a">Выбрать этот вариант</span></button>
     </div>
 
     <div class="card" style="text-align:center;">
-        <a href="players.html" class="btn btn-og"><i class="fas fa-users"></i> Открыть вкладку «Игроки»</a>
-        <p class="hcp-preview-note" style="margin-top:12px;">Примеры — демонстрационные данные. На сайте галочка появится автоматически у всех игроков, у кого гандикап уже синхронизирован (есть дата обновления).</p>
+        <a href="players.html" class="btn btn-og"><i class="fas fa-users"></i> <span data-i18n="ui_cc8aaf7006">Открыть вкладку «Игроки»</span></a>
+        <p class="hcp-preview-note" style="margin-top:12px;" data-i18n="ui_af947ab16f">Примеры — демонстрационные данные. На сайте галочка появится автоматически у всех игроков, у кого гандикап уже синхронизирован (есть дата обновления).</p>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; Пестово — подбор варианта отображения гандикапа</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="ui_d827cf9eaa">&copy; Пестово — подбор варианта отображения гандикапа</p></div></div></footer>
 
-<script type="module" src="dist/livescoring-modules.js?v=d079085c"></script>
+<script type="module" src="dist/livescoring-modules.js?v=9dd82553"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>

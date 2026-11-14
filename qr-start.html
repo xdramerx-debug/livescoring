@@ -174,25 +174,25 @@
 </head>
 <body>
     <div class="toolbar no-print" id="qr-toolbar">
-        <div class="t-title"><img src="img/logo.png" alt=""> Пестово · Стартовый протокол</div>
-        <button class="btn btn-ol" data-act="pestovoGo" data-arg="admin.html">← Админка</button>
+        <div class="t-title"><img src="img/logo.png" alt=""> <span data-i18n="ui_1f0e24193d">Пестово · Стартовый протокол</span></div>
+        <button class="btn btn-ol" data-act="pestovoGo" data-arg="admin.html" data-i18n="ui_5ffd06c6d9">← Админка</button>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#e8d9a8;">
-            <span>📐 QR-карточки:</span>
+            <span data-i18n="ui_b326e2ccc9">📐 QR-карточки:</span>
             <select id="qr-layout" data-act="qrSetLayout" style="background:#fff;color:#0b1a0e;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
-                <option value="single">1 игрок — 1 карточка</option>
-                <option value="pair">2 игрока — 1 карточка (по вертикали)</option>
-                <option value="quad">4 игрока — 1 карточка (2×2)</option>
+                <option value="single" data-i18n="ui_12da0d1a9f">1 игрок — 1 карточка</option>
+                <option value="pair" data-i18n="ui_cfef57bde3">2 игрока — 1 карточка (по вертикали)</option>
+                <option value="quad" data-i18n="ui_f35eb2049b">4 игрока — 1 карточка (2×2)</option>
             </select>
         </label>
 
 
-        <button class="btn btn-ol" id="qr-retry-btn" hidden data-act="qrRetryFailed"><i>🔄</i> QR заново</button>
-        <label class="clarity-print-choice">Документ: <select id="qr-document"><option value="cards">QR-карточки</option><option value="sheet">Стартовый лист</option></select></label><button type="button" class="btn btn-g" id="qr-print-selected">Печать</button><span id="qr-status" style="font-size:12px;color:#ffe9a8;margin-left:auto;"></span>
+        <button class="btn btn-ol" id="qr-retry-btn" hidden data-act="qrRetryFailed"><i>🔄</i> <span data-i18n="ui_d31f327693">QR заново</span></button>
+        <label class="clarity-print-choice"><span data-i18n="ui_03061be853">Документ:</span> <select id="qr-document"><option value="cards" data-i18n="ui_2bd8f9ea51">QR-карточки</option><option value="sheet" data-i18n="ui_ec9bb75920">Стартовый лист</option></select></label><button type="button" class="btn btn-g" id="qr-print-selected" data-i18n="ui_e922cbb358">Печать</button><span id="qr-status" style="font-size:12px;color:#ffe9a8;margin-left:auto;"></span>
     </div>
     <div id="qr-body">
-        <div class="spinner" id="qr-loading">Загрузка протокола…</div>
+        <div class="spinner" id="qr-loading" data-i18n="ui_e27b6a1649">Загрузка протокола…</div>
         <div id="qr-content" class="hidden"></div>
-        <div id="qr-error" class="errbox hidden"><h2>⚠️ Протокол не найден</h2><p id="qr-error-text">Проверьте ссылку или вернитесь в админку.</p><p><a href="admin.html">← Вернуться в админ-панель</a></p></div>
+        <div id="qr-error" class="errbox hidden"><h2 data-i18n="ui_54065e54bc">⚠️ Протокол не найден</h2><p id="qr-error-text" data-i18n="ui_a2bea1f4c8">Проверьте ссылку или вернитесь в админку.</p><p><a href="admin.html" data-i18n="ui_a10539f7f6">← Вернуться в админ-панель</a></p></div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
@@ -203,6 +203,6 @@
 <script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script defer src="js/qr-code.js?v=2a26e819"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/qr-start.js?v=c875a34b"></script>
+<script defer src="js/qr-start.js?v=6550e4f4"></script>
 </body>
 </html>

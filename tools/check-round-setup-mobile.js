@@ -43,10 +43,12 @@ function extractPage() {
         }));
         await page.goto('http://round-setup-mobile.test');
         await page.addStyleTag({ path: path.join(root, 'css/style.css') });
+        for (const css of ['theme-v2', 'product-ux', 'clarity', 'pr164', 'pr164-adapter']) await page.addStyleTag({ path: path.join(root, 'css', css + '.css') });
         const pageMarkup = extractPage();
         await page.addStyleTag({ content: pageMarkup.styles });
         await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important;}' });
         await page.evaluate(html => {
+            document.body.classList.add('round-setup-page');
             document.body.innerHTML = '<main class="container" style="padding-top:70px;padding-bottom:80px"><div id="setup"></div></main>';
             document.getElementById('setup').outerHTML = html;
             currentLang = 'ru';
@@ -100,6 +102,14 @@ function extractPage() {
                 await page.locator('#pl-hcp-2').fill('18.2');
                 if (variant === '1' || variant === '5') await page.locator('#player-slots [data-pidx="3"] .setup-player-head').click();
                 await page.locator('#pl-name-3').fill('Пётр Сидоров');
+                const head3 = page.locator('[data-pidx="3"] .setup-player-head');
+                await head3.click();
+                assert.strictEqual(await page.locator('#pl-name-3').isVisible(), false, 'collapse hides player fields');
+                await head3.focus();
+                await page.keyboard.press('Enter');
+                assert.strictEqual(await page.locator('#pl-name-3').isVisible(), true, 'keyboard expands player');
+                assert.strictEqual(await page.locator('#pl-name-3').inputValue(), 'Пётр Сидоров');
+                assert.strictEqual(await page.locator('#p0-wizard-steps, #pv-steps, #fio-resume-card').count(), 0);
                 await page.locator('#pl-hcp-3').fill('7.1');
                 await page.waitForTimeout(20);
 
@@ -194,6 +204,8 @@ function extractPage() {
                 assert(state.inputHeights.every(height => height >= 44), width + 'px / view ' + variant + ' visible inputs are >=44px high');
                 assert.strictEqual(state.misalignedFields, 0, width + 'px / view ' + variant + ' поля игрока стоят на одной линии (' + state.misalignedFields + ' «уехавших»)');
                 assert(state.refresh && state.refresh.visible, width + 'px / view ' + variant + ' exposes HCP lookup after a full name');
+                assert.strictEqual(await page.locator('#pl-hcp-refresh-2 .setup-hcp-refresh-text').textContent(), 'Обновить гандикап из АГР');
+                assert(await page.locator('#pl-hcp-refresh-2 .setup-hcp-refresh-text').isVisible());
                 assert(state.refresh.height >= 44 && state.refresh.width >= 44, width + 'px / view ' + variant + ' HCP lookup target is >=44px (' + JSON.stringify(state.refresh) + ')');
                 assert.strictEqual(state.variantClass, variant === '1' ? '1' : 'st-roundsetup-v' + variant, width + 'px / view ' + variant + ' applies its CSS preset');
                 if (variant === '1') assert.strictEqual(state.openCount, 1, width + 'px / v1 uses one expanded accordion card');
@@ -210,6 +222,7 @@ function extractPage() {
 
                 // Removing/re-adding a player is an actual touch click, not only a string test.
                 await page.locator('#player-slots [data-pidx="3"] .spc-remove').click();
+                await page.waitForTimeout(50);
                 assert.strictEqual(await page.locator('#player-slots [data-pidx]').count(), 2, width + 'px / view ' + variant + ' removes selected player');
                 assert.strictEqual(await page.locator('#pl-name-2').inputValue(), 'Анна Петрова', width + 'px / view ' + variant + ' keeps remaining player data');
                 await page.locator('#unified-add-btn').click();

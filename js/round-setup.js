@@ -80,7 +80,7 @@ function setupPlayerCardHtml(idx, opts) {
             (!opts.first
                 ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
                 : '') +
-            '<button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh setup-hcp-refresh-head hidden" data-act="refreshSetupPlayerHandicap" data-stop="1" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i><span class="setup-hcp-refresh-text">RUSGOLF</span></button>' +
+            '<button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh setup-hcp-refresh-head hidden" data-act="refreshSetupPlayerHandicap" data-stop="1" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i><span class="setup-hcp-refresh-text">' + (isEn ? 'Update handicap from RGA' : 'Обновить гандикап из АГР') + '</span></button>' +
             '<i class="fas fa-chevron-down" aria-hidden="true"></i>' +
         '</div>';
 
@@ -99,7 +99,7 @@ function setupPlayerCardHtml(idx, opts) {
             '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>' +
         '</div>';
 
-    return '<div class="' + cls + '" data-pidx="' + idx + '">' + head + body + '</div>';
+    return '<div class="' + cls + '" data-pidx="' + idx + '">' + head + '<div class="spc-fields">' + body + '</div></div>';
 }
 
 // ──────────────────────── РЕНДЕР СЛОТОВ ────────────────────────
@@ -368,7 +368,7 @@ function syncSetupHcpRefreshButton(idx) {
     button.setAttribute('aria-busy', running ? 'true' : 'false');
     button.classList.toggle('is-loading', running);
     var label = button.querySelector('.setup-hcp-refresh-text');
-    if (label) label.textContent = running ? (currentLang === 'en' ? 'Searching…' : 'Поиск…') : 'RUSGOLF';
+    if (label) label.textContent = running ? (currentLang === 'en' ? 'Searching…' : 'Поиск…') : (currentLang === 'en' ? 'Update handicap from RGA' : 'Обновить гандикап из АГР');
 }
 
 function setupNormalizeHcpName(value) {

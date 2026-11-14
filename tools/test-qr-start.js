@@ -234,5 +234,14 @@ sandbox.qrRender(xssTeeDoc);
 const xssHtml = els['qr-content'].innerHTML || '';
 check(xssHtml.indexOf('<img src=x') === -1 && xssHtml.indexOf('ТИ: <b>—</b>') !== -1, 'tee labels: QR-разметка использует безопасную заглушку');
 
+sandbox.currentLang = 'en';
+sandbox.qrRender(doc);
+const enHtml = els['qr-content'].innerHTML || '';
+check(enHtml.includes('Starting sheet') && enHtml.includes('Player QR cards'), 'English document titles');
+check(enHtml.includes('Handicap index') && enHtml.includes('Course handicap'), 'English handicap labels');
+check(!enHtml.includes('Точный HCP') && !enHtml.includes('Лунка '), 'no Russian printed field labels');
+check(sandbox.qrTeeName('bk') === 'Black', 'English tee labels');
+check(sandbox.qrWaveLetter(0) === 'A', 'English wave letters');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nqr-start render tests passed ✔');
 process.exit(failures ? 1 : 0);

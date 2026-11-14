@@ -382,6 +382,7 @@ function switchAdminGroup(group, btn) {
     var name = group || (btn && btn.getAttribute('data-arg')) || 'ops';
     document.querySelectorAll('.admin-nav-group').forEach(function (el) {
         el.classList.toggle('active', el.getAttribute('data-arg') === name);
+        el.setAttribute('aria-pressed', String(el.getAttribute('data-arg') === name));
     });
     document.querySelectorAll('.admin-tabs[data-admin-group]').forEach(function (el) {
         el.classList.toggle('hidden', el.getAttribute('data-admin-group') !== name);
@@ -397,11 +398,12 @@ function switchAdminGroup(group, btn) {
 
 function switchTabApply(t, b) {
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
-    document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
+    document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); x.setAttribute('aria-pressed', 'false'); });
     var tabEl = document.getElementById('tab-' + t);
     if (tabEl) tabEl.classList.remove('hidden');
     if (b) {
         b.classList.add('active');
+        b.setAttribute('aria-pressed', 'true');
         var advancedPanel = b.closest('details');
         if (advancedPanel) advancedPanel.open = true;
     }
@@ -478,6 +480,7 @@ function switchTabApply(t, b) {
     if (groupName) {
         document.querySelectorAll('.admin-nav-group').forEach(function (el) {
             el.classList.toggle('active', el.getAttribute('data-arg') === groupName);
+            el.setAttribute('aria-pressed', String(el.getAttribute('data-arg') === groupName));
         });
         document.querySelectorAll('.admin-tabs[data-admin-group]').forEach(function (el) {
             el.classList.toggle('hidden', el.getAttribute('data-admin-group') !== groupName);

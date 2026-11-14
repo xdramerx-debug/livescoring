@@ -749,6 +749,10 @@ var clubScorecardPreviewView = null;
 var clubScorecardCompletedDraft = null;
 var clubScorecardSaving = false;
 var clubScorecardViewNames = { '1': 'Бланк клуба', '2': 'Блоки по 3 лунки', '3': 'Крупная лента', '4': 'Вертикальный список', '5': 'Плитки' };
+function clubScorecardViewName(value) {
+    var names = currentLang === 'en' ? { '1': 'Club scorecard', '2': 'Three-hole blocks', '3': 'Large strip', '4': 'Vertical list', '5': 'Tiles' } : clubScorecardViewNames;
+    return names[value] || value;
+}
 function previewClubScorecardView(value) {
     clubScorecardPreviewView = normalizeView5(value);
     renderClubScorecardPreview();
@@ -760,12 +764,12 @@ function previewCompletedScorecardView(value) {
 function renderClubScorecardSavedState() {
     var saved = getScorecardDisplaySettings();
     var label = document.getElementById('club-sc-saved');
-    if (label) label.textContent = 'Сохранено: общий — ' + saved.view + ' · ' + clubScorecardViewNames[saved.view] + '; завершённые — ' + (saved.completedView === 'inherit' ? 'как общий' : saved.completedView + ' · ' + clubScorecardViewNames[saved.completedView]) + '.';
+    if (label) label.textContent = (currentLang === 'en' ? 'Saved: default — ' : 'Сохранено: общий — ') + saved.view + ' · ' + clubScorecardViewName(saved.view) + (currentLang === 'en' ? '; completed — ' : '; завершённые — ') + (saved.completedView === 'inherit' ? (currentLang === 'en' ? 'use default' : 'как общий') : saved.completedView + ' · ' + clubScorecardViewName(saved.completedView)) + '.';
     var undo = document.getElementById('club-sc-undo');
     if (undo) {
         var previous = scorecardDisplayState && scorecardDisplayState.previous;
         undo.disabled = clubScorecardSaving || !previous;
-        undo.title = previous ? 'Восстановить: общий ' + previous.view + ', завершённые ' + (previous.completedView === 'inherit' ? 'как общий' : previous.completedView) : 'Предыдущего сохранения пока нет';
+        undo.title = previous ? (currentLang === 'en' ? 'Restore: default ' : 'Восстановить: общий ') + previous.view + (currentLang === 'en' ? ', completed ' : ', завершённые ') + (previous.completedView === 'inherit' ? (currentLang === 'en' ? 'use default' : 'как общий') : previous.completedView) : (currentLang === 'en' ? 'No previous settings saved yet' : 'Предыдущего сохранения пока нет');
     }
     var select = document.getElementById('club-sc-completed-view');
     if (select && clubScorecardCompletedDraft === null) select.value = saved.completedView;
@@ -801,7 +805,7 @@ function renderClubScorecardPreview() {
     card.setAttribute('data-sc-preview', 'true');
     card.setAttribute('data-sc-view', view);
     var caption = document.getElementById('club-sc-preview-caption');
-    if (caption) caption.textContent = (completed ? 'Завершённый' : 'Активный') + ' · ' + count + ' игр. · ' + holes + ' лунок · вид ' + view + ' — ' + clubScorecardViewNames[view] + '. Это предпросмотр, изменения ещё не опубликованы.';
+    if (caption) caption.textContent = (currentLang === 'en' ? (completed ? 'Completed' : 'Active') : (completed ? 'Завершённый' : 'Активный')) + ' · ' + count + (currentLang === 'en' ? ' players · ' : ' игр. · ') + holes + (currentLang === 'en' ? ' holes · layout ' : ' лунок · вид ') + view + ' — ' + clubScorecardViewName(view) + (currentLang === 'en' ? '. Preview only; changes are not published yet.' : '. Это предпросмотр, изменения ещё не опубликованы.');
     renderClubScorecardSavedState();
 }
 

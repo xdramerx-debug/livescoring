@@ -15,7 +15,9 @@ const root = path.join(__dirname, '..');
             await page.setContent(fs.readFileSync(path.join(root, 'setup-round.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, ''));
             for (const file of ['style', 'theme-v2', 'product-ux', 'clarity', 'pr164', 'pr164-adapter']) await page.addStyleTag({ path: path.join(root, 'css', file + '.css') });
             await page.evaluate(() => {
-                document.getElementById('nav-auth').innerHTML = '<div class="nav-user"><button class="sun-mode-btn">☼ Солнце</button><button class="lang-btn">RU</button><button class="nav-profile-trigger"><span class="nav-uname">Владимир В.</span></button><button class="btn nav-logout">↪</button></div>';
+                const labels = { nav_home: 'Home', nav_round: 'Play', nav_leaderboard: 'Results', nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics', nav_handicaps: 'Handicaps', brand_name: 'Pestovo' };
+                document.querySelectorAll('[data-i18n]').forEach(el => { if (labels[el.dataset.i18n]) el.textContent = labels[el.dataset.i18n]; });
+                document.getElementById('nav-auth').innerHTML = '<div class="nav-user"><button class="sun-mode-btn">☼ Sun</button><button class="lang-btn">EN</button><button class="nav-profile-trigger"><span class="nav-uname">Alexander K.</span></button><button class="btn nav-logout">↪</button></div>';
                 document.getElementById('nav-weather-container').innerHTML = '<div class="weather-widget"><div class="weather-item"><span class="weather-icon">☀️</span><b>+12°C</b></div><div class="weather-item"><b>3 m/s ЮЗ</b></div></div>';
                 for (const cls of ['pv-bottomnav', 'pv-cta-dock is-visible']) { const el = document.createElement('div'); el.className = cls; el.textContent = 'Floating'; document.body.append(el); }
                 document.getElementById('setup').classList.remove('hidden');

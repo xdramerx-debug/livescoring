@@ -134,3 +134,54 @@ body :is(.btn, .sun-mode-btn, .lang-btn):focus-visible { outline: 2px solid var(
     body .btn-g:not(:disabled):hover { background: linear-gradient(135deg, #e8d381, #d4b75c); box-shadow: 0 5px 16px rgba(201,168,76,.2); }
     body .btn-ol:not(:disabled):hover { background: rgba(201,168,76,.1); border-color: var(--gold); }
 }
+
+/* Home ends with the full-width club section, not a bottom-navigation spacer. */
+body.pv-home.pv-ux.pv-has-bottomnav > main { padding-bottom: 0; }
+
+/* Unified setup opens directly on settings; no old search or decorative steps. */
+body.round-setup-page #pv-steps,
+body.round-setup-page #p0-wizard-steps { display: none; }
+body.round-setup-page main.container { padding-top: 16px !important; }
+body.round-setup-page #unified-setup-card { margin-top: 0; }
+body.round-setup-page #player-slots .setup-player-card:not(.open) > .spc-fields { display: none; }
+body.round-setup-page #player-slots .setup-player-card.open > .spc-fields { display: block; }
+body.round-setup-page .setup-player-head { flex-wrap: wrap; }
+body.round-setup-page .setup-player-head .setup-hcp-refresh-head {
+    display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+    min-height: 44px; padding: 10px 12px; height: auto; border-radius: 10px;
+    white-space: normal; max-width: 100%; font-size: 12px;
+}
+body.round-setup-page .setup-player-head .setup-hcp-refresh-head.hidden { display: none; }
+body.round-setup-page .setup-hcp-refresh-head .setup-hcp-refresh-text { display: inline; line-height: 1.4; }
+@media (max-width: 600px) {
+    body.round-setup-page .setup-player-head .setup-hcp-refresh-head { order: 2; flex-basis: 100%; margin-top: 4px; }
+}
+/* Reserve stable rows in the player header so blur/recalculation cannot move
+   the remove/refresh controls underneath a finger between pointerdown/up. */
+body.round-setup-page #player-slots .setup-player-head { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto 18px; gap: 8px; }
+body.round-setup-page #player-slots .spc-avatar { grid-column: 1; grid-row: 1; }
+body.round-setup-page #player-slots .spc-title { grid-column: 2; grid-row: 1; }
+body.round-setup-page #player-slots .spc-remove { grid-column: 3; grid-row: 1; }
+body.round-setup-page #player-slots .setup-player-head > .fa-chevron-down { grid-column: 4; grid-row: 1; }
+body.round-setup-page #player-slots .spc-meta { grid-column: 2 / -1; grid-row: 2; min-height: 18px; max-width: 100%; margin: 0; }
+body.round-setup-page #player-slots .setup-hcp-refresh-head { grid-column: 1 / -1; grid-row: 3; width: 100%; }
+
+/* Light-theme corrections for newer surfaces with hard-coded dark backgrounds.
+   Keep status meaning in both text and color; never recolor printed scorecards. */
+body.sun-mode :is(.tn-search, .tn-public-card, .tn-detail-hero, .tn-detail-panel, .tn-active-card) {
+    background: var(--card); color: var(--text); border-color: var(--border); box-shadow: 0 4px 14px rgba(0,0,0,.06);
+}
+body.sun-mode :is(.tn-public-badge.live, .tn-public-badge.cancelled, .tn-result-status, .tn-live-indicator, .tn-public-error, .tn-live-name) { color: #9b241c; }
+body.sun-mode :is(.tn-public-badge.closed, .tn-public-badge.paused, .tnm-chip-paused, .tnm-pause-banner b, .tnm-pause-banner > i:first-child) { color: #754400; }
+body.sun-mode .tn-public-badge.completed { color: #185a2c; }
+body.sun-mode .tn-public-tab.active span { background: rgba(255,255,255,.16); }
+body.sun-mode .setup-hcp-refresh:hover:not(:disabled) { background: #d4edda; color: #0b2912; }
+body.sun-mode :is(.stats-record-card, .stats-record-chip, .stats-record-feature, .stats-summary-item, .stats-dashboard-feature) { background: #f4f8f5; color: #142017; }
+body.sun-mode .weather-widget { background: #f4f8f5; color: #142017; }
+body.sun-mode :is(.pv-chip-count, .tnm-count) { color: #253b2b; }
+body.sun-mode .spc-remove { color: #a52a20; background: #fff0ee; }
+body.sun-mode :is(.form-input, .tn-search input)::placeholder { color: #56665b; opacity: 1; }
+body.sun-mode input[type="date"], body.sun-mode input[type="time"] { color-scheme: light; }
+body.sun-mode .sev-head-badge { color: #142017; background: #f3ebd2; }
+body.sun-mode :is(.tn-public-chip, .tn-detail-description, .tn-course-ref, .tn-nomination ol, .tn-active-description) { color: #253b2b; }
+body.sun-mode .tn-public-chip { border-color: #899b8d; background: #f4f8f5; }

@@ -120,7 +120,7 @@
                 <button class="admin-tab" data-act="switchTab" data-arg="scorecards" data-i18n="tab_scorecards">Карточки на сайте</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="scoreentry" data-i18n="tab_scoreentry_screen">Экран игрока</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="designhistory">История PR · 1–100</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="designhistory">История PR · 1–187</button>
             <details class="clarity-admin-more"><summary>Дополнительно</summary><button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards">Карточки на вводе</button>
 <button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards">Турнирный ввод</button>
 <button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид</button></details></div>
@@ -1063,7 +1063,7 @@
 
         <section id="tab-designhistory" class="admin-section hidden" aria-labelledby="dh-title">
             <div class="card dh-intro">
-                <p class="dh-eyebrow">Архив оформления · PR 1–100</p>
+                <p class="dh-eyebrow">Архив оформления · PR 1–187</p>
                 <h2 id="dh-title">История дизайна</h2>
                 <p>Главная страница и экран ввода счёта каждого PR. Нажмите на снимок, чтобы увеличить его и листать соседние PR.</p>
                 <p class="dh-notice"><strong>Реконструкция, не архив продакшена.</strong> Страницы сняты из коммитов PR с одинаковыми демонстрационными данными, в мобильном окне 430 × 1100 px. Реальные игроки и результаты не используются.</p>
@@ -1076,9 +1076,10 @@
             </div>
             <div class="card dh-controls">
                 <div class="form-group"><label for="dh-search">Номер PR, название или коммит</label><input id="dh-search" class="form-input" type="search" placeholder="Например: 42 или дизайн" autocomplete="off"></div>
+                <div class="form-group"><label for="dh-range">Диапазон PR</label><select id="dh-range" class="form-input"><option value="all">Все · №1–187</option><option value="1-100">№1–100</option><option value="101-187">Новые · №101–187</option></select></div>
                 <div class="form-group"><label for="dh-screen">Снимки</label><select id="dh-screen" class="form-input"><option value="both">Оба экрана</option><option value="home">Только главная</option><option value="scoring">Только ввод счёта</option></select></div>
                 <div class="form-group"><label for="dh-status">Статус PR</label><select id="dh-status" class="form-input"><option value="all">Все PR</option><option value="merged">Только слитые</option><option value="closed">Закрытые без слияния</option></select></div>
-                <div class="form-group"><label for="dh-order">Порядок</label><select id="dh-order" class="form-input"><option value="asc">От №1 к №100</option><option value="desc">От №100 к №1</option></select></div>
+                <div class="form-group"><label for="dh-order">Порядок</label><select id="dh-order" class="form-input"><option value="asc">От №1 к №187</option><option value="desc">От №187 к №1</option></select></div>
                 <button id="dh-reset" type="button" class="btn btn-ol">Сбросить</button>
             </div>
             <p id="dh-summary" class="dh-summary" role="status" aria-live="polite"></p>
@@ -1144,7 +1145,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.134.0</span></p></details></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.135.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
@@ -1187,7 +1188,7 @@
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
 <script type="text/plain" data-admin-lazy="design" data-admin-src="js/design-admin.js?v=92d8e512"></script>
 <script type="text/plain" data-admin-lazy="broadcasts" data-admin-src="js/admin-broadcasts.js?v=f76a4469"></script>
-<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/design-history-data.js?v=4718cf24"></script>
-<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/admin-design-history.js?v=e9ccea35"></script>
+<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/design-history-data.js?v=deecb4d4"></script>
+<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/admin-design-history.js?v=02e058f5"></script>
 </body>
 </html>

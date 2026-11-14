@@ -19,7 +19,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-1-home.jpg",
       "scoring": "img/design-history/pr-1-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 2,
@@ -32,7 +33,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-2-home.jpg",
       "scoring": "img/design-history/pr-2-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 3,
@@ -45,7 +47,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-3-home.jpg",
       "scoring": "img/design-history/pr-3-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 4,
@@ -58,7 +61,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-4-home.jpg",
       "scoring": "img/design-history/pr-4-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 5,
@@ -71,7 +75,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-5-home.jpg",
       "scoring": "img/design-history/pr-5-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 6,
@@ -84,7 +89,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-6-home.jpg",
       "scoring": "img/design-history/pr-6-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 7,
@@ -97,7 +103,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-7-home.jpg",
       "scoring": "img/design-history/pr-7-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 8,
@@ -110,7 +117,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-8-home.jpg",
       "scoring": "img/design-history/pr-8-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 9,
@@ -123,7 +131,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-9-home.jpg",
       "scoring": "img/design-history/pr-9-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 10,
@@ -136,7 +145,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-10-home.jpg",
       "scoring": "img/design-history/pr-10-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 11,
@@ -149,7 +159,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-11-home.jpg",
       "scoring": "img/design-history/pr-11-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 12,
@@ -162,7 +173,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-12-home.jpg",
       "scoring": "img/design-history/pr-12-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 13,
@@ -175,7 +187,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-13-home.jpg",
       "scoring": "img/design-history/pr-13-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 14,
@@ -188,7 +201,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-14-home.jpg",
       "scoring": "img/design-history/pr-14-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 15,
@@ -201,7 +215,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-15-home.jpg",
       "scoring": "img/design-history/pr-15-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 16,
@@ -214,7 +229,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-16-home.jpg",
       "scoring": "img/design-history/pr-16-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 17,
@@ -227,7 +243,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-17-home.jpg",
       "scoring": "img/design-history/pr-17-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 18,
@@ -240,7 +257,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-18-home.jpg",
       "scoring": "img/design-history/pr-18-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 19,
@@ -253,7 +271,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-19-home.jpg",
       "scoring": "img/design-history/pr-19-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 20,
@@ -266,7 +285,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-20-home.jpg",
       "scoring": "img/design-history/pr-20-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 21,
@@ -279,7 +299,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-21-home.jpg",
       "scoring": "img/design-history/pr-21-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 22,
@@ -292,7 +313,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-22-home.jpg",
       "scoring": "img/design-history/pr-22-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 23,
@@ -305,7 +327,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-23-home.jpg",
       "scoring": "img/design-history/pr-23-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 24,
@@ -318,7 +341,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-24-home.jpg",
       "scoring": "img/design-history/pr-24-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 25,
@@ -331,7 +355,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-25-home.jpg",
       "scoring": "img/design-history/pr-25-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 26,
@@ -344,7 +369,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-26-home.jpg",
       "scoring": "img/design-history/pr-26-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 27,
@@ -357,7 +383,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-27-home.jpg",
       "scoring": "img/design-history/pr-27-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 28,
@@ -370,7 +397,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-28-home.jpg",
       "scoring": "img/design-history/pr-28-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 29,
@@ -383,7 +411,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-29-home.jpg",
       "scoring": "img/design-history/pr-29-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 30,
@@ -396,7 +425,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-30-home.jpg",
       "scoring": "img/design-history/pr-30-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 31,
@@ -409,7 +439,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-31-home.jpg",
       "scoring": "img/design-history/pr-31-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 32,
@@ -422,7 +453,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-32-home.jpg",
       "scoring": "img/design-history/pr-32-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 33,
@@ -435,7 +467,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-33-home.jpg",
       "scoring": "img/design-history/pr-33-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 34,
@@ -448,7 +481,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-34-home.jpg",
       "scoring": "img/design-history/pr-34-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 35,
@@ -461,7 +495,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-35-home.jpg",
       "scoring": "img/design-history/pr-35-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 36,
@@ -474,7 +509,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-36-home.jpg",
       "scoring": "img/design-history/pr-36-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 37,
@@ -487,7 +523,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-37-home.jpg",
       "scoring": "img/design-history/pr-37-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 38,
@@ -500,7 +537,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-38-home.jpg",
       "scoring": "img/design-history/pr-38-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 39,
@@ -513,7 +551,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-39-home.jpg",
       "scoring": "img/design-history/pr-39-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 40,
@@ -526,7 +565,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-40-home.jpg",
       "scoring": "img/design-history/pr-40-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 41,
@@ -539,7 +579,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-41-home.jpg",
       "scoring": "img/design-history/pr-41-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 42,
@@ -552,7 +593,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-42-home.jpg",
       "scoring": "img/design-history/pr-42-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 43,
@@ -565,7 +607,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-43-home.jpg",
       "scoring": "img/design-history/pr-43-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 44,
@@ -578,7 +621,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-44-home.jpg",
       "scoring": "img/design-history/pr-44-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 45,
@@ -591,7 +635,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-45-home.jpg",
       "scoring": "img/design-history/pr-45-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 46,
@@ -604,7 +649,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-46-home.jpg",
       "scoring": "img/design-history/pr-46-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 47,
@@ -617,7 +663,8 @@ window.pestovoDesignHistoryData = {
       "home": "img/design-history/pr-47-home.jpg",
       "scoring": "img/design-history/pr-47-scoring.jpg",
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 48,
@@ -631,13 +678,14 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-48-scoring.jpg",
       "staticScoring": true,
       "captureWarnings": [
-        "home: Illegal return statement",
-        "home: initNav is not defined",
         "scoring: Illegal return statement",
         "scoring: initNav is not defined",
-        "scoring: исходный JS не запустился; статическая разметка с демонстрационными полями"
+        "scoring: исходный JS не запустился; статическая разметка с демонстрационными полями",
+        "home: Illegal return statement",
+        "home: initNav is not defined"
       ],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 49,
@@ -651,7 +699,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-49-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 50,
@@ -665,7 +714,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-50-scoring.jpg",
       "captureWarnings": [],
       "captured": true,
-      "staticScoring": false
+      "staticScoring": false,
+      "homeRoute": "index.html"
     },
     {
       "number": 51,
@@ -679,7 +729,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-51-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 52,
@@ -693,7 +744,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-52-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 53,
@@ -707,7 +759,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-53-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 54,
@@ -721,7 +774,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-54-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 55,
@@ -735,7 +789,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-55-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 56,
@@ -749,7 +804,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-56-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 57,
@@ -763,7 +819,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-57-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 58,
@@ -777,7 +834,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-58-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 59,
@@ -791,7 +849,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-59-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 60,
@@ -805,7 +864,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-60-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 61,
@@ -819,7 +879,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-61-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 62,
@@ -833,7 +894,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-62-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 63,
@@ -847,7 +909,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-63-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 64,
@@ -861,7 +924,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-64-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 65,
@@ -875,7 +939,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-65-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 66,
@@ -889,7 +954,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-66-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 67,
@@ -903,7 +969,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-67-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 68,
@@ -917,7 +984,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-68-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 69,
@@ -931,7 +999,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-69-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 70,
@@ -945,7 +1014,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-70-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 71,
@@ -959,7 +1029,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-71-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 72,
@@ -973,7 +1044,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-72-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 73,
@@ -987,7 +1059,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-73-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 74,
@@ -1001,7 +1074,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-74-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 75,
@@ -1015,7 +1089,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-75-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 76,
@@ -1029,7 +1104,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-76-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 77,
@@ -1043,7 +1119,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-77-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 78,
@@ -1057,7 +1134,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-78-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 79,
@@ -1071,7 +1149,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-79-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 80,
@@ -1085,7 +1164,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-80-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 81,
@@ -1099,7 +1179,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-81-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 82,
@@ -1113,7 +1194,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-82-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 83,
@@ -1127,7 +1209,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-83-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 84,
@@ -1141,7 +1224,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-84-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 85,
@@ -1155,7 +1239,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-85-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 86,
@@ -1169,7 +1254,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-86-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 87,
@@ -1183,7 +1269,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-87-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 88,
@@ -1197,7 +1284,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-88-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 89,
@@ -1211,7 +1299,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-89-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 90,
@@ -1225,7 +1314,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-90-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 91,
@@ -1239,7 +1329,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-91-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 92,
@@ -1253,7 +1344,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-92-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 93,
@@ -1267,7 +1359,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-93-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 94,
@@ -1281,7 +1374,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-94-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 95,
@@ -1295,7 +1389,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-95-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 96,
@@ -1309,7 +1404,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-96-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 97,
@@ -1323,7 +1419,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-97-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 98,
@@ -1337,7 +1434,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-98-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 99,
@@ -1351,7 +1449,8 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-99-scoring.jpg",
       "staticScoring": false,
       "captureWarnings": [],
-      "captured": true
+      "captured": true,
+      "homeRoute": "index.html"
     },
     {
       "number": 100,
@@ -1365,7 +1464,1317 @@ window.pestovoDesignHistoryData = {
       "scoring": "img/design-history/pr-100-scoring.jpg",
       "captureWarnings": [],
       "captured": true,
-      "staticScoring": false
+      "staticScoring": false,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "11aa673d0336f5ba962c12a496f0d86af11fb611",
+      "date": "2026-09-17T06:44:15Z",
+      "merged": true,
+      "number": 101,
+      "source": "merge",
+      "title": "v1.69.0 — единый блок «Создание раунда» вместо вкладок + 5 админских видов",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/101",
+      "home": "img/design-history/pr-101-home.jpg",
+      "scoring": "img/design-history/pr-101-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "a156d8be72d15b067060a32c9e42832dcaaa99ab",
+      "date": "2026-09-17T07:22:32Z",
+      "merged": true,
+      "number": 102,
+      "source": "merge",
+      "title": "v1.70.0 — принудительное завершение раунда, пауза с заморозкой таймингов и независимая игра в мультиплеере",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/102",
+      "home": "img/design-history/pr-102-home.jpg",
+      "scoring": "img/design-history/pr-102-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "ac462110f87c16bfb21e2cee821b961df4f7002f",
+      "date": "2026-09-17T08:02:36Z",
+      "merged": true,
+      "number": 103,
+      "source": "merge",
+      "title": "v1.71.0 — честная «текущая лунка» после сдачи карточки и защита таймингов от битых данных паузы",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/103",
+      "home": "img/design-history/pr-103-home.jpg",
+      "scoring": "img/design-history/pr-103-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "7016c236cab5ae981e746844a026f5a6850a5006",
+      "date": "2026-09-17T09:46:57Z",
+      "merged": true,
+      "number": 104,
+      "source": "merge",
+      "title": "v1.72.0 — «Новая версия создания турнира»: мастер, настройки поля, шаблоны",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/104",
+      "home": "img/design-history/pr-104-home.jpg",
+      "scoring": "img/design-history/pr-104-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "516299cdf20dc5d8cb22fca8214ce3c274e7052b",
+      "date": "2026-09-17T11:52:50Z",
+      "merged": true,
+      "number": 105,
+      "source": "merge",
+      "title": "feat: redesign tournament public and management flows",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/105",
+      "home": "img/design-history/pr-105-home.jpg",
+      "scoring": "img/design-history/pr-105-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "fb0808420404d9e6f748cb12248cc43735f4a2b5",
+      "date": "2026-09-17T13:09:44Z",
+      "merged": true,
+      "number": 106,
+      "source": "merge",
+      "title": "Турниры: завершение карточек, автозавершение турнира, 5 видов страницы (v1.74.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/106",
+      "home": "img/design-history/pr-106-home.jpg",
+      "scoring": "img/design-history/pr-106-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "68c94338739261278dc55cf929b0e9693d7341d2",
+      "date": "2026-09-17T13:18:29Z",
+      "merged": true,
+      "number": 107,
+      "source": "merge",
+      "title": "v1.75.0: center tournaments lead, remove kicker, fix footer",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/107",
+      "home": "img/design-history/pr-107-home.jpg",
+      "scoring": "img/design-history/pr-107-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "ad38e0beb67856467c6b9f587e8c583804a1ff67",
+      "date": "2026-09-18T12:31:44Z",
+      "merged": true,
+      "number": 108,
+      "source": "merge",
+      "title": "Fix toPar calculation, Stableford rule compliance, offline sync resilience, and bump version to 1.77.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/108",
+      "home": "img/design-history/pr-108-home.jpg",
+      "scoring": "img/design-history/pr-108-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "bd0be52336a723bff7f6e0d26e17d4d6fa0e340d",
+      "date": "2026-09-18T13:18:53Z",
+      "merged": true,
+      "number": 109,
+      "source": "merge",
+      "title": "Show live tournaments on the home page (v1.78.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/109",
+      "home": "img/design-history/pr-109-home.jpg",
+      "scoring": "img/design-history/pr-109-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "37c794a93d42fe09f06f79cad59b9edf922d4ff8",
+      "date": "2026-09-18T13:45:38Z",
+      "merged": true,
+      "number": 110,
+      "source": "merge",
+      "title": "Fix: new tournament no longer auto-gets «in progress» status + release 1.79.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/110",
+      "home": "img/design-history/pr-110-home.jpg",
+      "scoring": "img/design-history/pr-110-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "57eda9bd4eef3ca9461cb495d7649b386c4c8501",
+      "date": "2026-09-23T04:17:54Z",
+      "merged": true,
+      "number": 111,
+      "source": "merge",
+      "title": "Improve security, testing, and modularity of Live Scoring",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/111",
+      "home": "img/design-history/pr-111-home.jpg",
+      "scoring": "img/design-history/pr-111-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "7e0a3d7e9f523f798b3da0bcb6180a50744f868e",
+      "date": "2026-09-23T06:05:23Z",
+      "merged": true,
+      "number": 112,
+      "source": "merge",
+      "title": "CODE-REVIEW: модульная миграция, безопасность, инструменты (v1.82.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/112",
+      "home": "img/design-history/pr-112-home.jpg",
+      "scoring": "img/design-history/pr-112-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "23606a786c532521184b4c2487d0d34ff3f8e36e",
+      "date": "2026-09-23T07:15:27Z",
+      "merged": true,
+      "number": 113,
+      "source": "merge",
+      "title": "Итерация 13: ESM-бандл на страницах + версия 1.84.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/113",
+      "home": "img/design-history/pr-113-home.jpg",
+      "scoring": "img/design-history/pr-113-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "c824d6d3ef4fb39ee75b7258e9c96fdb3d0ed062",
+      "date": "2026-09-23T07:32:02Z",
+      "merged": true,
+      "number": 114,
+      "source": "merge",
+      "title": "browser-check: офлайн-режим и нормализация таймерного текста (фикс CI)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/114",
+      "home": "img/design-history/pr-114-home.jpg",
+      "scoring": "img/design-history/pr-114-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "06b70e2ba0002ad74700a07aee17f5e7f2153b02",
+      "date": "2026-09-23T08:24:38Z",
+      "merged": true,
+      "number": 115,
+      "source": "merge",
+      "title": "Tournament creation tab, site version 1.83.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/115",
+      "home": "img/design-history/pr-115-home.jpg",
+      "scoring": "img/design-history/pr-115-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "7a7af3db5abb72dec21b4224469c67995ff2010e",
+      "date": "2026-09-23T11:56:18Z",
+      "merged": true,
+      "number": 116,
+      "source": "merge",
+      "title": "Единая вкладка «Турниры 🏆» + версия 1.86.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/116",
+      "home": "img/design-history/pr-116-home.jpg",
+      "scoring": "img/design-history/pr-116-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "8f13fdda72aa40a0babd7e10971c4841bfad4a2c",
+      "date": "2026-09-23T12:34:32Z",
+      "merged": true,
+      "number": 117,
+      "source": "merge",
+      "title": "Server-side score audit and tournament master access",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/117",
+      "home": "img/design-history/pr-117-home.jpg",
+      "scoring": "img/design-history/pr-117-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "e90519aad77c82713b25951b40121d6080e3be27",
+      "date": "2026-09-23T14:37:35Z",
+      "merged": true,
+      "number": 118,
+      "source": "merge",
+      "title": "Починить вход в админку по мастер-паролю 55555 («Ошибка входа: internal»)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/118",
+      "home": "img/design-history/pr-118-home.jpg",
+      "scoring": "img/design-history/pr-118-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "38ccc87d0e55e996643d8dce2731aba97b06af7e",
+      "date": "2026-09-23T15:18:19Z",
+      "merged": true,
+      "number": 119,
+      "source": "merge",
+      "title": "CI: обновить actions до node24-раннера (checkout@v6, setup-node@v6) и Node 22",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/119",
+      "home": "img/design-history/pr-119-home.jpg",
+      "scoring": "img/design-history/pr-119-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "ae9e4d522415d348fb8ac4ba8c2a91a700fa898c",
+      "date": "2026-09-23T15:33:42Z",
+      "merged": true,
+      "number": 120,
+      "source": "merge",
+      "title": "Fix admin login via master password 55555 (internal + race fallback)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/120",
+      "home": "img/design-history/pr-120-home.jpg",
+      "scoring": "img/design-history/pr-120-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "a939aeddd6295888adade971eef7d67b193dd8c8",
+      "date": "2026-09-23T16:43:52Z",
+      "merged": true,
+      "number": 121,
+      "source": "merge",
+      "title": "Полный аудит и исправления: логика, XSS, приватность, dead code",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/121",
+      "home": "img/design-history/pr-121-home.jpg",
+      "scoring": "img/design-history/pr-121-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "4a4d97618c24ff4490f3af7bf68209f93953f71d",
+      "date": "2026-09-23T16:49:17Z",
+      "merged": true,
+      "number": 122,
+      "source": "merge",
+      "title": "Мастер-пароль 55555 работает всегда, а не только на localhost",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/122",
+      "home": "img/design-history/pr-122-home.jpg",
+      "scoring": "img/design-history/pr-122-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "9e2e37a5c7d5270381d1f90192f262615302063b",
+      "date": "2026-09-23T17:02:39Z",
+      "merged": true,
+      "number": 123,
+      "source": "merge",
+      "title": "Исправить вкладку «Данные» в админке",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/123",
+      "home": "img/design-history/pr-123-home.jpg",
+      "scoring": "img/design-history/pr-123-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "36948b6b47564a770ac6e6f72dcdcb48b4e921b7",
+      "date": "2026-09-23T17:41:25Z",
+      "merged": true,
+      "number": 124,
+      "source": "merge",
+      "title": "Удаление турнира в админке: каскад на раунды (v1.88.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/124",
+      "home": "img/design-history/pr-124-home.jpg",
+      "scoring": "img/design-history/pr-124-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "71b66b511dc3f6ae4d71ea9399b23de5f1d3f63e",
+      "date": "2026-09-26T04:34:54Z",
+      "merged": true,
+      "number": 125,
+      "source": "merge",
+      "title": "v1.89.0: единые счётные карточки и 5 мобильных вариантов",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/125",
+      "home": "img/design-history/pr-125-home.jpg",
+      "scoring": "img/design-history/pr-125-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "c5394d1b55aeb14dd6d60c9044e1a0ffe6e3bc30",
+      "date": "2026-09-26T04:58:53Z",
+      "merged": true,
+      "number": 126,
+      "source": "merge",
+      "title": "v1.90.0: счётные карточки и настройка ввода результатов",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/126",
+      "home": "img/design-history/pr-126-home.jpg",
+      "scoring": "img/design-history/pr-126-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "cd8c0dc511e21335f2a91ce5eaeeecfcd1baf2cd",
+      "date": "2026-09-26T05:45:16Z",
+      "merged": true,
+      "number": 127,
+      "source": "merge",
+      "title": "v1.91.0: премиум-стиль ввода результатов и карточка настроек в админке",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/127",
+      "home": "img/design-history/pr-127-home.jpg",
+      "scoring": "img/design-history/pr-127-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "bfd2fda3b5e2791e51a57b1d249dec3c5a55af65",
+      "date": "2026-09-26T06:58:22Z",
+      "merged": true,
+      "number": 128,
+      "source": "merge",
+      "title": "Починить отправку счёта на сервер: RTDB fallback, разблокировка очереди и поддержка кириллических ID",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/128",
+      "home": "img/design-history/pr-128-home.jpg",
+      "scoring": "img/design-history/pr-128-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "7c68e2a8f443fb93c08c5cc148472fef089d76fc",
+      "date": "2026-09-26T07:30:04Z",
+      "merged": true,
+      "number": 129,
+      "source": "merge",
+      "title": "Fix compact scoring header and persistent QR invitations (v1.92.1)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/129",
+      "home": "img/design-history/pr-129-home.jpg",
+      "scoring": "img/design-history/pr-129-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "7985c4e240bb3ecd3f73f6631c33072547ae299f",
+      "date": "2026-09-26T08:18:55Z",
+      "merged": true,
+      "number": 130,
+      "source": "merge",
+      "title": "Групповой экран: единая карточка флайта + компактный редизайн ввода (v1.92.3)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/130",
+      "home": "img/design-history/pr-130-home.jpg",
+      "scoring": "img/design-history/pr-130-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "02a9bc036ac0ce2b80b3e538ee2d32f046e402ed",
+      "date": "2026-09-26T09:13:09Z",
+      "merged": true,
+      "number": 131,
+      "source": "merge",
+      "title": "Ввод счёта одной рукой (v1.93.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/131",
+      "home": "img/design-history/pr-131-home.jpg",
+      "scoring": "img/design-history/pr-131-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "f8a5b14e5c03407e70944ffa8b8054c7699064d5",
+      "date": "2026-09-26T16:09:36Z",
+      "merged": true,
+      "number": 132,
+      "source": "merge",
+      "title": "Fix duplicate scoring actions; site v1.93.1",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/132",
+      "home": "img/design-history/pr-132-home.jpg",
+      "scoring": "img/design-history/pr-132-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "af628191775ff731a0b2bc1b17f7abfefff3da12",
+      "date": "2026-10-01T06:48:08Z",
+      "merged": true,
+      "number": 133,
+      "source": "merge",
+      "title": "Кнопки удаления данных в админке: игроки действительно удаляются (v1.93.2)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/133",
+      "home": "img/design-history/pr-133-home.jpg",
+      "scoring": "img/design-history/pr-133-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "ea9c5d35778e24ab90e4080bdbb00b75e9250b44",
+      "date": "2026-10-01T07:17:02Z",
+      "merged": true,
+      "number": 134,
+      "source": "merge",
+      "title": "Новая система турниров (tn-admin.html) + версия 1.94.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/134",
+      "home": "img/design-history/pr-134-home.jpg",
+      "scoring": "img/design-history/pr-134-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "479e520918669bfee096de6d7e45b46f8e0103b8",
+      "date": "2026-10-01T09:18:52Z",
+      "merged": true,
+      "number": 135,
+      "source": "merge",
+      "title": "Фикс: «+ Создать турнир» в списке турниров (tn-admin)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/135",
+      "home": "img/design-history/pr-135-home.jpg",
+      "scoring": "img/design-history/pr-135-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "138e9ba1734e729ef30a5150074368f3022fa1f7",
+      "date": "2026-10-03T14:21:56Z",
+      "merged": true,
+      "number": 136,
+      "source": "merge",
+      "title": "Remove tournament creation system",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/136",
+      "home": "img/design-history/pr-136-home.jpg",
+      "scoring": "img/design-history/pr-136-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "3f1017e7e0a6acd8cb78046743403774430b79ac",
+      "date": "2026-10-03T15:19:05Z",
+      "merged": true,
+      "number": 137,
+      "source": "merge",
+      "title": "Менеджер турниров: вкладка «Турниры 🏆» в админке (v1.95.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/137",
+      "home": "img/design-history/pr-137-home.jpg",
+      "scoring": "img/design-history/pr-137-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "5773b479b888a7655a7e19c2407ad473143c0a75",
+      "date": "2026-10-04T06:52:02Z",
+      "merged": true,
+      "number": 138,
+      "source": "merge",
+      "title": "Импорт участников турнира из Excel: все листы, столбцы и ячейки",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/138",
+      "home": "img/design-history/pr-138-home.jpg",
+      "scoring": "img/design-history/pr-138-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "8327d04e426ec16db78502e9f37e8880ea357fd6",
+      "date": "2026-10-04T07:32:14Z",
+      "merged": true,
+      "number": 139,
+      "source": "merge",
+      "title": "Tournament scoring workflow, QR sheets, and scorecard editor",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/139",
+      "home": "img/design-history/pr-139-home.jpg",
+      "scoring": "img/design-history/pr-139-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "93e264a5c62e9e7d4c72a52df7b6e607a5ef6b1e",
+      "date": "2026-10-04T07:50:54Z",
+      "merged": true,
+      "number": 140,
+      "source": "merge",
+      "title": "Print scorecards tab + site 1.98.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/140",
+      "home": "img/design-history/pr-140-home.jpg",
+      "scoring": "img/design-history/pr-140-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "b02ba9c5a7ff37a71c87843593d29a4151243ca7",
+      "date": "2026-10-04T08:06:05Z",
+      "merged": true,
+      "number": 141,
+      "source": "merge",
+      "title": "Fix stale admin asset revision hashes",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/141",
+      "home": "img/design-history/pr-141-home.jpg",
+      "scoring": "img/design-history/pr-141-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "a15b6acd8666a2e6273d48606140dc88b824f250",
+      "date": "2026-10-04T09:34:41Z",
+      "merged": true,
+      "number": 142,
+      "source": "merge",
+      "title": "Счетные карточки турнира: видимый конструктор, актуальные данные, печать без подписей",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/142",
+      "home": "img/design-history/pr-142-home.jpg",
+      "scoring": "img/design-history/pr-142-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "ea81b03f241a6e046174ac8fe28d9a9f5361f1ee",
+      "date": "2026-10-04T10:33:08Z",
+      "merged": true,
+      "number": 143,
+      "source": "merge",
+      "title": "Улучшение редактора счётных карточек",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/143",
+      "home": "img/design-history/pr-143-home.jpg",
+      "scoring": "img/design-history/pr-143-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "38645ddd3bc2b7149ee7898445d525324c2213d2",
+      "date": "2026-10-04T14:12:31Z",
+      "merged": true,
+      "number": 144,
+      "source": "merge",
+      "title": "Принудительный старт турнира открывает раунды для ввода счёта",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/144",
+      "home": "img/design-history/pr-144-home.jpg",
+      "scoring": "img/design-history/pr-144-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "e381cb58c64c1226453a051684b8969b4d024adb",
+      "date": "2026-10-07T09:51:39Z",
+      "merged": true,
+      "number": 145,
+      "source": "merge",
+      "title": "Менеджер турниров: гости в справочнике сайта, пауза турнира, черточки форы, перетаскивание карточки (v1.100.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/145",
+      "home": "img/design-history/pr-145-home.jpg",
+      "scoring": "img/design-history/pr-145-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "8800d8514908350e0c0e801e7ffd46ff970bd72b",
+      "date": "2026-10-07T12:55:51Z",
+      "merged": true,
+      "number": 146,
+      "source": "merge",
+      "title": "Обновления Pestovo Live Scoring",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/146",
+      "home": "img/design-history/pr-146-home.jpg",
+      "scoring": "img/design-history/pr-146-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "86ef2259ef1f1d3e49b51371842eb5262925d8fc",
+      "date": "2026-10-08T08:20:09Z",
+      "merged": true,
+      "number": 147,
+      "source": "merge",
+      "title": "Версия 1.102.0: шапка, глобальные уведомления, гандикап в создании раунда, журнал гандикапов",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/147",
+      "home": "img/design-history/pr-147-home.jpg",
+      "scoring": "img/design-history/pr-147-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "4ab8eff13a9da51d0fddf9ae16840f98a5ea2c02",
+      "date": "2026-10-08T13:27:12Z",
+      "merged": true,
+      "number": 148,
+      "source": "merge",
+      "title": "v1.103.0: бренд «Пестово», RUSGOLF в раунде, уведомления, шапка, 5 стилей ввода счёта",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/148",
+      "home": "img/design-history/pr-148-home.jpg",
+      "scoring": "img/design-history/pr-148-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "d5ad4758437c4aa075a33af7547d084d86693009",
+      "date": "2026-10-09T10:04:32Z",
+      "merged": true,
+      "number": 149,
+      "source": "merge",
+      "title": "v1.104.0: гости в автоподбор после раунда, варианты ввода счёта",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/149",
+      "home": "img/design-history/pr-149-home.jpg",
+      "scoring": "img/design-history/pr-149-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "08c7bc4ee6193316584c91d9e3fc645c4790ed69",
+      "date": "2026-10-09T10:18:41Z",
+      "merged": true,
+      "number": 150,
+      "source": "merge",
+      "title": "fix: история раундов гостей и игроков, добавленных позже; версия 1.105.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/150",
+      "home": "img/design-history/pr-150-home.jpg",
+      "scoring": "img/design-history/pr-150-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "a32fd377881c4d9ee4fa3bc14691911239e962eb",
+      "date": "2026-10-10T09:52:50Z",
+      "merged": true,
+      "number": 151,
+      "source": "merge",
+      "title": "v1.106.0: печать форы, дефолтные размеры, ресайз карточки, стартовый лист флайтами",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/151",
+      "home": "img/design-history/pr-151-home.jpg",
+      "scoring": "img/design-history/pr-151-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "3da12de1b21095d5c7e61c9b201722fa3019cf2e",
+      "date": "2026-10-10T10:39:29Z",
+      "merged": true,
+      "number": 152,
+      "source": "merge",
+      "title": "Счетные карточки: растягиваемые блоки, длина лунок, цвета и шрифты (1.107.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/152",
+      "home": "img/design-history/pr-152-home.jpg",
+      "scoring": "img/design-history/pr-152-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "89ab93da3170cdc1eb66d501878b1b5d4641eea6",
+      "date": "2026-10-10T11:23:04Z",
+      "merged": true,
+      "number": 153,
+      "source": "merge",
+      "title": "Флайты от 3 игроков, публикация стартового листа, блоки карточки, точный + полевой HCP (1.108.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/153",
+      "home": "img/design-history/pr-153-home.jpg",
+      "scoring": "img/design-history/pr-153-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "67f2d9aabcd5ac606a6d2d0d58d262ac1820c08a",
+      "date": "2026-10-10T12:04:30Z",
+      "merged": true,
+      "number": 154,
+      "source": "merge",
+      "title": "Счетные карточки: длина лунок по ТИ из стартового листа (1.109.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/154",
+      "home": "img/design-history/pr-154-home.jpg",
+      "scoring": "img/design-history/pr-154-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "1729b0bb1b66c2009c25b603dfd29df30f85f02c",
+      "date": "2026-10-10T12:36:37Z",
+      "merged": true,
+      "number": 155,
+      "source": "merge",
+      "title": "v1.110.0: отдельные флайты и QR игрока вместо маркера",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/155",
+      "home": "img/design-history/pr-155-home.jpg",
+      "scoring": "img/design-history/pr-155-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "6b29ca23de126d40fd144710aeefdc4a2a7aef9e",
+      "date": "2026-10-10T14:16:36Z",
+      "merged": true,
+      "number": 156,
+      "source": "merge",
+      "title": "1.111.0: стартовый лист пачкой, удаление участников, карточки в турнире",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/156",
+      "home": "img/design-history/pr-156-home.jpg",
+      "scoring": "img/design-history/pr-156-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "d501fb520a7bf73dc87f73188ab93a4d2940bb75",
+      "date": "2026-10-10T14:22:34Z",
+      "merged": true,
+      "number": 157,
+      "source": "merge",
+      "title": "Вкладка «Отображение карточек в турнире»: точное название из задания",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/157",
+      "home": "img/design-history/pr-157-home.jpg",
+      "scoring": "img/design-history/pr-157-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "d32b2b2a40fb5248413e101aea3d35ad0dc308f8",
+      "date": "2026-10-10T15:56:25Z",
+      "merged": true,
+      "number": 158,
+      "source": "merge",
+      "title": "fix: harden rendering and bump site to 1.113.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/158",
+      "home": "img/design-history/pr-158-home.jpg",
+      "scoring": "img/design-history/pr-158-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "1cfcb46253a42bf01f6830e351886cb3d4030ac9",
+      "date": "2026-10-11T06:25:55Z",
+      "merged": true,
+      "number": 159,
+      "source": "merge",
+      "title": "Add global display settings for tournaments and scoring",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/159",
+      "home": "img/design-history/pr-159-home.jpg",
+      "scoring": "img/design-history/pr-159-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "5973407f4c9c5a4be13170786a0c7acdad8b9298",
+      "date": "2026-10-11T14:57:00Z",
+      "merged": true,
+      "number": 160,
+      "source": "merge",
+      "title": "Счётные карточки на вводе результата: 5 видов, вкладка админки, версия 1.114.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/160",
+      "home": "img/design-history/pr-160-home.jpg",
+      "scoring": "img/design-history/pr-160-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "7b815091119fea8e9572b2a46d6b4e54b8c1039c",
+      "date": "2026-10-14T08:56:42Z",
+      "merged": true,
+      "number": 161,
+      "source": "merge",
+      "title": "1.115.0: профиль и оформление завершённых раундов",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/161",
+      "home": "img/design-history/pr-161-home.jpg",
+      "scoring": "img/design-history/pr-161-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "c0f4c5d08f427e263e227ab424eef2f2bb816ad5",
+      "date": "2026-10-16T16:26:47Z",
+      "merged": true,
+      "number": 162,
+      "source": "merge",
+      "title": "Аудит 2026-10: безопасность, производительность, наблюдаемость, дедупликация",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/162",
+      "home": "img/design-history/pr-162-home.jpg",
+      "scoring": "img/design-history/pr-162-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "d1cde3e9af0694953115b856474f5d5bf2c1f95a",
+      "date": "2026-10-17T13:55:25Z",
+      "merged": true,
+      "number": 163,
+      "source": "merge",
+      "title": "Аудит 2026-10 (2-й проход): исправлено 14 находок, версия 1.118.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/163",
+      "home": "img/design-history/pr-163-home.jpg",
+      "scoring": "img/design-history/pr-163-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "f5cff893bf64eceea3f1230bee03d0ace2b89580",
+      "date": "2026-10-28T06:49:28Z",
+      "merged": true,
+      "number": 164,
+      "source": "merge",
+      "title": "Fix RUSGOLF handicap sync identity; bump site to 1.119.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/164",
+      "home": "img/design-history/pr-164-home.jpg",
+      "scoring": "img/design-history/pr-164-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "63299cef9777c5d0b0bfe636d99fec9b32aedb2c",
+      "date": "2026-10-28T07:26:20Z",
+      "merged": true,
+      "number": 165,
+      "source": "merge",
+      "title": "fix(push): вызовы судьи и маршала доходят до телефона (1.121.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/165",
+      "home": "img/design-history/pr-165-home.jpg",
+      "scoring": "img/design-history/pr-165-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "5ba4b301c4bba36e3404ad298a5a83da1ae467d1",
+      "date": "2026-10-28T14:03:26Z",
+      "merged": true,
+      "number": 166,
+      "source": "merge",
+      "title": "Вызов судьи/маршала доходит до Telegram и ВК во время раунда — без Cloud Functions (1.122.0 + 1.123.0)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/166",
+      "home": "img/design-history/pr-166-home.jpg",
+      "scoring": "img/design-history/pr-166-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "3ecaba51654872d54f4fc627a30999633fb28256",
+      "date": "2026-10-29T08:03:29Z",
+      "merged": true,
+      "number": 167,
+      "source": "merge",
+      "title": "Улучшения мобильной версии",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/167",
+      "home": "img/design-history/pr-167-home.jpg",
+      "scoring": "img/design-history/pr-167-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "a716ddc08e902094f7087ce15dc72af3e7c2bd81",
+      "date": "2026-10-29T08:51:28Z",
+      "merged": true,
+      "number": 168,
+      "source": "merge",
+      "title": "1.124.0 + деплой всегда с arena/01a02acd-livescoring",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/168",
+      "home": "img/design-history/pr-168-home.jpg",
+      "scoring": "img/design-history/pr-168-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "204d520ae2bfcf6446b24ed7b7543b72fb1200b2",
+      "date": "2026-10-29T09:26:07Z",
+      "merged": true,
+      "number": 169,
+      "source": "merge",
+      "title": "1.125.0: экран лунки, TV-табло, GitHub Pages",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/169",
+      "home": "img/design-history/pr-169-home.jpg",
+      "scoring": "img/design-history/pr-169-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "935c1bfcfbb45b1b1ea8d8c7dd925f5444420d62",
+      "date": "2026-10-29T09:31:42Z",
+      "merged": true,
+      "number": 170,
+      "source": "merge",
+      "title": "fix: setPadTarget ломал Deploy 1.125.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/170",
+      "home": "img/design-history/pr-170-home.jpg",
+      "scoring": "img/design-history/pr-170-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "b30ec6af45c5b4bdc14f89ac3b3951f18e2afcbc",
+      "date": "2026-10-29T09:44:31Z",
+      "merged": true,
+      "number": 171,
+      "source": "merge",
+      "title": "1.125.1: починить GitHub Pages (половина функций 404)",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/171",
+      "home": "img/design-history/pr-171-home.jpg",
+      "scoring": "img/design-history/pr-171-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "9425201d8d629ee31ab1ad978ca8e96ebab33b08",
+      "date": "2026-10-29T10:18:22Z",
+      "merged": true,
+      "number": 172,
+      "source": "merge",
+      "title": "1.125.2: иерархия главной как раньше, без авто-светлой темы",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/172",
+      "home": "img/design-history/pr-172-home.jpg",
+      "scoring": "img/design-history/pr-172-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "d50d4d725313735119b4693e53180cad22c9e714",
+      "date": "2026-10-31T07:58:06Z",
+      "merged": true,
+      "number": 173,
+      "source": "merge",
+      "title": "v1.127.0: единый раунд — одна страница, одна форма создания, один ввод счёта",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/173",
+      "home": "img/design-history/pr-173-home.jpg",
+      "scoring": "img/design-history/pr-173-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "be1e06804ebd9f4a61c5829e2cba8a0cd0855fba",
+      "date": "2026-10-31T12:16:48Z",
+      "merged": true,
+      "number": 174,
+      "source": "merge",
+      "title": "v1.128.0: 10 вариантов экрана ввода счёта + в соло нет блока маркера",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/174",
+      "home": "img/design-history/pr-174-home.jpg",
+      "scoring": "img/design-history/pr-174-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "0fece2e1224634859e467641c20cbb715067fb08",
+      "date": "2026-10-31T13:15:04Z",
+      "merged": true,
+      "number": 175,
+      "source": "merge",
+      "title": "v1.129.0 — продуктовый UX главной, «Все раунды» и создания раунда",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/175",
+      "home": "img/design-history/pr-175-home.jpg",
+      "scoring": "img/design-history/pr-175-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "353daa564f4a74f452f8143207b57da27b96429b",
+      "date": "2026-10-31T13:38:40Z",
+      "merged": true,
+      "number": 176,
+      "source": "merge",
+      "title": "v1.129.1: аудит — мутационный цикл, дубли CSS, бейджи берди/игл",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/176",
+      "home": "img/design-history/pr-176-home.jpg",
+      "scoring": "img/design-history/pr-176-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "c16bbe77aa9796d8827fca22337f45dfec0f3d84",
+      "date": "2026-10-31T14:28:38Z",
+      "merged": true,
+      "number": 177,
+      "source": "merge",
+      "title": "v1.130.0: сквозной аудит — доступность, офлайн-кэш, счётная математика",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/177",
+      "home": "img/design-history/pr-177-home.jpg",
+      "scoring": "img/design-history/pr-177-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "2ce69ae8300caa0875f3ea62d5cd1aa4c46fb593",
+      "date": "2026-10-31T14:41:07Z",
+      "merged": true,
+      "number": 178,
+      "source": "merge",
+      "title": "v1.130.1: «Удалить все данные» и «Журнал гандикапов» снова работают",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/178",
+      "home": "img/design-history/pr-178-home.jpg",
+      "scoring": "img/design-history/pr-178-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "5294775b21a0b421f791cfd7c80b24ab591281f3",
+      "date": "2026-11-04T06:44:07Z",
+      "merged": true,
+      "number": 179,
+      "source": "merge",
+      "title": "v1.130.2: убран приветственный оверлей на главной",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/179",
+      "home": "img/design-history/pr-179-home.jpg",
+      "scoring": "img/design-history/pr-179-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "dbe519fe353f16521e4671370995cb06a10caa66",
+      "date": "2026-11-04T07:44:46Z",
+      "merged": true,
+      "number": 180,
+      "source": "merge",
+      "title": "v1.130.3: с героя главной убрана плашка «Тестовая версия · демо-данные»",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/180",
+      "home": "img/design-history/pr-180-home.jpg",
+      "scoring": "img/design-history/pr-180-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "4b2a089d159ca8a7a61d38f9eab89fab8e3ceccc",
+      "date": "2026-11-04T08:04:02Z",
+      "merged": true,
+      "number": 181,
+      "source": "merge",
+      "title": "v1.130.4: одно действие «Начать раунд», дубли убраны по всем страницам",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/181",
+      "home": "img/design-history/pr-181-home.jpg",
+      "scoring": "img/design-history/pr-181-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "5b7747ff70e14a4a1c2edaca1c95d080b306fa11",
+      "date": "2026-11-04T10:13:44Z",
+      "merged": true,
+      "number": 182,
+      "source": "merge",
+      "title": "v1.130.5: «Клуб в цифрах» — 16 плиток сразу, без сводки и «Подробных цифр»",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/182",
+      "home": "img/design-history/pr-182-home.jpg",
+      "scoring": "img/design-history/pr-182-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "2a8d11c84e20f0375aefb8214f31e4d3e6c09ce4",
+      "date": "2026-11-04T10:34:02Z",
+      "merged": true,
+      "number": 183,
+      "source": "merge",
+      "title": "v1.130.6: поля игрока в «Создании раунда» выровнены по одной линии",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/183",
+      "home": "img/design-history/pr-183-home.jpg",
+      "scoring": "img/design-history/pr-183-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "037b172544f743ff163dacd685f682b08b35b425",
+      "date": "2026-11-04T12:10:52Z",
+      "merged": true,
+      "number": 184,
+      "source": "merge",
+      "title": "v1.130.7: завершение карточки любым участником, чтение лидерборда окном, запрет зума на телефоне",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/184",
+      "home": "img/design-history/pr-184-home.jpg",
+      "scoring": "img/design-history/pr-184-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "ad17e8dad05a0e655dfd4a3ed7b1067e89b75ea0",
+      "date": "2026-11-13T13:54:56Z",
+      "merged": true,
+      "number": 185,
+      "source": "merge",
+      "title": "Упрощение интерфейса и рабочих сценариев — 1.131.0",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/185",
+      "home": "img/design-history/pr-185-home.jpg",
+      "scoring": "img/design-history/pr-185-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "f5faee817f96616ebce6ac8e7b2c17402b381906",
+      "date": "2026-11-13T14:17:30Z",
+      "merged": true,
+      "number": 186,
+      "source": "merge",
+      "title": "Release 1.132.0: scoring and mobile UX improvements",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/186",
+      "home": "img/design-history/pr-186-home.jpg",
+      "scoring": "img/design-history/pr-186-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
+    },
+    {
+      "commit": "bdf22bd69d89a5c5592af5cb84ebb631df84e0cd",
+      "date": "2026-11-13T15:38:03Z",
+      "merged": true,
+      "number": 187,
+      "source": "merge",
+      "title": "Release 1.133.0: design, layout and navigation improvements",
+      "url": "https://github.com/xdramerx-debug/livescoring/pull/187",
+      "home": "img/design-history/pr-187-home.jpg",
+      "scoring": "img/design-history/pr-187-scoring.jpg",
+      "staticScoring": false,
+      "captureWarnings": [],
+      "captured": true,
+      "homeRoute": "index.html"
     }
-  ]
+  ],
+  "range": {
+    "from": 1,
+    "to": 187
+  }
 };

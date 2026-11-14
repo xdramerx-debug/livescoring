@@ -8,7 +8,7 @@
         if (!section) return;
         var data = root.pestovoDesignHistoryData;
         var grid = section.querySelector('#dh-grid');
-        if (!data || !Array.isArray(data.prs)) {
+        if (!data || !Array.isArray(data.prs) || !data.range || !Number.isInteger(data.range.to)) {
             grid.textContent = 'Не удалось загрузить каталог. Перезагрузите страницу и попробуйте снова.';
             return;
         }
@@ -21,6 +21,7 @@
         var opener = null;
         var search = section.querySelector('#dh-search');
         var status = section.querySelector('#dh-status');
+        var range = section.querySelector('#dh-range');
         var order = section.querySelector('#dh-order');
         var screen = section.querySelector('#dh-screen');
         var dialog = section.querySelector('#dh-dialog');
@@ -73,7 +74,9 @@
             var query = search.value.trim().toLocaleLowerCase('ru');
             var number = /^#?\d+$/.test(query) ? Number(query.replace('#', '')) : null;
             filtered = data.prs.filter(function (pr) {
-                if (!Number.isInteger(pr.number) || pr.number < 1 || pr.number > 100) return false;
+                if (!Number.isInteger(pr.number) || pr.number < 1 || pr.number > data.range.to) return false;
+                if (range.value === '1-100' && pr.number > 100) return false;
+                if (range.value === '101-187' && pr.number < 101) return false;
                 if (status.value === 'merged' && !pr.merged) return false;
                 if (status.value === 'closed' && pr.merged) return false;
                 return !query || (number !== null ? pr.number === number : (pr.title + ' ' + pr.commit).toLocaleLowerCase('ru').indexOf(query) !== -1);
@@ -121,11 +124,11 @@
             prev.disabled = page === 0; next.disabled = page >= pages - 1;
             pager.append(prev, element('span', '', (page + 1) + ' / ' + pages), next);
         }
-        [search, status, order, screen].forEach(function (control) {
+        [search, status, range, order, screen].forEach(function (control) {
             control.addEventListener(control === search ? 'input' : 'change', function () { page = 0; render(); });
         });
         section.querySelector('#dh-reset').addEventListener('click', function () {
-            search.value = ''; status.value = 'all'; order.value = 'asc'; screen.value = 'both'; page = 0; render(); search.focus();
+            search.value = ''; status.value = 'all'; range.value = 'all'; order.value = 'asc'; screen.value = 'both'; page = 0; render(); search.focus();
         });
         section.querySelector('#dh-dialog-close').addEventListener('click', function () { dialog.close(); });
         section.querySelector('#dh-dialog-prev').addEventListener('click', function () { move(-1); });

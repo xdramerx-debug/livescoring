@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 // Reconstruct PR screenshots from git blobs without checking out/executing old code on the host.
-// Usage: CHROMIUM_EXTRA_LIBS=$PWD/tools/.browser-stub node tools/capture-design-history.js [1,50,100]
-// Refresh metadata explicitly via gh api repos/xdramerx-debug/livescoring/pulls?state=all&sort=created&direction=asc&per_page=100
+// Usage: CHROMIUM_EXTRA_LIBS=$PWD/tools/.browser-stub node tools/capture-design-history.js [1,50,187] [--home]
+// Metadata source: gh api --paginate repos/xdramerx-debug/livescoring/pulls?state=all&sort=created&direction=asc&per_page=100 (select PRs 1–187).
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -56,6 +56,8 @@ function seed() {
         env: process.env.CHROMIUM_EXTRA_LIBS ? { ...process.env, LD_LIBRARY_PATH: process.env.CHROMIUM_EXTRA_LIBS } : undefined });
     try {
         for (const pr of prs) {
+            // Missing git objects must fail explicitly rather than turn into blank screenshots.
+            execFileSync('git', ['cat-file', '-e', pr.commit + '^{tree}']);
             const cache = new Map();
             var blob = function (file) {
                 if (!cache.has(file)) {
@@ -66,7 +68,8 @@ function seed() {
             };
             const ctx = await browser.newContext({ viewport: manifest.viewport, deviceScaleFactor: 1, locale: 'ru-RU', timezoneId: 'UTC', serviceWorkers: 'block', reducedMotion: 'reduce' });
             await ctx.addInitScript(seed);
-            const warnings = [];
+            const homeOnly = process.argv.includes('--home');
+            const warnings = homeOnly ? (pr.captureWarnings || []).filter(w => !w.startsWith('home:')) : [];
             await ctx.route('**/*', async route => {
                 const url = new URL(route.request().url());
                 if (url.hostname !== 'history.test') {
@@ -83,12 +86,16 @@ function seed() {
                 const type = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json' }[ext] || 'application/octet-stream';
                 return route.fulfill({ contentType: type, body: bytes });
             });
-            for (const [kind, file] of [['home', 'index.html'], ['scoring', 'scorer.html']]) {
+            for (const [kind, file] of (homeOnly ? [['home', 'index.html']] : [['home', 'index.html'], ['scoring', 'scorer.html']])) {
                 const page = await ctx.newPage();
                 page.on('pageerror', e => warnings.push(kind + ': ' + e.message));
-                await page.goto('http://history.test/' + file + '?round=demo-round&player=demo', { waitUntil: 'load', timeout: 30000 });
+                await page.goto('http://history.test/' + file + (kind === 'scoring' ? '?round=demo-round&player=demo' : ''), { waitUntil: 'load', timeout: 30000 });
                 await page.evaluate(() => document.fonts.ready);
                 await page.waitForTimeout(300);
+                if (kind === 'home') {
+                    if (new URL(page.url()).pathname !== '/index.html' || !await page.locator('.hero').isVisible()) throw new Error('PR ' + pr.number + ': home capture must show index.html hero, not a redirected round');
+                    pr.homeRoute = 'index.html';
+                }
                 if (kind === 'scoring') {
                     await page.evaluate(() => {
                         if (typeof scRound !== 'undefined' && scRound) {
@@ -121,7 +128,7 @@ function seed() {
             pr.captured = true;
             await ctx.close();
             fs.writeFileSync(path.join(root, 'js/design-history-data.js'), '// Reconstructed from git commits with demo data; see tools/capture-design-history.js.\nwindow.pestovoDesignHistoryData = ' + JSON.stringify(manifest, null, 2) + ';\n');
-            console.log('PR ' + pr.number + ': captured both screens' + (warnings.length ? ' (' + warnings.length + ' runtime warnings)' : ''));
+            console.log('PR ' + pr.number + (homeOnly ? ': captured home screen' : ': captured both screens') + (warnings.length ? ' (' + warnings.length + ' runtime warnings)' : ''));
         }
     } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exit(1); });

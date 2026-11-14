@@ -119,14 +119,14 @@ ok(APP.indexOf('pv-stats-strip') === -1 && APP.indexOf('pv-stats-item') === -1,
     'app.js: полосы-сводки над статистикой нет');
 ok(APP.indexOf('pv-stats-more') === -1 && APP.indexOf('pv-stats-grid') === -1,
     'app.js: раскрытия «Подробные цифры» нет');
-ok((APP.match(/tile\('fa-/g) || []).length === 16, 'app.js: в статистике клуба ровно 16 плиток',
+ok((APP.match(/tile\('fa-/g) || []).length === 12, 'app.js: в статистике клуба ровно 12 плиток',
     String((APP.match(/tile\('fa-/g) || []).length));
 ok(APP.indexOf("t('st_best_gross')") !== -1 && APP.indexOf("t('st_rounds_30d')") !== -1,
     'app.js: подписи плиток берутся из словаря');
 ok(CSS.indexOf('pv-stats-strip') === -1 && CSS.indexOf('pv-stats-more') === -1,
     'product-ux.css: стилей сводки и раскрытия не осталось');
 ok(/#club-stats \{[^}]*repeat\(4, minmax\(0, 1fr\)\)/.test(CSS),
-    'product-ux.css: 16 плиток сеткой 4 колонки');
+    'product-ux.css: 12 плиток сеткой 4 колонки');
 ok(CSS.indexOf('pv_stats_more') === -1, 'product-ux.css: нет ссылок на удалённый ключ');
 var ST_KEYS = ['st_total_rounds', 'st_active_rounds', 'st_completed_rounds', 'st_players',
     'st_best_gross', 'st_avg_gross', 'st_best_topar', 'st_avg_hole', 'st_birdies', 'st_eagles',

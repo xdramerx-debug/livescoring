@@ -1360,11 +1360,11 @@ function loadClubStats() {
             return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
         }).length;
         var completedRounds = 0, activeRounds = 0;
-        var birdies = 0, eagles = 0, pars = 0, bogeys = 0, doubles = 0;
-        var totalHolesPlayed = 0, totalStrokes = 0;
+        var birdies = 0, eagles = 0, pars = 0;
+        var totalHolesPlayed = 0;
         // Раунды «на 18 лунок» считаем отдельно: только по ним честно
         // сравнивать Gross и счёт к пару между собой.
-        var bestGross = Infinity, sumGross18 = 0, countGross18 = 0, bestToPar = Infinity;
+        var bestGross = Infinity, bestToPar = Infinity;
         var playerEntries = 0, roundsLast30 = 0;
         var monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
@@ -1393,13 +1393,9 @@ function loadClubStats() {
                     if (d <= -2) eagles++;
                     else if (d === -1) birdies++;
                     else if (d === 0) pars++;
-                    else if (d === 1) bogeys++;
-                    else doubles++;
                 });
-                totalStrokes += gross;
                 if (holesPlayed === 18 && gross > 0) {
                     if (gross < bestGross) bestGross = gross;
-                    sumGross18 += gross; countGross18++;
                     var toPar = gross - parPlayed;
                     if (toPar < bestToPar) bestToPar = toPar;
                 }
@@ -1424,11 +1420,7 @@ function loadClubStats() {
                 '<div class="stat-l">' + label + '</div></div>';
         }
 
-        // 16 плиток сразу, без сводки сверху и без «Подробных цифр» под
-        // раскрытием: полоса повторяла те же четыре числа второй раз, а
-        // раскрытие прятало статистику за лишний клик (аудит 2026-11).
-        var avgPerHole = totalHolesPlayed ? totalStrokes / totalHolesPlayed : null;
-        var avgGross = countGross18 ? sumGross18 / countGross18 : null;
+        // 12 открытых карточек: активность клуба и достижения, без негативных результатов.
         var avgField = totalRounds ? playerEntries / totalRounds : null;
 
         el.innerHTML =
@@ -1437,14 +1429,10 @@ function loadClubStats() {
             tile('fa-circle-check', completedRounds, t('st_completed_rounds')) +
             tile('fa-users', totalPlayers, t('st_players')) +
             tile('fa-star', bestGross < Infinity ? bestGross : '—', t('st_best_gross')) +
-            tile('fa-gauge-high', fmtAvg(avgGross, 1), t('st_avg_gross')) +
             tile('fa-trophy', fmtToPar(bestToPar), t('st_best_topar')) +
-            tile('fa-chart-line', fmtAvg(avgPerHole, 2), t('st_avg_hole')) +
             tile('fa-fire', birdies, t('st_birdies')) +
             tile('fa-bolt', eagles, t('st_eagles')) +
             tile('fa-bullseye', pars, t('st_pars')) +
-            tile('fa-circle-xmark', bogeys, t('st_bogeys')) +
-            tile('fa-triangle-exclamation', doubles, t('st_doubles')) +
             tile('fa-golf-ball-tee', totalHolesPlayed, t('st_holes_played')) +
             tile('fa-user-group', fmtAvg(avgField, 1), t('st_players_per_round')) +
             tile('fa-calendar-days', roundsLast30, t('st_rounds_30d'));

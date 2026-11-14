@@ -27,3 +27,25 @@ body .clarity-disclosure { border-radius: var(--rs); }
 @media print {
     .pv-skip-link, .score-toolbar, .clarity-input-choice { display: none !important; }
 }
+
+/* Home: twelve always-visible club highlights. Keep the classic green/gold palette. */
+body .club-stats-section { padding: 52px 0; }
+body .club-stats-section .sec-t { justify-content: center; margin-bottom: 28px; }
+body #club-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+body #club-stats .stat {
+    min-width: 0; padding: 26px 16px 24px; border-radius: 16px;
+    background: linear-gradient(145deg, var(--card), var(--bg));
+    border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
+    text-align: center; display: flex; flex-direction: column; align-items: center;
+}
+body #club-stats .stat > i {
+    display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 14px;
+    border-radius: 14px; background: rgba(201, 168, 76, .12); color: var(--gold); font-size: 21px;
+}
+body #club-stats .stat-n { font-size: clamp(28px, 3vw, 38px); line-height: 1.15; margin-bottom: 8px; font-weight: 800; font-variant-numeric: tabular-nums; }
+body #club-stats .stat-l { max-width: 190px; font-size: 13px; line-height: 1.45; letter-spacing: .3px; text-transform: none; color: var(--muted); }
+@media (max-width: 700px) {
+    body .club-stats-section { padding: 32px 0; }
+    body #club-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    body #club-stats .stat { padding: 20px 10px; border-radius: 14px; }
+}

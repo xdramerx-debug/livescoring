@@ -30,6 +30,7 @@
         scoreentry: ['display'],
         tournamentsview: ['display'],
         design: ['design'],
+        designhistory: ['designhistory'],
         broadcasts: ['broadcasts']
     };
 

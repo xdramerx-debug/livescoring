@@ -120,7 +120,9 @@ const extras = [];
 if (exists('manifest.json')) extras.push('manifest.json');
 const imgDir = path.join(ROOT, 'img');
 if (fs.existsSync(imgDir)) {
-    fs.readdirSync(imgDir).sort().forEach(function (f) { extras.push('img/' + f); });
+    // Admin screenshot archives are nested and intentionally not precached on player devices.
+    fs.readdirSync(imgDir, { withFileTypes: true }).filter(function (entry) { return entry.isFile(); })
+        .map(function (entry) { return entry.name; }).sort().forEach(function (f) { extras.push('img/' + f); });
 }
 // Шрифты сабсета Font Awesome кладём в предкэш: иконки должны быть и без сети.
 // Имя файла уже несёт хеш содержимого (tools/build-fontawesome.js), поэтому

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.134.0-b0b6ba52';
+const CACHE_NAME = 'pestovo-v1.135.0-b0b6ba52';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin

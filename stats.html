@@ -24,9 +24,10 @@
 <link rel="stylesheet" href="css/product-ux.css?v=ad3d977a">
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=bbcee466">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=ee5b2563">
+    <link rel="stylesheet" href="css/stats-page.css?v=45d564f2">
 </head>
-<body class="pv-ux pv-has-bottomnav">
+<body class="pv-ux pv-has-bottomnav stats-page">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
@@ -49,34 +50,36 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container">
+<header class="page-head stats-hero"><div class="container">
+    <p class="stats-eyebrow" data-clarity-ru="Пестово · Игра в цифрах" data-clarity-en="Pestovo · The game in numbers">Пестово · Игра в цифрах</p>
     <h1 class="page-title"><i class="fas fa-chart-bar"></i> <span data-i18n="page_title_stats">Статистика клуба</span></h1>
-    <p class="page-sub" >Обзор результатов клуба. Для отдельных показателей учитываются только завершённые раунды на 18 лунок.</p>
-</div></div>
+    <p class="page-sub" data-clarity-ru="Раунды, достижения и люди, которые делают игру особенной. Выберите период и познакомьтесь с результатами клуба." data-clarity-en="Rounds, achievements and the people behind the game. Choose a period to explore the club’s results.">Раунды, достижения и люди, которые делают игру особенной. Выберите период и познакомьтесь с результатами клуба.</p>
+</div></header>
 
-<main id="pv-main" tabindex="-1" class="container clarity-page-main" style="padding-top:24px;padding-left:20px;padding-right:20px;padding-bottom:60px;">
+<main id="pv-main" tabindex="-1" class="container clarity-page-main stats-layout">
     <div class="card page-filters-card">
         <div class="clarity-filter-toolbar"><span class="clarity-toolbar-title" data-clarity-ru="Выборка результатов" data-clarity-en="Results sample">Выборка результатов</span><button type="button" id="stats-refresh" class="btn btn-ol" data-clarity-ru="Обновить данные" data-clarity-en="Refresh data">Обновить данные</button></div>
-<details class="clarity-disclosure"><summary data-clarity-ru="Настроить выборку" data-clarity-en="Customize sample">Настроить выборку</summary>        <div class="form-row">
+<div class="stats-filter-fields">        <div class="form-row">
             <div class="form-group"><label for="stats-date-from" data-i18n="date_from_label">Дата с</label><input type="date" id="stats-date-from" class="form-input"></div>
             <div class="form-group"><label for="stats-date-to" data-i18n="date_to_label">Дата по</label><input type="date" id="stats-date-to" class="form-input"></div>
             <div class="form-group"><label for="stats-format" data-clarity-ru="Формат" data-clarity-en="Format">Формат</label><select id="stats-format" class="form-input"><option value="" data-clarity-ru="Все форматы" data-clarity-en="All formats">Все форматы</option></select></div>
-            <div class="form-group"><label for="stats-min-rounds" data-clarity-ru="Минимум полных раундов для списка игроков" data-clarity-en="Minimum full rounds per player">Минимум полных раундов для списка игроков</label><select id="stats-min-rounds" class="form-input"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option></select></div>
+            <div class="form-group"><label for="stats-min-rounds" data-clarity-ru="Раундов на игрока, от" data-clarity-en="Minimum full rounds per player">Раундов на игрока, от</label><select id="stats-min-rounds" class="form-input"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option></select></div>
             <button type="button" id="stats-date-reset" class="btn btn-ol" data-i18n="date_filter_reset">Сбросить</button>
         </div>
-</details>        <div class="date-presets" id="stats-date-presets"></div>
+</div>        <div class="date-presets" id="stats-date-presets"></div>
         <p id="stats-date-hint" role="alert" class="hidden"></p>
         <p id="stats-filter-extra" role="status" class="clarity-help"></p><p id="stats-filter-summary" role="status"></p>
 
     </div>
-    <div class="card"><h2><i class="fas fa-chart-pie"></i> <span data-i18n="total_stats">Общая статистика</span></h2>
-    <div class="stats-grid" id="general-stats"><div class="loading"><div class="spinner"></div></div></div></div>
-    <div class="card"><h2><i class="fas fa-ranking-star"></i> <span data-i18n="top_players">Топ игроков</span></h2><p class="clarity-help" data-clarity-ru="Список игроков: средний gross завершённых раундов на 18 лунок за период, не официальный рейтинг. ТИ и форы могут различаться. Число раундов показано у каждого игрока." data-clarity-en="Players: average gross of completed 18-hole rounds in the period, not an official ranking. Tees and handicaps may differ. Sample size is shown for each player.">Список игроков: средний gross завершённых раундов на 18 лунок за период, не официальный рейтинг. ТИ и форы могут различаться. Число раундов показано у каждого игрока.</p><div id="top-players"></div></div>
-    <div class="card"><h2><i class="fas fa-award"></i> <span data-i18n="club_records">Рекорды клуба</span></h2><div id="club-records"></div></div>
-    <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="hole_difficulty">Сложность лунок</span></h2><div id="hole-difficulty"></div></div>
+    <section class="card stats-panel"><h2><i class="fas fa-chart-pie"></i> <span data-i18n="total_stats">Общая статистика</span></h2>
+    <div class="stats-grid" id="general-stats" aria-live="polite"><div class="loading"><div class="spinner"></div><span data-clarity-ru="Собираем статистику клуба…" data-clarity-en="Loading club statistics…">Собираем статистику клуба…</span></div></div></section>
+    <div class="stats-insights">
+    <section class="card stats-panel"><h2><i class="fas fa-ranking-star"></i> <span data-i18n="top_players">Топ игроков</span></h2><p class="clarity-help" data-clarity-ru="Список игроков: средний gross завершённых раундов на 18 лунок за период, не официальный рейтинг. ТИ и форы могут различаться. Число раундов показано у каждого игрока." data-clarity-en="Players: average gross of completed 18-hole rounds in the period, not an official ranking. Tees and handicaps may differ. Sample size is shown for each player.">Список игроков: средний gross завершённых раундов на 18 лунок за период, не официальный рейтинг. ТИ и форы могут различаться. Число раундов показано у каждого игрока.</p><div id="top-players"></div></section>
+    <section class="card stats-panel"><h2><i class="fas fa-award"></i> <span data-i18n="club_records">Рекорды клуба</span></h2><p class="stats-section-note" data-clarity-ru="Достижения за выбранный период" data-clarity-en="Achievements in the selected period">Достижения за выбранный период</p><div id="club-records"></div></section></div>
+    <section class="card stats-panel"><h2><i class="fas fa-flag"></i> <span data-i18n="hole_difficulty">Сложность лунок</span></h2><p class="stats-section-note" data-clarity-ru="Средний счёт относительно пара. Прочерк означает, что данных ещё нет." data-clarity-en="Average score relative to par. A dash means no scores yet.">Средний счёт относительно пара. Прочерк означает, что данных ещё нет.</p><div id="hole-difficulty"></div></section>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.137.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.138.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
@@ -85,7 +88,7 @@
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
-<script defer src="js/stats.js?v=a7d2c16e"></script>
+<script defer src="js/stats.js?v=380f4941"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 <script defer src="js/product-ux.js?v=ba65f386"></script>

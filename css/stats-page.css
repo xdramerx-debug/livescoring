@@ -1,0 +1,69 @@
+/* Statistics: an editorial clubhouse dashboard, scoped to this page. */
+.stats-page { --stats-surface: var(--card); }
+.stats-page .stats-hero { text-align: left; padding: 112px 0 32px; margin: 0; background: radial-gradient(ellipse at 90% 0, rgba(201,168,76,.10), transparent 60%); border-bottom: 1px solid var(--border); }
+.stats-page .stats-eyebrow { color: var(--gold); text-transform: uppercase; letter-spacing: 2.5px; font-size: 11px; font-weight: 700; margin-bottom: 16px; }
+.stats-page .stats-hero .page-title { text-align: left; font-size: clamp(30px, 4.5vw, 48px); line-height: 1.15; margin-bottom: 16px; }
+.stats-page .stats-hero .page-title > i { display: none; }
+.stats-page .stats-hero .page-sub { margin: 0; max-width: 640px; font-size: 15px; line-height: 1.75; }
+body.stats-page .stats-layout { padding: 28px 20px 64px !important; display: grid; gap: 24px; }
+.stats-page .card { margin: 0; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.07); background: var(--stats-surface); padding: 28px; min-width: 0; }
+.stats-page .card h2 { display: flex; align-items: center; gap: 12px; font-family: var(--ff); font-size: 23px; line-height: 1.35; margin: 0 0 22px; padding: 0; border: 0; }
+.stats-page .card h2 > i { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 11px; font-size: 16px; color: var(--gold); background: rgba(201,168,76,.1); }
+.stats-page .clarity-filter-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+.stats-page .clarity-toolbar-title { font-size: 16px; color: var(--text); font-weight: 700; }
+.stats-page .stats-filter-fields .form-row { display: grid; grid-template-columns: 1fr 1fr 1.2fr 1fr auto; gap: 16px; align-items: end; }
+.stats-page .form-group { min-width: 0; margin: 0; }
+.stats-page .form-group label { display: block; min-height: 20px; font-size: 12px; font-weight: 500; margin-bottom: 8px; color: var(--muted); }
+.stats-page .form-input { min-height: 46px; border-radius: 10px; width: 100%; min-width: 0; color-scheme: dark; }
+.stats-page.sun-mode .form-input { color-scheme: light; }
+.stats-page .btn { min-height: 44px; border-radius: 10px; }
+.stats-page .date-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.stats-page .date-presets button { min-height: 44px; border-radius: 9px; }
+.stats-page #stats-filter-extra, .stats-page #stats-filter-summary { font-size: 12px; color: var(--muted); margin: 10px 0 0; line-height: 1.6; }
+.stats-page #general-stats.stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.stats-page #general-stats .stat { min-width: 0; padding: 22px 12px; border: 1px solid var(--border); border-radius: 14px; background: linear-gradient(145deg, rgba(201,168,76,.04), transparent); box-shadow: none; }
+.stats-page #general-stats .stat > i { font-size: 18px; margin-bottom: 14px; color: var(--gold); }
+.stats-page #general-stats .stat-n { font-size: clamp(26px, 3vw, 36px); font-weight: 800; line-height: 1.15; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.stats-page #general-stats .stat-l { text-transform: none; letter-spacing: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.stats-page .stats-insights { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; min-width: 0; align-items: start; }
+.stats-page .clarity-help, .stats-page .stats-section-note { font-size: 12px; line-height: 1.75; color: var(--muted); margin: -8px 0 22px; }
+.stats-page .list-item { padding: 18px 0; border-bottom: 1px solid var(--border); gap: 12px; align-items: start; line-height: 1.6; font-size: 13px; }
+.stats-page .list-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.stats-page #top-players .list-item { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.stats-page #top-players .list-item > span:last-child { font-size: 12px; color: var(--muted); }
+.stats-page #club-records .list-item { display: grid; grid-template-columns: 1fr 1fr; }
+.stats-page #club-records .list-item > strong { color: var(--gold); text-align: right; overflow-wrap: anywhere; }
+.stats-page .empty { padding: 36px 16px; border: 1px dashed var(--border); border-radius: 14px; }
+.stats-page .empty p { max-width: 320px; margin: 12px auto 0; font-size: 13px; line-height: 1.7; }
+.stats-page #hole-difficulty { min-width: 0; overflow-x: auto; border-radius: 12px; }
+.stats-page #hole-difficulty .pestovo-modern-scorecard { background: transparent; border-color: var(--border); box-shadow: none; }
+.stats-page .loading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 120px; color: var(--muted); font-size: 13px; }
+.stats-page :is(button, a, input, select):focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+@media (max-width: 1000px) {
+    .stats-page .stats-filter-fields .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stats-page .stats-filter-fields .form-row > button { justify-self: start; }
+    .stats-page .stats-insights { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .stats-page .stats-hero { padding: 92px 0 24px; }
+    .stats-page .stats-hero .page-sub { font-size: 13px; }
+    body.stats-page .stats-layout { padding: 20px 16px 40px !important; gap: 16px; }
+    .stats-page .card { padding: 20px 16px; border-radius: 16px; }
+    .stats-page .card h2 { font-size: 21px; gap: 10px; }
+    .stats-page #general-stats.stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .stats-page #general-stats .stat { padding: 20px 10px; }
+    .stats-page .stats-insights { gap: 16px; }
+    .stats-page .clarity-filter-toolbar { align-items: start; }
+    .stats-page #stats-refresh { font-size: 11px; padding: 10px; }
+    .stats-page .stats-filter-fields .form-row { gap: 14px 10px; }
+    .stats-page .form-input { font-size: 16px; padding-inline: 8px; }
+    .stats-page #club-records .list-item { grid-template-columns: 1fr; gap: 4px; }
+    .stats-page #club-records .list-item > strong { text-align: left; }
+}
+.stats-page .stats-record-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stats-page .stats-record-card { display: flex; flex-direction: column; align-items: start; gap: 8px; padding: 16px; border-radius: 12px; background: rgba(201,168,76,.04); border: 1px solid var(--border); min-width: 0; }
+.stats-page .stats-record-card > i { color: var(--gold); font-size: 16px; }
+.stats-page .stats-record-card > span { font-size: 11px; line-height: 1.6; color: var(--muted); }
+.stats-page .stats-record-card > strong { font-size: 16px; line-height: 1.5; color: var(--gold); overflow-wrap: anywhere; }
+.stats-page .stats-record-card:first-child { grid-column: 1 / -1; }
+.stats-page #top-players .list-item { border-radius: 0; box-shadow: none; background: transparent; }

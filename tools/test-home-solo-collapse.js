@@ -124,6 +124,7 @@ doc.head.appendChild(style);
 win.db = { ref: function(p) { return makeRef(p); } };
 win.firebase = { auth: function() { return { onAuthStateChanged: function() {}, currentUser: null }; } };
 win.currentUser = null;
+win.t = function (key) { return key; };
 win.currentUserData = null;
 win.toast = function() {};
 win.vib = function() {};

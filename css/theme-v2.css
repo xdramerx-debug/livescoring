@@ -1,3 +1,5 @@
+/* Newer UI compatibility; the unlayered PR #164 snapshot defines the appearance. */
+@layer post164-compat {
 /* ============================================================
    ВИЗУАЛЬНЫЙ СЛОЙ 2026 · css/theme-v2.css
    ============================================================
@@ -200,10 +202,10 @@ h1, h2, h3, h4 {
 }
 
 .nav-logo {
-    width: 34px !important;   /* в style.css размер задан через !important */
-    height: 34px !important;
-    max-width: 34px !important;
-    max-height: 34px !important;
+    width: 34px;   /* в style.css размер задан через !important */
+    height: 34px;
+    max-width: 34px;
+    max-height: 34px;
     border-radius: 50%;
     box-shadow: 0 0 0 1px rgba(216, 178, 99, 0.28);
 }
@@ -321,11 +323,11 @@ h1, h2, h3, h4 {
 }
 
 .hero-logo {
-    width: 116px !important;      /* размеры в style.css — с !important */
-    height: auto !important;
-    max-width: 116px !important;
-    max-height: 116px !important;
-    margin: 0 auto 24px !important;
+    width: 116px;      /* размеры в style.css — с !important */
+    height: auto;
+    max-width: 116px;
+    max-height: 116px;
+    margin: 0 auto 24px;
     filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.45));
 }
 
@@ -732,7 +734,7 @@ h1, h2, h3, h4 {
 .form-input:focus-visible {
     border-color: var(--gold);
     box-shadow: var(--ring);
-    outline: none !important;
+    outline: none;
 }
 
 select.form-input {
@@ -841,32 +843,32 @@ select.form-input {
 /* Цвета бейджей в base-файле заданы через color:…!important — перекрываем так же */
 .badge-eag {
     background: rgba(240, 165, 60, 0.16);
-    color: #f6c078 !important;
+    color: #f6c078;
     border-color: rgba(240, 165, 60, 0.35);
     box-shadow: none;
 }
 
 .badge-bir {
     background: rgba(63, 125, 84, 0.22);
-    color: #8ed6a8 !important;
+    color: #8ed6a8;
     border-color: rgba(63, 125, 84, 0.5);
 }
 
 .badge-par {
     background: rgba(255, 255, 255, 0.05);
-    color: var(--text) !important;
+    color: var(--text);
     border-color: var(--line);
 }
 
 .badge-bog {
     background: rgba(107, 183, 232, 0.14);
-    color: #9cd0f2 !important;
+    color: #9cd0f2;
     border-color: rgba(107, 183, 232, 0.34);
 }
 
 .badge-dbl {
     background: rgba(239, 106, 88, 0.14);
-    color: #ffa79c !important;
+    color: #ffa79c;
     border-color: rgba(239, 106, 88, 0.4);
 }
 
@@ -978,23 +980,23 @@ select.form-input {
 
 /* Состояния ниже заданы в style.css с !important — перекрываем так же */
 .hole-btn.verified {
-    background: rgba(63, 125, 84, 0.20) !important;
-    border-color: #4f9268 !important;
-    color: #a5e6bd !important;
-    box-shadow: inset 0 0 0 1px rgba(63, 125, 84, 0.35) !important;
+    background: rgba(63, 125, 84, 0.20);
+    border-color: #4f9268;
+    color: #a5e6bd;
+    box-shadow: inset 0 0 0 1px rgba(63, 125, 84, 0.35);
 }
 
 .hole-btn.pending {
-    background: rgba(174, 180, 186, 0.07) !important;
-    border-color: rgba(174, 180, 186, 0.42) !important;
-    color: #cdd6d0 !important;
+    background: rgba(174, 180, 186, 0.07);
+    border-color: rgba(174, 180, 186, 0.42);
+    color: #cdd6d0;
     animation: hole-pending-pulse 2.4s ease-in-out infinite;
 }
 
 .hole-btn.mismatch {
-    background: rgba(239, 106, 88, 0.10) !important;
-    border: 1px dashed rgba(239, 106, 88, 0.75) !important;
-    color: #ffa79c !important;
+    background: rgba(239, 106, 88, 0.10);
+    border: 1px dashed rgba(239, 106, 88, 0.75);
+    color: #ffa79c;
     animation: none;
 }
 
@@ -1043,26 +1045,26 @@ select.form-input {
 }
 
 .modal-top-bar {
-    background: rgba(9, 20, 12, 0.98) !important;
-    border-bottom: 1px solid var(--line) !important;
-    border-top-left-radius: calc(var(--r) - 3px) !important;
-    border-top-right-radius: calc(var(--r) - 3px) !important;
+    background: rgba(9, 20, 12, 0.98);
+    border-bottom: 1px solid var(--line);
+    border-top-left-radius: calc(var(--r) - 3px);
+    border-top-right-radius: calc(var(--r) - 3px);
 }
 
 .modal-back-btn {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid var(--line-strong) !important;
-    color: var(--white) !important;
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line-strong);
+    color: var(--white);
+    border-radius: 10px;
+    font-weight: 600;
+    box-shadow: none;
 }
 
 .modal-back-btn:hover,
 .modal-back-btn:active {
-    background: var(--gold) !important;
-    border-color: var(--gold) !important;
-    color: #14210f !important;
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #14210f;
 }
 
 .toast {
@@ -1244,16 +1246,16 @@ select.form-input {
    («Чёрный»/«Красный»), компактные итоги, ровно по цифре в ячейку. */
 @media (max-width: 600px) {
     .msc-grid-9 {
-        grid-template-columns: 58px repeat(9, minmax(0, 1fr)) 30px !important;
+        grid-template-columns: 58px repeat(9, minmax(0, 1fr)) 30px;
     }
 
     .msc-grid-10 {
-        grid-template-columns: 58px repeat(9, minmax(0, 1fr)) 26px 34px !important;
+        grid-template-columns: 58px repeat(9, minmax(0, 1fr)) 26px 34px;
     }
 
     .msc-tile {
-        font-size: 10px !important;
-        padding: 5px 0 !important;
+        font-size: 10px;
+        padding: 5px 0;
         border-radius: 5px;
         letter-spacing: -0.02em;
     }
@@ -1264,7 +1266,7 @@ select.form-input {
     .msc-lbl-rd,
     .msc-lbl-par,
     .msc-lbl-idx {
-        font-size: 10px !important;
+        font-size: 10px;
         padding-left: 5px;
         letter-spacing: -0.01em;
         white-space: normal;
@@ -1278,7 +1280,7 @@ select.form-input {
     .msc-tot-par,
     .msc-tot-idx,
     .msc-hdr-tot {
-        font-size: 10px !important;
+        font-size: 10px;
         letter-spacing: -0.04em;
     }
 }
@@ -1288,7 +1290,7 @@ select.form-input {
    как на бумажной счётной карточке, которую тоже не «сжимают». */
 @media (max-width: 340px) {
     .pestovo-modern-scorecard {
-        overflow-x: auto !important;
+        overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -1304,7 +1306,7 @@ select.form-input {
 @media (max-width: 768px) {
     .form-group label,
     .form-label {
-        font-size: var(--fs-micro) !important;
+        font-size: var(--fs-micro);
     }
 }
 
@@ -1331,8 +1333,8 @@ select.form-input {
    ============================================================ */
 
 :focus-visible {
-    outline: 2px solid var(--gold) !important;
-    outline-offset: 3px !important;
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
     border-radius: 6px;
 }
 
@@ -1397,8 +1399,8 @@ body.sun-mode {
     --score-par-soft: rgba(44, 58, 49, 0.07);
     --score-par-line: rgba(44, 58, 49, 0.24);
 
-    background: var(--bg) !important;
-    color: var(--text) !important;
+    background: var(--bg);
+    color: var(--text);
 }
 
 body.sun-mode .card,
@@ -1411,12 +1413,12 @@ body.sun-mode .auth-card,
 body.sun-mode .scorecard,
 body.sun-mode .modal-body,
 body.sun-mode .modal-content {
-    background: var(--card) !important;
-    border: 1px solid var(--line) !important;
-    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.04), 0 10px 24px rgba(16, 26, 19, 0.06) !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    color: var(--text) !important;
+    background: var(--card);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.04), 0 10px 24px rgba(16, 26, 19, 0.06);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    color: var(--text);
 }
 
 body.sun-mode .card h2,
@@ -1426,44 +1428,44 @@ body.sun-mode .page-title,
 body.sun-mode .sec-t,
 body.sun-mode .footer-title,
 body.sun-mode .rl-title {
-    color: var(--text) !important;
+    color: var(--text);
 }
 
 body.sun-mode .card h2 i {
-    color: var(--gold) !important;
+    color: var(--gold);
 }
 
 body.sun-mode .nav,
 body.sun-mode .nav-scrolled {
-    background: rgba(255, 255, 255, 0.92) !important;
-    border-bottom: 1px solid var(--line) !important;
-    box-shadow: 0 1px 0 rgba(16, 26, 19, 0.04) !important;
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 1px 0 rgba(16, 26, 19, 0.04);
 }
 
 body.sun-mode .nav-brand-text,
 body.sun-mode .nav-link,
 body.sun-mode .nav-uname {
-    color: var(--text) !important;
-    font-weight: 500 !important;
+    color: var(--text);
+    font-weight: 500;
 }
 
 body.sun-mode .nav-link.active {
-    color: var(--gold) !important;
-    background: rgba(138, 106, 31, 0.10) !important;
-    border-bottom: 0 !important;
-    box-shadow: inset 0 0 0 1px rgba(138, 106, 31, 0.22) !important;
+    color: var(--gold);
+    background: rgba(138, 106, 31, 0.10);
+    border-bottom: 0;
+    box-shadow: inset 0 0 0 1px rgba(138, 106, 31, 0.22);
 }
 
 body.sun-mode .nav-link:hover {
-    background: rgba(16, 26, 19, 0.05) !important;
-    border-bottom: 0 !important;
+    background: rgba(16, 26, 19, 0.05);
+    border-bottom: 0;
 }
 
 body.sun-mode .hero {
     background:
         radial-gradient(720px 420px at 50% -10%, rgba(138, 106, 31, 0.12), transparent 68%),
-        linear-gradient(160deg, #f7faf7, #e6efe8 55%, #f2f6f2) !important;
-    border-bottom: 1px solid var(--line) !important;
+        linear-gradient(160deg, #f7faf7, #e6efe8 55%, #f2f6f2);
+    border-bottom: 1px solid var(--line);
 }
 
 body.sun-mode .hero::before,
@@ -1472,7 +1474,7 @@ body.sun-mode .hero::after {
 }
 
 body.sun-mode .hero-sub {
-    color: var(--gold) !important;
+    color: var(--gold);
 }
 
 body.sun-mode .hero-desc,
@@ -1482,124 +1484,124 @@ body.sun-mode .stat-l,
 body.sun-mode .footer-desc,
 body.sun-mode .footer-link,
 body.sun-mode .footer-bottom {
-    color: var(--muted) !important;
+    color: var(--muted);
 }
 
 body.sun-mode .page-head {
-    background: linear-gradient(180deg, #ffffff, #f4f7f4) !important;
-    border-bottom: 1px solid var(--line) !important;
+    background: linear-gradient(180deg, #ffffff, #f4f7f4);
+    border-bottom: 1px solid var(--line);
 }
 
 body.sun-mode .section-alt {
-    background: var(--bg2) !important;
-    border-color: var(--line) !important;
+    background: var(--bg2);
+    border-color: var(--line);
 }
 
 body.sun-mode .footer {
-    background: #eef2ed !important;
-    border-top: 1px solid var(--line) !important;
+    background: #eef2ed;
+    border-top: 1px solid var(--line);
 }
 
 body.sun-mode .form-input,
 body.sun-mode select.form-input,
 body.sun-mode .form-group label {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    color: var(--text) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--text);
 }
 
 body.sun-mode .form-group label {
-    border: 0 !important;
-    color: var(--muted) !important;
+    border: 0;
+    color: var(--muted);
 }
 
 body.sun-mode .lb-table th {
-    color: var(--muted) !important;
-    border-bottom: 1px solid var(--line) !important;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
 }
 
 body.sun-mode .lb-table td {
-    color: var(--text) !important;
-    border-bottom: 1px solid rgba(16, 26, 19, 0.07) !important;
+    color: var(--text);
+    border-bottom: 1px solid rgba(16, 26, 19, 0.07);
 }
 
 body.sun-mode .lb-table tbody tr:nth-child(even) {
-    background: rgba(16, 26, 19, 0.025) !important;
+    background: rgba(16, 26, 19, 0.025);
 }
 
 body.sun-mode .hole-btn {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    color: var(--text) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--text);
 }
 
 body.sun-mode .hole-btn.active {
-    background: #8a6a1f !important;
-    border-color: #8a6a1f !important;
-    color: #ffffff !important;
+    background: #8a6a1f;
+    border-color: #8a6a1f;
+    color: #ffffff;
 }
 
 body.sun-mode .btn-g {
-    background: #8a6a1f !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(138, 106, 31, 0.24) !important;
+    background: #8a6a1f;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(138, 106, 31, 0.24);
 }
 
 body.sun-mode .btn-og,
 body.sun-mode .btn-ol {
-    background: #ffffff !important;
-    border: 1px solid var(--line-strong) !important;
-    color: var(--text) !important;
+    background: #ffffff;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
 }
 
 body.sun-mode .badge-par,
 body.sun-mode .tee-pill {
-    background: rgba(16, 26, 19, 0.05) !important;
-    border-color: var(--line) !important;
-    color: var(--text) !important;
+    background: rgba(16, 26, 19, 0.05);
+    border-color: var(--line);
+    color: var(--text);
 }
 
 body.sun-mode .verify-ok {
-    background: rgba(47, 122, 75, 0.08) !important;
-    border: 1px solid rgba(47, 122, 75, 0.4) !important;
-    color: #1f6b41 !important;
+    background: rgba(47, 122, 75, 0.08);
+    border: 1px solid rgba(47, 122, 75, 0.4);
+    color: #1f6b41;
 }
 
 body.sun-mode .verify-wait {
-    background: #f4f7f4 !important;
-    border: 1px solid var(--line) !important;
-    color: var(--muted) !important;
+    background: #f4f7f4;
+    border: 1px solid var(--line);
+    color: var(--muted);
 }
 
 body.sun-mode .verify-fail {
-    background: rgba(192, 57, 43, 0.07) !important;
-    border: 1px dashed rgba(192, 57, 43, 0.55) !important;
-    color: #a5281c !important;
+    background: rgba(192, 57, 43, 0.07);
+    border: 1px dashed rgba(192, 57, 43, 0.55);
+    color: #a5281c;
 }
 
 body.sun-mode .modal-bg {
-    background: rgba(16, 26, 19, 0.42) !important;
+    background: rgba(16, 26, 19, 0.42);
 }
 
 body.sun-mode .modal-top-bar {
-    background: #ffffff !important;
-    border-bottom: 1px solid var(--line) !important;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
 }
 
 body.sun-mode .admin-tab {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    color: var(--muted) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--muted);
 }
 
 body.sun-mode .admin-tab.active {
-    background: rgba(138, 106, 31, 0.12) !important;
-    border-color: rgba(138, 106, 31, 0.45) !important;
-    color: var(--gold) !important;
+    background: rgba(138, 106, 31, 0.12);
+    border-color: rgba(138, 106, 31, 0.45);
+    color: var(--gold);
 }
 
 body.sun-mode :focus-visible {
-    outline-color: var(--gold) !important;
+    outline-color: var(--gold);
 }
 
 /* В style.css светлая тема обводит почти всё 2 px чёрным: на белом листе это
@@ -1607,12 +1609,12 @@ body.sun-mode :focus-visible {
    непробиваемую контрастность текста, но рамки — тонкие и серо-зелёные. */
 body.sun-mode .nav,
 body.sun-mode .nav-scrolled {
-    border-bottom: 1px solid var(--line) !important;
+    border-bottom: 1px solid var(--line);
 }
 
 body.sun-mode .nav-link:hover,
 body.sun-mode .nav-link.active {
-    border-bottom: 0 !important;
+    border-bottom: 0;
 }
 
 body.sun-mode .card,
@@ -1635,31 +1637,31 @@ body.sun-mode .my-score-block,
 body.sun-mode .marker-score-block,
 body.sun-mode #course-card,
 body.sun-mode #club-stats {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.05), 0 10px 24px rgba(16, 26, 19, 0.06) !important;
-    color: var(--text) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.05), 0 10px 24px rgba(16, 26, 19, 0.06);
+    color: var(--text);
 }
 
 body.sun-mode .msc-tile,
 body.sun-mode .noscroll-tile {
-    background: #f7faf7 !important;
-    border: 1px solid var(--line) !important;
-    color: var(--text) !important;
+    background: #f7faf7;
+    border: 1px solid var(--line);
+    color: var(--text);
 }
 
 body.sun-mode .msc-hdr-lbl,
 body.sun-mode .msc-hdr-num,
 body.sun-mode .msc-hdr-tot {
-    background: rgba(138, 106, 31, 0.12) !important;
-    border-color: rgba(138, 106, 31, 0.28) !important;
-    color: var(--gold) !important;
+    background: rgba(138, 106, 31, 0.12);
+    border-color: rgba(138, 106, 31, 0.28);
+    color: var(--gold);
 }
 
 body.sun-mode .msc-tile-score,
 body.sun-mode .noscroll-score {
-    color: var(--text) !important;
-    font-weight: 800 !important;
+    color: var(--text);
+    font-weight: 800;
 }
 
 body.sun-mode .msc-totals-strip,
@@ -1667,71 +1669,71 @@ body.sun-mode .msc-grand-strip,
 body.sun-mode .noscroll-totals,
 body.sun-mode .msc-sec-hdr,
 body.sun-mode .timing-total-badge {
-    background: #f1f6f2 !important;
-    border: 1px solid var(--line) !important;
-    color: var(--text) !important;
+    background: #f1f6f2;
+    border: 1px solid var(--line);
+    color: var(--text);
 }
 
 body.sun-mode .msc-totals-strip b,
 body.sun-mode .msc-grand-strip b,
 body.sun-mode .noscroll-totals b,
 body.sun-mode .timing-total-badge b {
-    color: var(--text) !important;
+    color: var(--text);
 }
 
 body.sun-mode .lwl-row {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
 }
 
 body.sun-mode .lwl-row-mine {
-    border-color: #2f7a4b !important;
-    box-shadow: inset 3px 0 0 #2f7a4b !important;
+    border-color: #2f7a4b;
+    box-shadow: inset 3px 0 0 #2f7a4b;
 }
 
 body.sun-mode .live-rounds-toolbar,
 body.sun-mode .sc-to-cur-btn {
-    background: #f1f6f2 !important;
-    border: 1px solid var(--line) !important;
+    background: #f1f6f2;
+    border: 1px solid var(--line);
 }
 
 body.sun-mode .sc-topar-cell {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    color: var(--text) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--text);
 }
 
 body.sun-mode .live-round-tag {
-    background: #fdf8ee !important;
-    border: 1px solid rgba(138, 106, 31, 0.34) !important;
-    color: var(--muted) !important;
+    background: #fdf8ee;
+    border: 1px solid rgba(138, 106, 31, 0.34);
+    color: var(--muted);
 }
 
 body.sun-mode .update-banner {
-    background: #ffffff !important;
-    border: 1px solid var(--line-strong) !important;
-    color: var(--text) !important;
+    background: #ffffff;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
 }
 
 body.sun-mode .score-entry,
 body.sun-mode .score-entry .hole-display {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.05) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.05);
 }
 
 body.sun-mode .lb-table.lb-cards tr {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
 }
 
 body.sun-mode th {
-    border-color: var(--line) !important;
+    border-color: var(--line);
 }
 
 body.sun-mode #course-holes-strip {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
+    background: #ffffff;
+    border: 1px solid var(--line);
 }
 
 /* ============================================================
@@ -1745,10 +1747,10 @@ body.sun-mode #course-holes-strip {
     }
 
     .hero-logo {
-        width: clamp(104px, 30vw, 140px) !important;
-        max-width: clamp(104px, 30vw, 140px) !important;
-        max-height: 140px !important;
-        margin-bottom: 18px !important;
+        width: clamp(104px, 30vw, 140px);
+        max-width: clamp(104px, 30vw, 140px);
+        max-height: 140px;
+        margin-bottom: 18px;
     }
 
     .hero-title {
@@ -1828,10 +1830,10 @@ body.sun-mode #course-holes-strip {
     }
 
     .nav-logo {
-        width: 32px !important;
-        height: 32px !important;
-        max-width: 32px !important;
-        max-height: 32px !important;
+        width: 32px;
+        height: 32px;
+        max-width: 32px;
+        max-height: 32px;
     }
 
     .nav-link {
@@ -1897,7 +1899,7 @@ body.sun-mode #course-holes-strip {
     .hole-btn.pending,
     .cell-pending,
     .cell-mismatch {
-        animation: none !important;
+        animation: none;
     }
 
     .btn:hover,
@@ -1921,23 +1923,25 @@ body.sun-mode #course-holes-strip {
     .mobile-tabbar span,
     .nav-weather,
     .page-sub {
-        font-size: 12px !important;
+        font-size: 12px;
     }
 }
 
 /* Печать: слой не должен менять бумагу — возвращаем белый лист */
 @media print {
     body {
-        background: #fff !important;
-        color: #000 !important;
+        background: #fff;
+        color: #000;
     }
 
     .card,
     .stat,
     .round-card,
     .rl-card {
-        background: #fff !important;
-        border-color: #ccc !important;
-        box-shadow: none !important;
+        background: #fff;
+        border-color: #ccc;
+        box-shadow: none;
     }
+}
+
 }

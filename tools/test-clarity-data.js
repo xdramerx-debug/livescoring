@@ -32,7 +32,8 @@ assert(!dom.window.document.querySelector('[data-admin-group="ops"] [data-arg="s
 assert(dom.window.document.querySelector('#tab-integrations #tg-group-bot-token'));
 assert(dom.window.document.querySelector('#tab-alerts #admin-alerts-list'));
 assert(!dom.window.document.querySelector('#tab-alerts #tg-group-bot-token'));
-assert(dom.window.document.querySelector('.clarity-admin-more [data-arg="entrycards"]'));
+assert(dom.window.document.querySelector('[data-admin-group="look"] > [data-arg="entrycards"]'));
+assert(!dom.window.document.querySelector('.admin-nav details'), 'all administrative tools are directly visible in their group');
 assert(!dom.window.document.querySelector('[data-arg="roundsetup"]'), 'legacy setup choices are no longer exposed');
 dom.window.close();
 console.log('PASS: statistics boundaries, format filtering, immutability and administrative destinations');

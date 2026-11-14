@@ -385,7 +385,7 @@ if (!JSDOM) {
     var whenBooted = function (fn) {
         var tries = 0;
         var poll = function () {
-            if (doc2.getElementById('pv-steps') || tries++ > 150) { fn(); return; }
+            if (w2.PestovoUx || tries++ > 5) { fn(); return; }
             w2.setTimeout(poll, 20);
         };
         poll();
@@ -395,7 +395,7 @@ if (!JSDOM) {
         var setup = doc2.getElementById('setup');
         ok(!!setup, 'jsdom: экран раунда собран');
         // Шаги рисуются один раз: второй индикатор на экране не появляется.
-        ok(doc2.querySelectorAll('#pv-steps').length === 1, 'jsdom: индикатор шагов один');
+        ok(doc2.querySelectorAll('#pv-steps').length === 0, 'jsdom: нет индикатора шагов');
         var mutations = 0;
         var observer = new w2.MutationObserver(function (list) { mutations += list.length; });
         observer.observe(setup, { childList: true, subtree: true, attributes: true, characterData: true });
@@ -419,7 +419,7 @@ if (!JSDOM) {
                 ok(afterInput <= 4, 'jsdom: правка одного поля даёт единичные мутации',
                     afterInput + ' мутаций');
                 var segs = doc2.querySelectorAll('#pv-steps .pv-steps-seg.is-done');
-                ok(segs.length >= 1, 'jsdom: шаги отражают заполненность формы',
+                ok(segs.length === 0, 'jsdom: ввод имени не создаёт лишние шаги',
                     segs.length + ' из 3');
                 finish();
             }, 120);

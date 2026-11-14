@@ -46,7 +46,7 @@ function ok(cond, label) {
     win.eval('renderSetupPlayers(true);');
     setTimeout(() => {
         win.eval('initP0MobileEnhancements();');
-        ok(!!doc.getElementById('p0-wizard-steps'), 'setup-round: создан #p0-wizard-steps');
+        ok(!doc.getElementById('p0-wizard-steps'), 'setup-round: нет лишних шагов #p0-wizard-steps');
         const open = doc.querySelectorAll('.setup-player-card.open').length;
         ok(open === 1, 'setup-round: открыта ровно 1 карточка (получено ' + open + ')');
         ok(doc.querySelectorAll('.setup-player-head .fa-chevron-down').length >= 3, 'setup-round: у карточек есть шеврон');

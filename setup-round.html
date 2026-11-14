@@ -143,9 +143,9 @@
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=ee5b2563">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=eb25787a">
 </head>
-<body class="score-compact pv-ux pv-setup pv-has-bottomnav">
+<body class="round-setup-page score-compact pv-ux pv-setup pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
 
 <nav class="nav" id="main-nav">
@@ -211,15 +211,7 @@
          Игроков добавляет кнопка «Добавить игрока». 5 вариантов вида блока
          выбирает только админ (админ-панель → «Создание раунда (5 видов)»).
          Логика: js/round-setup.js (карточки pl-*, параметры grp-*). -->
-    <div id="setup"><details class="clarity-disclosure" ><summary data-clarity-ru="Найти незавершённый раунд" data-clarity-en="Find an unfinished round">Найти незавершённый раунд</summary><div class="card" id="fio-resume-card" style="margin-top:24px;">
-        <h2 style="margin-top:0;"><i class="fas fa-rotate-left"></i> <span data-i18n="fio_resume_title">Продолжить игру по ФИО</span></h2>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;" data-i18n="fio_resume_desc">Если телефон разрядился — введите имя и фамилию, чтобы найти незавершённый раунд и продолжить (дата/время старта, текущая лунка).</p>
-        <div class="form-row" style="align-items:flex-end;">
-            <div class="form-group" style="flex:1 1 200px;"><label data-i18n="fio_label" for="fio-resume-input">Имя Фамилия</label><input type="text" id="fio-resume-input" class="form-input" placeholder="Иван Петров"></div>
-            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" data-act="searchFioResume" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
-        </div>
-        <div id="fio-resume-results" style="margin-top:12px;"></div>
-    </div></details>
+    <div id="setup">
 
         <!-- Мастер «По шагам» — вариант 5 (остальные видны сразу) -->
         <div id="unified-wizard" class="unified-wizard hidden">
@@ -249,9 +241,9 @@
                 <h3 class="setup-section-title"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
                 <div class="form-row">
                     <div class="form-group"><label for="grp-format" data-i18n="format_select">Формат</label><select id="grp-format" class="form-input">
-                        <optgroup label="Обычная игра"><option value="Stroke Play">Stroke Play — все показатели</option>
-                        <option value="Stroke Play (Gross)">Gross (без HCP)</option>
-                        <option value="Stroke Play (Net)">Net (с HCP)</option>
+                        <optgroup label="Обычная игра"><option value="Stroke Play" data-i18n="ui_325a1d2269">Stroke Play — все показатели</option>
+                        <option value="Stroke Play (Gross)" data-i18n="ui_d6e81b3942">Gross (без HCP)</option>
+                        <option value="Stroke Play (Net)" data-i18n="ui_93efc37d4c">Net (с HCP)</option>
                         <option value="Stableford">Stableford</option></optgroup><optgroup label="Матчевые и командные форматы">
                         <option value="Match Play 1v1">Match Play (1×1)</option>
                         <option value="Match Play 2v2">Match Play (2×2)</option>
@@ -299,7 +291,7 @@
         </div>
 
         <div class="round-card scorecard-fold" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="gv-sc-panel" aria-controls="gv-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="gv-sc-panel" aria-controls="gv-sc-panel" aria-expanded="false" title="Развернуть счётную карточку" data-i18n-title="ui_372a391df1">
                 <i class="fas fa-chevron-down" id="gv-sc-panel-icon" aria-hidden="true"></i>
                 <span id="gv-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
@@ -330,7 +322,7 @@
 
             <div data-entry-block="holes" data-screen-display="scoring" data-display-key="holes" id="play-holes-block">
                 <button type="button" class="holes-toggle" id="play-holes-toggle" data-act="togglePlayHolesNav" aria-expanded="false" aria-controls="play-holes-nav">
-                    <i class="fas fa-th"></i><span data-holes-toggle-label>Лунки</span><i class="fas fa-chevron-down" id="play-holes-toggle-chev"></i>
+                    <i class="fas fa-th"></i><span data-holes-toggle-label data-i18n="ui_a0e5860a63">Лунки</span><i class="fas fa-chevron-down" id="play-holes-toggle-chev"></i>
                 </button>
                 <div class="hole-nav" id="play-holes-nav"></div>
             </div>
@@ -347,7 +339,7 @@
                 <!-- ЛЕВАЯ: МОЙ СЧЁТ -->
                 <div class="dual-half dual-half--my" id="dual-half-my" data-screen-display="scoring" data-display-key="myScore">
                     <div class="dual-half__head">
-                        <span class="dual-half__name" id="my-player-name-title">Мой счёт: —</span>
+                        <span class="dual-half__name" id="my-player-name-title" data-i18n="ui_08ff4e3814">Мой счёт: —</span>
                     </div>
                     <div class="dual-half__score">
                         <div class="score-result" id="my-result"></div>
@@ -355,15 +347,15 @@
                         <div class="dual-half__compare" data-screen-display="scoring" data-display-key="scoreComparison" id="my-compare"></div>
                     </div>
                     <div class="dual-half__controls">
-                        <button class="dual-btn dual-btn--minus" data-act="adjScore" data-arg="my" data-arg2="-1" aria-label="Минус">−</button>
-                        <button class="dual-btn dual-btn--plus" data-act="adjScore" data-arg="my" data-arg2="1" aria-label="Плюс">+</button>
+                        <button class="dual-btn dual-btn--minus" data-act="adjScore" data-arg="my" data-arg2="-1" aria-label="Минус" data-i18n-aria-label="ui_cb8c5d52e1">−</button>
+                        <button class="dual-btn dual-btn--plus" data-act="adjScore" data-arg="my" data-arg2="1" aria-label="Плюс" data-i18n-aria-label="ui_ac0d11c0a3">+</button>
                     </div>
                 </div>
                 <div class="dual-split-divider" id="dual-divider" data-display-divider="markerScore"><span></span></div>
                 <!-- ПРАВАЯ: МАРКИРУЕМЫЙ -->
                 <div class="dual-half dual-half--mark" id="marker-input-container" data-screen-display="scoring" data-display-key="markerScore">
                     <div class="dual-half__head">
-                        <span class="dual-half__name" id="mark-player-name">Счёт игрока: —</span>
+                        <span class="dual-half__name" id="mark-player-name" data-i18n="ui_be83f247cd">Счёт игрока: —</span>
                     </div>
                     <div class="dual-half__score">
                         <div class="score-result" id="mark-result"></div>
@@ -371,8 +363,8 @@
                         <div class="dual-half__compare" data-screen-display="scoring" data-display-key="scoreComparison" id="mark-compare"></div>
                     </div>
                     <div class="dual-half__controls">
-                        <button class="dual-btn dual-btn--minus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="-1" aria-label="Минус маркируемого">−</button>
-                        <button class="dual-btn dual-btn--plus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="1" aria-label="Плюс маркируемого">+</button>
+                        <button class="dual-btn dual-btn--minus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="-1" aria-label="Минус маркируемого" data-i18n-aria-label="ui_68660731cc">−</button>
+                        <button class="dual-btn dual-btn--plus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="1" aria-label="Плюс маркируемого" data-i18n-aria-label="ui_3470822c60">+</button>
                     </div>
                 </div>
             </div>
@@ -380,7 +372,7 @@
             <!-- Предупреждение «раунд нельзя завершить»: горит, пока лунки не подтверждены -->
             <div id="finish-block-notice" data-screen-display="scoring" data-display-key="notice" class="hidden" style="margin-top:12px;"></div>
 
-            <div class="score-pad" role="group" aria-label="Счёт">
+            <div class="score-pad" role="group" aria-label="Счёт" data-i18n-aria-label="ui_54121f46af">
                 <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="1">1</button>
                 <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="2">2</button>
                 <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="3">3</button>
@@ -406,7 +398,7 @@
         <div id="group-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
 
         <div class="round-card scorecard-fold" data-screen-display="scoring" data-display-key="scorecard" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку" data-i18n-title="ui_372a391df1">
                 <i class="fas fa-chevron-down" id="group-sc-panel-icon" aria-hidden="true"></i>
                 <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
@@ -452,8 +444,8 @@
             <button class="btn btn-og" data-act="finishGroupRound" style="flex:1;">
                 <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
             </button>
-            <button class="btn btn-ol" type="button" data-act="handleGroupPauseToggle" id="group-pause-btn" style="white-space:nowrap;padding:12px 14px;" title="Пауза / Возобновление">
-                <i class="fas fa-pause" id="group-pause-btn-icon"></i> <span id="group-pause-btn-text">Пауза</span>
+            <button class="btn btn-ol" type="button" data-act="handleGroupPauseToggle" id="group-pause-btn" style="white-space:nowrap;padding:12px 14px;" title="Пауза / Возобновление" data-i18n-title="ui_0e32051f71">
+                <i class="fas fa-pause" id="group-pause-btn-icon"></i> <span id="group-pause-btn-text" data-i18n="ui_65530fd463">Пауза</span>
             </button>
         </div>
         <div id="group-pause-banner" data-screen-display="scoring" data-display-key="finish" class="hidden" style="margin-bottom:12px;"></div>
@@ -476,7 +468,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.138.0</span></p>
+            <p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.139.0</span></p>
         </div>
     </div>
 </footer>
@@ -485,7 +477,7 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=d079085c"></script>
+<script type="module" src="dist/livescoring-modules.js?v=9dd82553"></script>
     <script defer src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script defer src="js/qr-code.js?v=2a26e819"></script>
@@ -499,12 +491,12 @@
 <script defer src="js/score-pad.js?v=03df3958"></script>
 <script defer src="js/official-call.js?v=7ae05fbc"></script>
 <script defer src="js/score-display.js?v=8c8f213a"></script>
-<script defer src="js/live.js?v=4174105b"></script>
+<script defer src="js/live.js?v=340c6466"></script>
 <script defer src="js/solo.js?v=8ebc1f83"></script>
-<script defer src="js/round-setup.js?v=3a46402a"></script>
+<script defer src="js/round-setup.js?v=f1c7f53d"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
-<script defer src="js/product-ux.js?v=ba65f386"></script>
+<script defer src="js/product-ux.js?v=73b591eb"></script>
 <script defer src="js/setup-round-fio.js?v=662ab87b"></script>
 </body>
 </html>

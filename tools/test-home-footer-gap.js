@@ -1,0 +1,11 @@
+'use strict';
+const fs = require('fs');
+const assert = require('assert');
+const html = fs.readFileSync('index.html', 'utf8');
+const css = fs.readFileSync('css/pr164-adapter.css', 'utf8');
+assert(/<body class="[^"]*pv-home/.test(html));
+assert(/<\/section>\s*<\/main>\s*<footer/.test(html), 'footer immediately follows final home section');
+const selector = 'body.pv-home.pv-ux.pv-has-bottomnav > main';
+assert(css.includes(selector + ' { padding-bottom: 0; }'), 'home has no obsolete bottom-menu spacer');
+assert(css.lastIndexOf(selector) > css.lastIndexOf('body.pv-ux.pv-has-bottomnav main {'), 'home override follows shared page spacing');
+console.log('PASS: no obsolete spacer between home club statistics and footer; other page spacing unchanged');

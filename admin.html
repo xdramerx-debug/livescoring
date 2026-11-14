@@ -29,9 +29,10 @@
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/design-history.css?v=88bc27c1">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=ee5b2563">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=eb25787a">
+    <link rel="stylesheet" href="css/admin-navigation.css?v=75c8db68">
 </head>
-<body>
+<body class="admin-page">
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
@@ -76,7 +77,7 @@
                 <small style="color:var(--muted);" data-i18n="admin_master_session_hint">Сессия по мастер-паролю действует до закрытия браузера</small>
             </div>
             <div id="adm-error" class="form-err hidden"></div>
-            <button id="admin-login-btn" type="submit" class="btn btn-g btn-block"><i class="fas fa-user-shield"></i> Проверить права / Войти</button>
+            <button id="admin-login-btn" type="submit" class="btn btn-g btn-block"><i class="fas fa-user-shield"></i> <span data-i18n="ui_f4635472cd">Проверить права / Войти</span></button>
         </form>
     </div>
 
@@ -89,114 +90,115 @@
             <div class="admin-global-notify-main">
                 <span class="admin-global-notify-icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
                 <div class="admin-global-notify-text">
-                    <b id="global-notifications-title">Уведомления для всех игроков</b>
-                    <div id="global-notifications-status" role="status" aria-live="polite">Проверка настройки…</div>
+                    <b id="global-notifications-title" data-i18n="ui_a726a4d98e">Уведомления для всех игроков</b>
+                    <div id="global-notifications-status" role="status" aria-live="polite" data-i18n="ui_159f8996b8">Проверка настройки…</div>
                 </div>
             </div>
-            <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" data-act="toggleGlobalNotifications" aria-pressed="true" disabled>Загрузка…</button>
+            <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" data-act="toggleGlobalNotifications" aria-pressed="true" disabled data-i18n="ui_db491ef503">Загрузка…</button>
         </section>
 
-        <div class="admin-nav">
-            <div class="admin-nav-groups" role="tablist" aria-label="Разделы админки">
-                <button type="button" class="admin-nav-group active" data-act="switchAdminGroup" data-arg="ops" data-i18n="admin_group_ops">Смена</button>
-                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="tournaments" data-i18n="admin_group_tn">Турниры</button>
-                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="people" data-i18n="admin_group_people">Игроки</button>
-                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="look" data-i18n="admin_group_look">Оформление</button>
-                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="system" data-i18n="admin_group_system">Система</button>
+        <nav class="admin-nav" aria-label="Управление клубом" data-i18n-aria-label="ui_bc997c1edb">
+            <div class="admin-nav-heading"><span data-clarity-ru="Управление клубом" data-clarity-en="Club management">Управление клубом</span><small data-clarity-ru="Выберите раздел и нужный инструмент" data-clarity-en="Choose a section and a tool">Выберите раздел и нужный инструмент</small></div>
+            <div class="admin-nav-groups" role="group" aria-label="Разделы админки" data-i18n-aria-label="ui_31e9780267">
+                <button type="button" class="admin-nav-group active" data-act="switchAdminGroup" data-arg="ops" data-i18n="admin_group_ops" aria-pressed="true">Смена</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="tournaments" data-i18n="admin_group_tn" aria-pressed="false">Турниры</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="people" data-i18n="admin_group_people" aria-pressed="false">Игроки</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="look" data-i18n="admin_group_look" aria-pressed="false">Оформление</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="system" data-i18n="admin_group_system" aria-pressed="false">Система</button>
             </div>
             <div class="admin-tabs" data-admin-group="ops">
-                <button class="admin-tab active" data-act="switchTab" data-arg="alerts" data-i18n="tab_alerts">Вызовы 🚨</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="groups" data-i18n="tab_groups">Группы сейчас ⏱️</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="scores" data-i18n="tab_scores_edit">Правка счёта</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="rounds" data-i18n="tab_rounds">Раунды</button>
+                <button class="admin-tab active" data-act="switchTab" data-arg="alerts" data-i18n="tab_alerts" type="button" aria-pressed="true">Вызовы 🚨</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="groups" data-i18n="tab_groups" type="button" aria-pressed="false">Группы сейчас ⏱️</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scores" data-i18n="tab_scores_edit" type="button" aria-pressed="false">Правка счёта</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="rounds" data-i18n="tab_rounds" type="button" aria-pressed="false">Раунды</button>
             </div>
             <div class="admin-tabs hidden" data-admin-group="tournaments">
-                <button class="admin-tab" id="tnm-tab-btn" data-act="switchTab" data-arg="tnmanager" data-i18n="tab_tn_manager">Турниры 🏆</button>
+                <button class="admin-tab" id="tnm-tab-btn" data-act="switchTab" data-arg="tnmanager" data-i18n="tab_tn_manager" type="button" aria-pressed="false">Турниры 🏆</button>
             </div>
             <div class="admin-tabs hidden" data-admin-group="people">
-                <button class="admin-tab" data-act="switchTab" data-arg="players" data-i18n="tab_players">Игроки и роли</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="importexport" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="rusgolf" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="players" data-i18n="tab_players" type="button" aria-pressed="false">Игроки и роли</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="importexport" data-i18n="tab_importexport" type="button" aria-pressed="false">Импорт/Экспорт 📊</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="rusgolf" data-i18n="tab_rusgolf" type="button" aria-pressed="false">RUSGOLF 🇷🇺</button>
             </div>
             <div class="admin-tabs hidden" data-admin-group="look">
-                <button class="admin-tab" data-act="switchTab" data-arg="scorecards" data-i18n="tab_scorecards">Карточки на сайте</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="scoreentry" data-i18n="tab_scoreentry_screen">Экран игрока</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="designhistory">История PR · 1–187</button>
-            <details class="clarity-admin-more"><summary>Дополнительно</summary><button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards">Карточки на вводе</button>
-<button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards">Турнирный ввод</button>
-<button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид</button></details></div>
+                <button class="admin-tab" data-act="switchTab" data-arg="scorecards" data-i18n="tab_scorecards" type="button" aria-pressed="false">Карточки на сайте</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scoreentry" data-i18n="tab_scoreentry_screen" type="button" aria-pressed="false">Экран игрока</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design" type="button" aria-pressed="false">Дизайн 🎨</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="designhistory" type="button" aria-pressed="false" data-i18n="ui_738bc2a3c4">История PR · 1–187</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards" type="button" aria-pressed="false">Карточки на вводе</button>
+<button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards" type="button" aria-pressed="false">Турнирный ввод</button>
+<button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view" type="button" aria-pressed="false">Турниры: вид</button></div>
             <div class="admin-tabs hidden" data-admin-group="system">
-                <button class="admin-tab" data-act="switchTab" data-arg="integrations">Интеграции</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit" data-i18n="tab_scoreaudit">Журнал счёта 🕒</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="hcplog" data-i18n="tab_hcplog">Журнал гандикапов 📈</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="broadcasts" data-i18n="tab_broadcasts">Анонсы 📢</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="data" data-i18n="tab_data">Данные</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="integrations" type="button" aria-pressed="false" data-i18n="ui_74fc14c766">Интеграции</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit" data-i18n="tab_scoreaudit" type="button" aria-pressed="false">Журнал счёта 🕒</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="hcplog" data-i18n="tab_hcplog" type="button" aria-pressed="false">Журнал гандикапов 📈</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="broadcasts" data-i18n="tab_broadcasts" type="button" aria-pressed="false">Анонсы 📢</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="data" data-i18n="tab_data" type="button" aria-pressed="false">Данные</button>
             </div>
-        </div>
+        </nav>
 
         <div id="tab-scorecards" class="admin-section hidden">
             <div class="card sev-admin-card">
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-table-list"></i></span>
                     <div class="sev-head-text">
-                        <h2>Отображения счётных карточек</h2>
-                        <p>Единое оформление для всех игроков: главная, активные и завершённые раунды, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
+                        <h2 data-i18n="ui_6a4154a7b4">Отображения счётных карточек</h2>
+                        <p data-i18n="ui_1b9445b0ba">Единое оформление для всех игроков: главная, активные и завершённые раунды, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-users" aria-hidden="true"></i> Для всех игроков</span>
+                    <span class="sev-head-badge"><i class="fas fa-users" aria-hidden="true"></i> <span data-i18n="ui_70cbac7057">Для всех игроков</span></span>
                 </header>
                 <p id="club-sc-saved" class="sc-saved-state" role="status" aria-live="polite"></p>
-                <div class="sev-sec-title">Общий вид карточки</div>
-                <p class="sev-sec-sub">Пять видов одной карточки. Выберите — пример ниже обновится сразу.</p>
+                <div class="sev-sec-title" data-i18n="ui_ea774426cf">Общий вид карточки</div>
+                <p class="sev-sec-sub" data-i18n="ui_f6bb92d043">Пять видов одной карточки. Выберите — пример ниже обновится сразу.</p>
                 <div class="club-sc-options sev-variants">
                     <button type="button" id="v5-scorecard-1" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="1">
-                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Бланк клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name" data-i18n="ui_c85201ffd9">Бланк клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span></span><span class="st-row"><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span></span>
-                        <span class="sev-card-desc">Две девятки, как в «Поле клуба».</span>
+                        <span class="sev-card-desc" data-i18n="ui_80945904b8">Две девятки, как в «Поле клуба».</span>
                     </button>
                     <button type="button" id="v5-scorecard-2" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="2">
-                        <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name">Блоки по 3 лунки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name" data-i18n="ui_b8b309415b">Блоки по 3 лунки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span></span>
-                        <span class="sev-card-desc">Крупнее, без горизонтальной прокрутки.</span>
+                        <span class="sev-card-desc" data-i18n="ui_9ef5e101ef">Крупнее, без горизонтальной прокрутки.</span>
                     </button>
                     <button type="button" id="v5-scorecard-3" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="3">
-                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Крупная лента</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name" data-i18n="ui_2604161591">Крупная лента</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span><span class="st-row"><span class="st-plate st-white"></span><span class="st-plate"></span><span class="st-plate st-white"></span></span></span>
-                        <span class="sev-card-desc">Крупные цифры, прокрутка внутри карточки.</span>
+                        <span class="sev-card-desc" data-i18n="ui_5eed24f577">Крупные цифры, прокрутка внутри карточки.</span>
                     </button>
                     <button type="button" id="v5-scorecard-4" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="4">
-                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Вертикальный список</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name" data-i18n="ui_f3c8e4b47f">Вертикальный список</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-plate st-white" style="flex:0 0 26px;"></span><span class="st-plate"></span><span class="st-sq st-gold" style="max-width:22px;"></span></span><span class="st-row"><span class="st-plate st-white" style="flex:0 0 26px;"></span><span class="st-plate"></span><span class="st-sq" style="max-width:22px;"></span></span></span>
-                        <span class="sev-card-desc">Одна лунка на строку, всё по порядку.</span>
+                        <span class="sev-card-desc" data-i18n="ui_0036ec360b">Одна лунка на строку, всё по порядку.</span>
                     </button>
                     <button type="button" id="v5-scorecard-5" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="5">
-                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Плитки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name" data-i18n="ui_93e97a4adc">Плитки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold" style="max-width:26px;"></span><span class="st-sq st-gold" style="max-width:26px;"></span><span class="st-sq st-gold" style="max-width:26px;"></span></span></span>
-                        <span class="sev-card-desc">Акцент на счёте каждой лунки.</span>
+                        <span class="sev-card-desc" data-i18n="ui_05112402c7">Акцент на счёте каждой лунки.</span>
                     </button>
                 </div>
-                <label class="sc-completed-setting" for="club-sc-completed-view">Вид завершённых раундов
+                <label class="sc-completed-setting" for="club-sc-completed-view"><span data-i18n="ui_d08d823b89">Вид завершённых раундов</span>
                     <select id="club-sc-completed-view" class="form-input" data-act="previewCompletedScorecardView">
-                        <option value="inherit">Как общий вид</option>
-                        <option value="1">1 · Бланк клуба</option><option value="2">2 · Блоки по 3 лунки</option>
-                        <option value="3">3 · Крупная лента</option><option value="4">4 · Вертикальный список</option><option value="5">5 · Плитки</option>
+                        <option value="inherit" data-i18n="ui_95b75ea948">Как общий вид</option>
+                        <option value="1" data-i18n="ui_e978047dc5">1 · Бланк клуба</option><option value="2" data-i18n="ui_7926130a5d">2 · Блоки по 3 лунки</option>
+                        <option value="3" data-i18n="ui_aeba52bfb2">3 · Крупная лента</option><option value="4" data-i18n="ui_e2f0805e35">4 · Вертикальный список</option><option value="5" data-i18n="ui_d1354fcd52">5 · Плитки</option>
                     </select>
-                    <small>Отдельное оформление не меняет карточки активных раундов. Итоги завершённых раундов всегда видны сверху, лунки раскрываются по нажатию.</small>
+                    <small data-i18n="ui_4ba0cd97dc">Отдельное оформление не меняет карточки активных раундов. Итоги завершённых раундов всегда видны сверху, лунки раскрываются по нажатию.</small>
                 </label>
                 <div class="sev-apply">
-                    <button type="button" id="club-sc-apply" class="btn btn-g" data-act="pestovoSaveClubScorecardView"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
-                    <button type="button" id="club-sc-undo" class="btn btn-og" data-act="restoreClubScorecardView" disabled>Вернуть предыдущий</button>
+                    <button type="button" id="club-sc-apply" class="btn btn-g" data-act="pestovoSaveClubScorecardView"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> <span data-i18n="ui_4632084292">Применить для всех</span></button>
+                    <button type="button" id="club-sc-undo" class="btn btn-og" data-act="restoreClubScorecardView" disabled data-i18n="ui_abf5591727">Вернуть предыдущий</button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Оба вида сохраняются вместе. «Вернуть предыдущий» восстановит предыдущую пару настроек для всех игроков.</p>
+                        <p class="sev-apply-hint" data-i18n="ui_4e42078f83">Оба вида сохраняются вместе. «Вернуть предыдущий» восстановит предыдущую пару настроек для всех игроков.</p>
                         <p id="club-sc-save-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-                <div class="sev-sec-title">Предпросмотр для телефона</div>
-                <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
-                <fieldset class="sc-preview-controls"><legend>Демонстрационный раунд</legend>
-                    <label>Игроки<select id="club-sc-preview-players" class="form-input" data-act="renderClubScorecardPreview"><option value="1">1 игрок</option><option value="2">2 игрока</option><option value="4">4 игрока</option></select></label>
-                    <label>Лунки<select id="club-sc-preview-holes" class="form-input" data-act="renderClubScorecardPreview"><option value="18">18 лунок</option><option value="9">9 лунок</option></select></label>
-                    <label>Состояние<select id="club-sc-preview-status" class="form-input" data-act="renderClubScorecardPreview"><option value="active">Активный</option><option value="completed">Завершённый</option></select></label>
+                <div class="sev-sec-title" data-i18n="ui_bf858b74a1">Предпросмотр для телефона</div>
+                <p class="sev-sec-sub" data-i18n="ui_4ab35c6031">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
+                <fieldset class="sc-preview-controls"><legend data-i18n="ui_f31c927b94">Демонстрационный раунд</legend>
+                    <label><span data-i18n="nav_players">Игроки</span><select id="club-sc-preview-players" class="form-input" data-act="renderClubScorecardPreview"><option value="1" data-i18n="ui_6fe17b125b">1 игрок</option><option value="2" data-i18n="ui_6c8ca669b6">2 игрока</option><option value="4" data-i18n="ui_8d6dfcf06e">4 игрока</option></select></label>
+                    <label><span data-i18n="ui_a0e5860a63">Лунки</span><select id="club-sc-preview-holes" class="form-input" data-act="renderClubScorecardPreview"><option value="18" data-i18n="ui_306270531f">18 лунок</option><option value="9" data-i18n="ui_8ad6f5ac21">9 лунок</option></select></label>
+                    <label><span data-i18n="ui_ca285db3dd">Состояние</span><select id="club-sc-preview-status" class="form-input" data-act="renderClubScorecardPreview"><option value="active" data-i18n="ui_be6881d53f">Активный</option><option value="completed" data-i18n="ui_08611623e4">Завершённый</option></select></label>
                 </fieldset>
                 <p id="club-sc-preview-caption" class="sev-sec-sub" aria-live="polite"></p>
                 <div class="sev-device"><div id="club-sc-preview" class="club-sc-phone"></div></div>
@@ -208,12 +210,12 @@
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-id-card"></i></span>
                     <div class="sev-head-text">
-                        <h2>Карточки на вводе счёта</h2>
-                        <p>Счётные карточки на странице ввода результата (setup-round.html). Один игрок — «Счётная карточка по лункам», два и больше — «Общая карточка». Для каждой выберите вид, размер и элементы; для турнирного ввода можно задать свой вид.</p>
+                        <h2 data-i18n="ui_274b9850af">Карточки на вводе счёта</h2>
+                        <p data-i18n="ui_43f0c259b7">Счётные карточки на странице ввода результата (setup-round.html). Один игрок — «Счётная карточка по лункам», два и больше — «Общая карточка». Для каждой выберите вид, размер и элементы; для турнирного ввода можно задать свой вид.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
+                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> <span data-i18n="ui_07b10af87d">для всех</span></span>
                 </header>
-                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Эта вкладка меняет только экраны ввода счёта. Карточки на главной, в лидербордах и истории настраиваются во вкладке «Отображения счётных карточек».</div>
+                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> <span data-i18n="ui_b939086787">Эта вкладка меняет только экраны ввода счёта. Карточки на главной, в лидербордах и истории настраиваются во вкладке «Отображения счётных карточек».</span></div>
                 <div id="esc-admin-root"></div>
             </div>
         </div>
@@ -223,27 +225,27 @@
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-qrcode"></i></span>
                     <div class="sev-head-text">
-                        <h2>Турнирный ввод счёта</h2>
-                        <p>Гибко настройте элементы экрана, который открывается по QR-коду стартового листа. Эти параметры действуют для всех турниров и игроков; если турнирных переопределений нет, используются общие настройки ввода счёта.</p>
+                        <h2 data-i18n="ui_c5bfa629ee">Турнирный ввод счёта</h2>
+                        <p data-i18n="ui_ae1ebf647f">Гибко настройте элементы экрана, который открывается по QR-коду стартового листа. Эти параметры действуют для всех турниров и игроков; если турнирных переопределений нет, используются общие настройки ввода счёта.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
+                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> <span data-i18n="ui_07b10af87d">для всех</span></span>
                 </header>
-                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Ввод счёта и панель «Мой счёт» остаются включёнными. Для возврата к общим параметрам нажмите «Использовать настройки обычного раунда».</div>
-                <div class="sev-sec-title">Элементы турнирного экрана</div>
-                <p class="sev-sec-sub">Отмеченные элементы будут показаны на экранах ввода по турнирному QR.</p>
+                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> <span data-i18n="ui_e4404ae752">Ввод счёта и панель «Мой счёт» остаются включёнными. Для возврата к общим параметрам нажмите «Использовать настройки обычного раунда».</span></div>
+                <div class="sev-sec-title" data-i18n="ui_c1476781c7">Элементы турнирного экрана</div>
+                <p class="sev-sec-sub" data-i18n="ui_828ac5a2bb">Отмеченные элементы будут показаны на экранах ввода по турнирному QR.</p>
                 <div id="tn-score-display-elements" class="screen-display-grid"></div>
-                <div class="sev-sec-title">Порядок основных блоков</div>
-                <p class="sev-sec-sub">Меняйте последовательность информации, навигации по лункам и панели ввода.</p>
+                <div class="sev-sec-title" data-i18n="ui_54990f6075">Порядок основных блоков</div>
+                <p class="sev-sec-sub" data-i18n="ui_bd01c82261">Меняйте последовательность информации, навигации по лункам и панели ввода.</p>
                 <div id="tn-score-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" data-display-save="tournamentScoring" data-act="savePestovoDisplaySettings" data-arg="tournamentScoring"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех турниров</button>
-                    <button type="button" class="btn btn-ol" data-display-reset="tournamentScoring" data-act="resetPestovoDisplaySettings" data-arg="tournamentScoring"><i class="fas fa-rotate-left" aria-hidden="true"></i> Использовать настройки обычного раунда</button>
+                    <button type="button" class="btn btn-g" data-display-save="tournamentScoring" data-act="savePestovoDisplaySettings" data-arg="tournamentScoring"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> <span data-i18n="ui_38dd3df1fb">Применить для всех турниров</span></button>
+                    <button type="button" class="btn btn-ol" data-display-reset="tournamentScoring" data-act="resetPestovoDisplaySettings" data-arg="tournamentScoring"><i class="fas fa-rotate-left" aria-hidden="true"></i> <span data-i18n="ui_80e951569d">Использовать настройки обычного раунда</span></button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Турнирные настройки сохраняются отдельно и применяются сразу на всех устройствах.</p>
+                        <p class="sev-apply-hint" data-i18n="ui_39659830f3">Турнирные настройки сохраняются отдельно и применяются сразу на всех устройствах.</p>
                         <p id="tn-score-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-                <div class="sev-sec-title">Краткий предпросмотр</div>
+                <div class="sev-sec-title" data-i18n="ui_6dfeded55b">Краткий предпросмотр</div>
                 <div id="tn-score-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
         </div>
@@ -253,35 +255,35 @@
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-pen-to-square"></i></span>
                     <div class="sev-head-text">
-                        <h2>Экран ввода счёта — гибкие настройки</h2>
-                        <p>Один общий дизайн без сохранённых старых вариантов. Настройте видимость каждого элемента и порядок основных блоков; конфигурация применяется ко всем игрокам, обычным и групповым раундам.</p>
+                        <h2 data-i18n="ui_31d879f14c">Экран ввода счёта — гибкие настройки</h2>
+                        <p data-i18n="ui_36a643d966">Один общий дизайн без сохранённых старых вариантов. Настройте видимость каждого элемента и порядок основных блоков; конфигурация применяется ко всем игрокам, обычным и групповым раундам.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
+                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> <span data-i18n="ui_07b10af87d">для всех</span></span>
                 </header>
-                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Блок ввода и сохранения счёта, а также панель «Мой счёт» обязательны и не могут быть скрыты. Вкладка «Турнирный ввод счёта» задаёт отдельные переопределения для QR-раундов.</div>
-                <div class="sev-sec-title">Вид экрана ввода — 10 вариантов</div>
-                <p class="sev-sec-sub">Выберите компоновку: она действует для всех игроков — в одиночном и групповом раунде, на телефоне и на большом экране. Вид применяется сразу после сохранения.</p>
+                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> <span data-i18n="ui_37b74d9a02">Блок ввода и сохранения счёта, а также панель «Мой счёт» обязательны и не могут быть скрыты. Вкладка «Турнирный ввод счёта» задаёт отдельные переопределения для QR-раундов.</span></div>
+                <div class="sev-sec-title" data-i18n="ui_6a5e9bae78">Вид экрана ввода — 10 вариантов</div>
+                <p class="sev-sec-sub" data-i18n="ui_fd846f05e5">Выберите компоновку: она действует для всех игроков — в одиночном и групповом раунде, на телефоне и на большом экране. Вид применяется сразу после сохранения.</p>
                 <div id="score-entry-display-layouts" class="score-layout-grid"></div>
-                <div class="sev-sec-title">Акцент</div>
-                <p class="sev-sec-sub">Цвет активной лунки, рамки счёта, кнопки «+» и кнопки подтверждения. Работает с любым видом.</p>
+                <div class="sev-sec-title" data-i18n="ui_2c1fc844a6">Акцент</div>
+                <p class="sev-sec-sub" data-i18n="ui_c06456492c">Цвет активной лунки, рамки счёта, кнопки «+» и кнопки подтверждения. Работает с любым видом.</p>
                 <div id="score-entry-display-accent" class="score-accent-row"></div>
-                <div class="sev-sec-title">Размер цифр счёта</div>
-                <p class="sev-sec-sub">Насколько крупно показывать введённый счёт. «Очень крупный» удобен на ярком солнце.</p>
+                <div class="sev-sec-title" data-i18n="ui_79e251f781">Размер цифр счёта</div>
+                <p class="sev-sec-sub" data-i18n="ui_25f2120510">Насколько крупно показывать введённый счёт. «Очень крупный» удобен на ярком солнце.</p>
                 <div id="score-entry-display-size" class="score-size-row"></div>
-                <div class="sev-sec-title">Элементы экрана ввода</div>
+                <div class="sev-sec-title" data-i18n="ui_01059180ff">Элементы экрана ввода</div>
                 <div id="score-entry-display-elements" class="screen-display-grid"></div>
-                <div class="sev-sec-title">Порядок основных блоков</div>
-                <p class="sev-sec-sub">Порядок сверху вниз. Кнопки перемещения доступны для нажатия на телефоне.</p>
+                <div class="sev-sec-title" data-i18n="ui_54990f6075">Порядок основных блоков</div>
+                <p class="sev-sec-sub" data-i18n="ui_0af9ddb0c8">Порядок сверху вниз. Кнопки перемещения доступны для нажатия на телефоне.</p>
                 <div id="score-entry-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" data-display-save="scoring" data-act="savePestovoDisplaySettings" data-arg="scoring"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех игроков</button>
-                    <button type="button" class="btn btn-ol" data-display-reset="scoring" data-act="resetPestovoDisplaySettings" data-arg="scoring"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к настройкам по умолчанию</button>
+                    <button type="button" class="btn btn-g" data-display-save="scoring" data-act="savePestovoDisplaySettings" data-arg="scoring"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> <span data-i18n="ui_ad357c2171">Применить для всех игроков</span></button>
+                    <button type="button" class="btn btn-ol" data-display-reset="scoring" data-act="resetPestovoDisplaySettings" data-arg="scoring"><i class="fas fa-rotate-left" aria-hidden="true"></i> <span data-i18n="ui_f904239d48">Сбросить к настройкам по умолчанию</span></button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Изменения сохраняются глобально. Уже открытые экраны обновятся автоматически.</p>
+                        <p class="sev-apply-hint" data-i18n="ui_a832c196d4">Изменения сохраняются глобально. Уже открытые экраны обновятся автоматически.</p>
                         <p id="score-entry-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-                <div class="sev-sec-title">Краткий предпросмотр</div>
+                <div class="sev-sec-title" data-i18n="ui_6dfeded55b">Краткий предпросмотр</div>
                 <div id="score-entry-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
         </div>
@@ -300,8 +302,8 @@
                 <p class="date-filter-hint hidden" id="adm-date-hint" role="alert"></p>
                 <div class="rounds-summary" id="adm-rounds-summary"></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admRoundsExpandAll" data-arg2="true"><i class="fas fa-angles-down"></i> Развернуть все</button>
-                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admRoundsExpandAll" data-arg2="false"><i class="fas fa-angles-up"></i> Свернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admRoundsExpandAll" data-arg2="true"><i class="fas fa-angles-down"></i> <span data-i18n="expand_all_rounds">Развернуть все</span></button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admRoundsExpandAll" data-arg2="false"><i class="fas fa-angles-up"></i> <span data-i18n="collapse_all_rounds">Свернуть все</span></button>
                 </div>
                 <div id="adm-rounds"></div>
             </div>
@@ -315,7 +317,7 @@
                 <div class="se-editor-toolbar">
                     <div class="form-group" style="flex:1 1 220px;">
                         <label data-i18n="scores_search_fio" for="se-q-fio">Поиск по ФИО игрока</label>
-                        <input type="text" id="se-q-fio" class="form-input" placeholder="Иванов Пётр" data-act="seRender">
+                        <input type="text" id="se-q-fio" class="form-input" placeholder="Иванов Пётр" data-act="seRender" data-i18n-placeholder="ui_bcef39ebdf">
                     </div>
                     <div class="form-group" style="flex:0 1 150px;">
                         <label data-i18n="scores_search_date" for="se-q-date">Дата раунда</label>
@@ -324,39 +326,39 @@
                     <div class="form-group" style="flex:0 1 170px;">
                         <label data-i18n="scores_search_status" for="se-q-status">Статус раунда</label>
                         <select id="se-q-status" class="form-input" data-act="seRender">
-                            <option value="">— все —</option>
-                            <option value="active">🔴 Активный</option>
-                            <option value="scheduled">⏳ Запланированный</option>
-                            <option value="completed">✅ Завершённый</option>
+                            <option value="" data-i18n="ui_a5a61148ad">— все —</option>
+                            <option value="active" data-i18n="ui_2e25784bee">🔴 Активный</option>
+                            <option value="scheduled" data-i18n="ui_f38626436a">⏳ Запланированный</option>
+                            <option value="completed" data-i18n="ui_9d95526c14">✅ Завершённый</option>
                         </select>
                     </div>
                     <div class="form-group" style="flex:0 0 auto;">
                         <label>&nbsp;</label>
-                        <button class="btn btn-og btn-sm" data-act="seRender"><i class="fas fa-rotate"></i> Обновить</button>
+                        <button class="btn btn-og btn-sm" data-act="seRender"><i class="fas fa-rotate"></i> <span data-i18n="refresh_btn">Обновить</span></button>
                     </div>
                 </div>
-                <div id="se-list"><p style="color:var(--muted);text-align:center;padding:20px;">Загрузка раундов…</p></div>
+                <div id="se-list"><p style="color:var(--muted);text-align:center;padding:20px;" data-i18n="ui_0d60c3c52a">Загрузка раундов…</p></div>
             </div>
         </div>
 
         <div id="tab-scoreaudit" class="admin-section hidden">
             <div class="card">
-                <h2><i class="fas fa-clock-rotate-left"></i> Журнал действий со счётом</h2>
-                <p style="color:var(--muted);font-size:13px;">Сохранённые сервером действия за последние 30 дней. QR-доступ без входа отмечается отдельно: личность оператора не подтверждена. Время показано в часовом поясе устройства.</p>
+                <h2><i class="fas fa-clock-rotate-left"></i> <span data-i18n="ui_89bd355ac1">Журнал действий со счётом</span></h2>
+                <p style="color:var(--muted);font-size:13px;" data-i18n="ui_914b6f179a">Сохранённые сервером действия за последние 30 дней. QR-доступ без входа отмечается отдельно: личность оператора не подтверждена. Время показано в часовом поясе устройства.</p>
                 <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-                    <label class="form-group" style="flex:1;min-width:190px;">ФИО или ID игрока<input id="sa-search" class="form-input" type="search" placeholder="Фамилия Имя" data-act="saFilter"></label>
-                    <label class="form-group">Дата подтверждения<input id="sa-date" class="form-input" type="date" data-act="saLoad"></label>
-                    <button type="button" class="btn btn-og btn-sm" data-act="pestovoClearValue" data-arg="sa-date" data-then="saLoad">Все 30 дней</button>
-                    <button type="button" class="btn btn-ol btn-sm" data-act="saRefresh">Обновить</button>
+                    <label class="form-group" style="flex:1;min-width:190px;"><span data-i18n="ui_9cb2510ad8">ФИО или ID игрока</span><input id="sa-search" class="form-input" type="search" placeholder="Фамилия Имя" data-act="saFilter" data-i18n-placeholder="ui_798ff83284"></label>
+                    <label class="form-group"><span data-i18n="ui_1ba816fbaa">Дата подтверждения</span><input id="sa-date" class="form-input" type="date" data-act="saLoad"></label>
+                    <button type="button" class="btn btn-og btn-sm" data-act="pestovoClearValue" data-arg="sa-date" data-then="saLoad" data-i18n="ui_d9132c1651">Все 30 дней</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="saRefresh" data-i18n="refresh_btn">Обновить</button>
                 </div>
                 <div id="sa-results" aria-live="polite"></div>
             </div>
             <div class="card">
-                <h2><i class="fas fa-triangle-exclamation"></i> Ошибки клиентов</h2>
-                <p style="color:var(--muted);font-size:13px;">Сбои, которые приложение само отправило с устройств игроков (<code>reportError()</code> → узел <code>errorReports</code>). Не более 20 сообщений за сессию и 3 повтора одной ошибки с устройства — список группируется по тексту. Требует правил БД с узлом <code>errorReports</code>.</p>
+                <h2><i class="fas fa-triangle-exclamation"></i> <span data-i18n="ui_c2ddbf6168">Ошибки клиентов</span></h2>
+                <p style="color:var(--muted);font-size:13px;"><span data-i18n="ui_f8c420259d">Сбои, которые приложение само отправило с устройств игроков (</span><code>reportError()</code> <span data-i18n="ui_2b31c31735">→ узел</span> <code>errorReports</code><span data-i18n="ui_6b762724a8">). Не более 20 сообщений за сессию и 3 повтора одной ошибки с устройства — список группируется по тексту. Требует правил БД с узлом</span> <code>errorReports</code>.</p>
                 <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-ol btn-sm" data-act="erLoad">Обновить</button>
-                    <button type="button" class="btn btn-danger btn-sm" data-act="erClear">Очистить</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="erLoad" data-i18n="refresh_btn">Обновить</button>
+                    <button type="button" class="btn btn-danger btn-sm" data-act="erClear" data-i18n="ui_8965271d3c">Очистить</button>
                 </div>
                 <div id="er-results" aria-live="polite"></div>
             </div>
@@ -364,11 +366,11 @@
 
         <div id="tab-hcplog" class="admin-section hidden">
             <div class="card">
-                <h2><i class="fas fa-chart-line"></i> Журнал гандикапов</h2>
-                <p style="color:var(--muted);font-size:13px;">Кто и когда обновил гандикап игрока: из RUSGOLF при создании раунда (ФИО, которое ввёл создатель), вручную в админке, синхронизация АГР и импорт Excel. Видно старое и новое значение.</p>
+                <h2><i class="fas fa-chart-line"></i> <span data-i18n="ui_2913d18a6c">Журнал гандикапов</span></h2>
+                <p style="color:var(--muted);font-size:13px;" data-i18n="ui_e7ab4c0825">Кто и когда обновил гандикап игрока: из RUSGOLF при создании раунда (ФИО, которое ввёл создатель), вручную в админке, синхронизация АГР и импорт Excel. Видно старое и новое значение.</p>
                 <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-                    <label class="form-group" style="flex:1;min-width:190px;">Игрок или кто обновил<input id="hcp-log-search" class="form-input" type="search" placeholder="Фамилия Имя" data-act="hcpLogFilter"></label>
-                    <button type="button" class="btn btn-ol btn-sm" data-act="hcpLogLoad"><i class="fas fa-rotate"></i> Обновить</button>
+                    <label class="form-group" style="flex:1;min-width:190px;"><span data-i18n="ui_7deb244ce4">Игрок или кто обновил</span><input id="hcp-log-search" class="form-input" type="search" placeholder="Фамилия Имя" data-act="hcpLogFilter" data-i18n-placeholder="ui_798ff83284"></label>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="hcpLogLoad"><i class="fas fa-rotate"></i> <span data-i18n="refresh_btn">Обновить</span></button>
                 </div>
                 <div id="hcp-log-results" aria-live="polite"></div>
             </div>
@@ -380,15 +382,15 @@
                 <p style="color:var(--muted);font-size:13px;margin-bottom:12px;" data-i18n="admin_groups_sub">Контроль темпа игры по активным групповым раундам</p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
                     <div class="form-group" style="flex:1;min-width:170px;max-width:260px;margin:0;">
-                        <label style="font-size:11px;" for="adm-groups-sort">Сортировка</label>
+                        <label style="font-size:11px;" for="adm-groups-sort" data-i18n="ui_66d6d374ce">Сортировка</label>
                         <select id="adm-groups-sort" class="form-input" style="padding:7px 10px;font-size:12.5px;" data-act="admGroupsSort">
-                            <option value="delay" selected>Сначала отстающие</option>
-                            <option value="start">По времени старта</option>
-                            <option value="hole">По текущей лунке</option>
+                            <option value="delay" selected data-i18n="ui_78df4874e9">Сначала отстающие</option>
+                            <option value="start" data-i18n="ui_98e7d488b3">По времени старта</option>
+                            <option value="hole" data-i18n="ui_89a28116ec">По текущей лунке</option>
                         </select>
                     </div>
-                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admGroupsExpandAll" data-arg2="true"><i class="fas fa-angles-down"></i> Развернуть все</button>
-                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admGroupsExpandAll" data-arg2="false"><i class="fas fa-angles-up"></i> Свернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admGroupsExpandAll" data-arg2="true"><i class="fas fa-angles-down"></i> <span data-i18n="expand_all_rounds">Развернуть все</span></button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admGroupsExpandAll" data-arg2="false"><i class="fas fa-angles-up"></i> <span data-i18n="collapse_all_rounds">Свернуть все</span></button>
                 </div>
                 <div id="adm-groups"></div>
             </div>
@@ -496,14 +498,14 @@
 
                 <!-- Инструкция -->
                 <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.7;">
-                    <b style="color:var(--gold);display:block;margin-bottom:6px;"><i class="fas fa-circle-info"></i> Как получить токен сообщества</b>
+                    <b style="color:var(--gold);display:block;margin-bottom:6px;"><i class="fas fa-circle-info"></i> <span data-i18n="ui_0429aea676">Как получить токен сообщества</span></b>
                     <ol style="margin:0;padding-left:18px;">
-                        <li>Войдите в <b>Управление сообществом</b> → <b>Работа с API</b> → <b>Ключи доступа</b></li>
-                        <li>Нажмите <b>«Создать ключ»</b>, выберите права: <b>Сообщения</b> ✅</li>
-                        <li>Скопируйте полученный ключ (<code>vk1.a.…</code>) в поле ниже</li>
-                        <li><b>Peer ID беседы</b>: откройте беседу ВК → ссылка вида <code>vk.com/im?sel=c<b>1</b></code> → Peer ID = <code>2000000001</code> (c + 2000000000)</li>
-                        <li><b>Peer ID пользователя</b>: числовой ID из профиля ВКонтакте</li>
-                        <li>Добавьте сообщество в беседу и <b>разрешите боту писать</b> в настройках беседы</li>
+                        <li><span data-i18n="ui_c30c05cc7d">Войдите в</span> <b data-i18n="ui_9eaa725bc8">Управление сообществом</b> → <b data-i18n="ui_9ff04885fb">Работа с API</b> → <b data-i18n="ui_58207ae860">Ключи доступа</b></li>
+                        <li><span data-i18n="ui_fad2f82e70">Нажмите</span> <b data-i18n="ui_45cc94ebe8">«Создать ключ»</b><span data-i18n="ui_df82e5bc7c">, выберите права:</span> <b data-i18n="ui_b28d2cd212">Сообщения</b> ✅</li>
+                        <li><span data-i18n="ui_c9b591fe97">Скопируйте полученный ключ (</span><code>vk1.a.…</code><span data-i18n="ui_57a22a6638">) в поле ниже</span></li>
+                        <li><b data-i18n="ui_9123450c26">Peer ID беседы</b><span data-i18n="ui_8457bff7f2">: откройте беседу ВК → ссылка вида</span> <code>vk.com/im?sel=c<b>1</b></code> → Peer ID = <code>2000000001</code> (c + 2000000000)</li>
+                        <li><b data-i18n="ui_85da1e3647">Peer ID пользователя</b><span data-i18n="ui_12fcfb70ef">: числовой ID из профиля ВКонтакте</span></li>
+                        <li><span data-i18n="ui_e695053fe0">Добавьте сообщество в беседу и</span> <b data-i18n="ui_0dd6b37fa5">разрешите боту писать</b> <span data-i18n="ui_56e22910e6">в настройках беседы</span></li>
                     </ol>
                 </div>
 
@@ -515,7 +517,7 @@
                     <div class="form-group">
                         <label for="vk-peer-id"><i class="fas fa-comments"></i> VK Peer ID / Chat ID</label>
                         <input type="number" id="vk-peer-id" class="form-input" data-i18n-placeholder="placeholder_vk_peer_id" placeholder="2000000001 (беседа) или 123456789">
-                        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Для беседы: 2000000000 + номер чата. Для личных сообщений: ID пользователя.</div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:4px;" data-i18n="ui_4bdac71815">Для беседы: 2000000000 + номер чата. Для личных сообщений: ID пользователя.</div>
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
@@ -575,25 +577,25 @@
                     </div>
                 </div>
                 <p style="font-size:12px;color:var(--muted);margin:0 0 10px;" data-i18n="bc_aud_hint">Адресный анонс увидят только адресаты: страница игрока проверяет, есть ли он в списке получателей, и лишнего не показывает.</p>
-                <div id="bc-aud-count" class="hcp-chip" style="display:inline-block;font-size:12px;margin-bottom:12px;color:var(--muted);">Получателей: все игроки клуба</div>
+                <div id="bc-aud-count" class="hcp-chip" style="display:inline-block;font-size:12px;margin-bottom:12px;color:var(--muted);" data-i18n="ui_fade085486">Получателей: все игроки клуба</div>
                 <button class="btn btn-g" data-act="sendClubBroadcast"><i class="fas fa-paper-plane"></i> <span data-i18n="send_broadcast_btn">Отправить анонс всем игрокам</span></button>
             </div>
 
             <div class="card">
-                <h2><i class="fas fa-bell"></i> Фоновые пуши (при закрытом приложении)</h2>
+                <h2><i class="fas fa-bell"></i> <span data-i18n="ui_aa8da22e16">Фоновые пуши (при закрытом приложении)</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">
-                    Анонсы и вызовы судьи доставляются, даже когда PWA закрыта. Требуется
-                    одноразовое развёртывание Cloud Function (см. <code>functions/</code> и
+                    <span data-i18n="ui_c6ba963938">Анонсы и вызовы судьи доставляются, даже когда PWA закрыта. Требуется
+                    одноразовое развёртывание Cloud Function (см.</span> <code>functions/</code> <span data-i18n="ui_eead37caf8">и</span>
                     <code>docs/push-notifications.md</code>).
                 </p>
-                <div id="push-status" style="font-size:13px;margin-bottom:10px;">Проверка…</div>
+                <div id="push-status" style="font-size:13px;margin-bottom:10px;" data-i18n="ui_638f8008a1">Проверка…</div>
                 <div class="form-group">
-                    <label for="push-fn-url">URL функции vapidSetup (если регион не us-central1)</label>
+                    <label for="push-fn-url" data-i18n="ui_f0f83935aa">URL функции vapidSetup (если регион не us-central1)</label>
                     <input type="text" id="push-fn-url" class="form-input" placeholder="https://us-central1-livescore-b77e4.cloudfunctions.net/vapidSetup">
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-g" data-act="pushAdminInit"><i class="fas fa-key"></i> Создать/проверить VAPID-ключи</button>
-                    <button class="btn btn-ol" data-act="pushAdminRefreshStatus"><i class="fas fa-rotate"></i> Обновить статус</button>
+                    <button class="btn btn-g" data-act="pushAdminInit"><i class="fas fa-key"></i> <span data-i18n="ui_dca5579aa0">Создать/проверить VAPID-ключи</span></button>
+                    <button class="btn btn-ol" data-act="pushAdminRefreshStatus"><i class="fas fa-rotate"></i> <span data-i18n="ui_83553fb558">Обновить статус</span></button>
                 </div>
             </div>
 
@@ -607,31 +609,31 @@
         <!-- Глобальная настройка страницы турниров: новый набор компоновок и элементов. -->
         <div id="tab-tournamentsview" class="admin-section hidden">
             <div class="card" id="tournaments-display-settings">
-                <h2><i class="fas fa-trophy"></i> Турниры — гибкая настройка страницы</h2>
-                <p class="display-config-note"><i class="fas fa-globe" aria-hidden="true"></i> Компоновка, порядок и видимость элементов сохраняются для всех пользователей. Старые числовые варианты удалены; по умолчанию используются адаптивные карточки.</p>
+                <h2><i class="fas fa-trophy"></i> <span data-i18n="ui_821c616097">Турниры — гибкая настройка страницы</span></h2>
+                <p class="display-config-note"><i class="fas fa-globe" aria-hidden="true"></i> <span data-i18n="ui_3954e489e4">Компоновка, порядок и видимость элементов сохраняются для всех пользователей. Старые числовые варианты удалены; по умолчанию используются адаптивные карточки.</span></p>
                 <div class="form-group display-layout-field">
-                    <label for="tournaments-display-layout">Компоновка страницы</label>
+                    <label for="tournaments-display-layout" data-i18n="ui_c432469e67">Компоновка страницы</label>
                     <select id="tournaments-display-layout" class="form-input" data-act="setPestovoDisplayDraftLayout">
-                        <option value="cards">Карточки клуба — по умолчанию</option>
-                        <option value="timeline">Лента стартов</option>
-                        <option value="compact">Компактный обзор</option>
+                        <option value="cards" data-i18n="ui_1fb247e9b6">Карточки клуба — по умолчанию</option>
+                        <option value="timeline" data-i18n="ui_c038d4521f">Лента стартов</option>
+                        <option value="compact" data-i18n="ui_5abae0a639">Компактный обзор</option>
                     </select>
                 </div>
-                <div class="sev-sec-title">Видимые элементы</div>
+                <div class="sev-sec-title" data-i18n="ui_60759e83ad">Видимые элементы</div>
                 <div id="tournaments-display-elements" class="screen-display-grid"></div>
-                <div class="sev-sec-title">Порядок разделов каталога</div>
-                <p class="sev-sec-sub">Меняйте расположение активного турнира, предстоящих стартов и архива.</p>
+                <div class="sev-sec-title" data-i18n="ui_7b51a77806">Порядок разделов каталога</div>
+                <p class="sev-sec-sub" data-i18n="ui_18f791f55a">Меняйте расположение активного турнира, предстоящих стартов и архива.</p>
                 <div id="tournaments-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" data-display-save="tournaments" data-act="savePestovoDisplaySettings" data-arg="tournaments"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить страницу для всех</button>
-                    <button type="button" class="btn btn-ol" data-display-reset="tournaments" data-act="resetPestovoDisplaySettings" data-arg="tournaments"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к умолчанию</button>
+                    <button type="button" class="btn btn-g" data-display-save="tournaments" data-act="savePestovoDisplaySettings" data-arg="tournaments"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> <span data-i18n="ui_cba24a2554">Применить страницу для всех</span></button>
+                    <button type="button" class="btn btn-ol" data-display-reset="tournaments" data-act="resetPestovoDisplaySettings" data-arg="tournaments"><i class="fas fa-rotate-left" aria-hidden="true"></i> <span data-i18n="ui_8f2cb9764e">Сбросить к умолчанию</span></button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Сохранённые настройки применяются к каталогу и подробной странице турнира.</p>
+                        <p class="sev-apply-hint" data-i18n="ui_979c1e906b">Сохранённые настройки применяются к каталогу и подробной странице турнира.</p>
                         <p id="tournaments-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-                <button type="button" class="btn btn-ol" data-act="openTournamentsPagePreview" style="margin-top:14px;min-height:44px;"><i class="fas fa-arrow-up-right-from-square"></i> Открыть страницу турниров</button>
-                <div class="sev-sec-title">Краткий предпросмотр</div>
+                <button type="button" class="btn btn-ol" data-act="openTournamentsPagePreview" style="margin-top:14px;min-height:44px;"><i class="fas fa-arrow-up-right-from-square"></i> <span data-i18n="ui_163a76ac41">Открыть страницу турниров</span></button>
+                <div class="sev-sec-title" data-i18n="ui_6dfeded55b">Краткий предпросмотр</div>
                 <div id="tournaments-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
         </div>
@@ -671,46 +673,46 @@
 
             <!-- CREATE NEW PLAYER CARD -->
             <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-user-plus"></i> <span>Создать игрока</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                <h2><i class="fas fa-user-plus"></i> <span data-i18n="ui_9ce56ee20f">Создать игрока</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="ui_b2a1629832">
                     Добавьте нового игрока в систему клуба (имя, точный HCP и пол). ТИ игрока определяется его группой в стартовом протоколе.
                 </p>
                 <div class="form-row">
                     <div class="form-group" style="flex:1.4 1 140px;">
-                        <label for="adm-new-name">Имя и фамилия</label>
-                        <input type="text" autocomplete="name" id="adm-new-name" class="form-input" placeholder="например: Иван Тестов">
+                        <label for="adm-new-name" data-i18n="ui_50c46937d9">Имя и фамилия</label>
+                        <input type="text" autocomplete="name" id="adm-new-name" class="form-input" placeholder="например: Иван Тестов" data-i18n-placeholder="ui_9626d7ac8c">
                     </div>
                     <div class="form-group" style="flex:1 1 100px;">
-                        <label for="adm-new-email">Email (опционально)</label>
+                        <label for="adm-new-email" data-i18n="ui_3019fcbf07">Email (опционально)</label>
                         <input type="email" autocomplete="email" id="adm-new-email" class="form-input" placeholder="player@pestovo.ru">
                     </div>
                 </div>
                 <div class="form-row form-row-3">
                     <div class="form-group">
-                        <label for="adm-new-hcp">Точный HCP</label>
-                        <input type="text" inputmode="decimal" id="adm-new-hcp" class="form-input" placeholder="13.0 или +2.4">
+                        <label for="adm-new-hcp" data-i18n="ui_56b3cd42a3">Точный HCP</label>
+                        <input type="text" inputmode="decimal" id="adm-new-hcp" class="form-input" placeholder="13.0 или +2.4" data-i18n-placeholder="ui_c5c1c59988">
                     </div>
                     <div class="form-group">
-                        <label for="adm-new-gender">Пол</label>
+                        <label for="adm-new-gender" data-i18n="gender_label">Пол</label>
                         <select id="adm-new-gender" class="form-input">
-                            <option value="men">👨 Мужчина</option>
-                            <option value="women">👩 Девушка</option>
+                            <option value="men" data-i18n="ui_3ae687a699">👨 Мужчина</option>
+                            <option value="women" data-i18n="ui_b1759eaca5">👩 Девушка</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group" style="flex:1 1 120px;">
-                        <label for="adm-new-role">Роль</label>
+                        <label for="adm-new-role" data-i18n="ui_ebd4563f5a">Роль</label>
                         <select id="adm-new-role" class="form-input">
-                            <option value="player">Игрок</option>
-                            <option value="referee">Судья</option>
-                            <option value="marshal">Маршал</option>
-                            <option value="admin">Администратор</option>
+                            <option value="player" data-i18n="role_player">Игрок</option>
+                            <option value="referee" data-i18n="role_referee">Судья</option>
+                            <option value="marshal" data-i18n="role_marshal">Маршал</option>
+                            <option value="admin" data-i18n="ui_6c7719973e">Администратор</option>
                         </select>
                     </div>
                 </div>
                 <button type="button" class="btn btn-g btn-block" data-act="createPlayerInAdmin" style="margin-top:8px;">
-                    <i class="fas fa-plus-circle"></i> <span>Создать игрока</span>
+                    <i class="fas fa-plus-circle"></i> <span data-i18n="ui_9ce56ee20f">Создать игрока</span>
                 </button>
             </div>
 
@@ -721,15 +723,15 @@
                 </p>
                 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:rgba(224,90,74,0.08);border:1px solid rgba(224,90,74,0.35);border-radius:12px;">
                     <p style="color:var(--muted);font-size:12px;margin:0;flex:1;min-width:220px;">
-                        <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).
+                        <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> <span data-i18n="ui_e15533e8fb">Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).</span>
                     </p>
                     <button type="button" class="btn btn-r imp-big-btn" data-act="clearAllData">
-                        <i class="fas fa-user-minus"></i> <span>Удалить всех игроков</span>
+                        <i class="fas fa-user-minus"></i> <span data-i18n="ui_8eeba5c915">Удалить всех игроков</span>
                     </button>
                 </div>
                 <div style="position:relative;margin-bottom:12px;">
                     <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;"></i>
-                    <input type="text" id="adm-players-search" class="form-input" style="padding-left:34px;" placeholder="🔍 Поиск: имя, email, телефон… / Search…" data-act="admPlayersSearch">
+                    <input type="text" id="adm-players-search" class="form-input" style="padding-left:34px;" placeholder="🔍 Поиск: имя, email, телефон… / Search…" data-act="admPlayersSearch" data-i18n-placeholder="ui_9dc027291b">
                 </div>
                 <div id="adm-players"></div>
             </div>
@@ -744,26 +746,26 @@
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-g imp-big-btn" data-act="exportPlayersExcel">
-                        <i class="fas fa-download"></i> <span>Экспорт игроков в Excel</span>
+                        <i class="fas fa-download"></i> <span data-i18n="ui_ff1489805d">Экспорт игроков в Excel</span>
                     </button>
                     <button type="button" class="btn btn-og imp-big-btn" data-act="downloadPlayersTemplate">
-                        <i class="fas fa-file-arrow-down"></i> <span>Скачать шаблон таблицы</span>
+                        <i class="fas fa-file-arrow-down"></i> <span data-i18n="ui_5b297215a0">Скачать шаблон таблицы</span>
                     </button>
                 </div>
                 <p style="color:var(--muted);font-size:12px;margin-top:12px;">
-                    📋 Столбцы таблицы: <b style="color:var(--gold);">Имя</b> · <b style="color:var(--gold);">Фамилия</b> · <b style="color:var(--gold);">Точный гандикап</b> (например <b>13.0</b> или <b>+2.4</b>). Опционально можно добавить столбец <b>Пол</b> (муж/жен).
+                    <span data-i18n="ui_1eb1a40bf2">📋 Столбцы таблицы:</span> <b style="color:var(--gold);" data-i18n="ui_1da7e9372e">Имя</b> · <b style="color:var(--gold);" data-i18n="ui_353eafa3bb">Фамилия</b> · <b style="color:var(--gold);" data-i18n="ui_d45e798e71">Точный гандикап</b> <span data-i18n="ui_4273fc6f1a">(например</span> <b>13.0</b> <span data-i18n="ui_bcacbff7a5">или</span> <b>+2.4</b><span data-i18n="ui_342a931cc4">). Опционально можно добавить столбец</span> <b data-i18n="gender_label">Пол</b> <span data-i18n="ui_c79219bb6a">(муж/жен).</span>
                 </p>
             </div>
 
             <!-- ИМПОРТ ИГРОКОВ ИЗ EXCEL -->
             <div class="card">
-                <h2><i class="fas fa-file-import"></i> <span>Импорт игроков из Excel</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                <h2><i class="fas fa-file-import"></i> <span data-i18n="ui_d06ce0270e">Импорт игроков из Excel</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="ui_afcac97610">
                     Загрузите файл .xlsx / .xls / .csv — игроки появятся в списке игроков сайта. Дубликаты определяются по имени и фамилии: для них можно обновить точный гандикап.
                 </p>
                 <label class="imp-file-label" for="imp-file-input">
                     <i class="fas fa-cloud-arrow-up"></i>
-                    <span><b>Выберите файл Excel</b><br><small style="color:var(--muted);">.xlsx, .xls или .csv · столбцы: Имя, Фамилия, Точный гандикап</small></span>
+                    <span><b data-i18n="ui_095183c100">Выберите файл Excel</b><br><small style="color:var(--muted);" data-i18n="ui_b3a2803940">.xlsx, .xls или .csv · столбцы: Имя, Фамилия, Точный гандикап</small></span>
                     <input type="file" id="imp-file-input" accept=".xlsx,.xls,.csv" style="display:none;" data-act="handlePlayersFileSelect" data-self="1">
                 </label>
                 <div id="imp-status"></div>
@@ -780,8 +782,8 @@
                 </p>
                 <form id="rg-search-form" data-sub-act="rgDoSearch" data-sub-ev="1" data-prevent="1">
                     <div class="rg-search-row">
-                        <input type="search" id="rg-search-input" class="form-input" placeholder="Например: Тестов Иван или RU000732" autocomplete="off">
-                        <button type="submit" class="btn btn-g rg-search-btn" id="rg-search-btn"><i class="fas fa-magnifying-glass"></i> <span>Найти</span></button>
+                        <input type="search" id="rg-search-input" class="form-input" placeholder="Например: Тестов Иван или RU000732" autocomplete="off" data-i18n-placeholder="ui_d8abc3263c">
+                        <button type="submit" class="btn btn-g rg-search-btn" id="rg-search-btn"><i class="fas fa-magnifying-glass"></i> <span data-i18n="ui_be6156b8e4">Найти</span></button>
                     </div>
                 </form>
                 <div id="rg-status"></div>
@@ -790,19 +792,19 @@
 
             <!-- МАССОВАЯ ПРОВЕРКА ГАНДИКАПА ИЗ EXCEL -->
             <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-file-excel"></i> <span>Проверка гандикапа из таблицы Excel</span></h2>
+                <h2><i class="fas fa-file-excel"></i> <span data-i18n="ui_826b2ede80">Проверка гандикапа из таблицы Excel</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
-                    Загрузите таблицу Excel со списком игроков (столбцы <b style="color:var(--gold);">Имя</b> и <b style="color:var(--gold);">Фамилия</b>).
-                    Система найдёт каждого в базе АГР России и покажет список найденных результатов — отметьте нужных и добавьте их на сайт одним кликом.
+                    <span data-i18n="ui_545f879d01">Загрузите таблицу Excel со списком игроков (столбцы</span> <b style="color:var(--gold);" data-i18n="ui_1da7e9372e">Имя</b> <span data-i18n="ui_eead37caf8">и</span> <b style="color:var(--gold);" data-i18n="ui_353eafa3bb">Фамилия</b><span data-i18n="ui_546a52b7e1">).
+                    Система найдёт каждого в базе АГР России и покажет список найденных результатов — отметьте нужных и добавьте их на сайт одним кликом.</span>
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
                     <label class="imp-file-label" for="rg-batch-file-input" style="margin:0;flex:1 1 280px;">
                         <i class="fas fa-cloud-arrow-up"></i>
-                        <span><b>Выберите файл Excel</b><br><small style="color:var(--muted);">.xlsx, .xls или .csv · столбцы: Имя, Фамилия</small></span>
+                        <span><b data-i18n="ui_095183c100">Выберите файл Excel</b><br><small style="color:var(--muted);" data-i18n="ui_20212f11a2">.xlsx, .xls или .csv · столбцы: Имя, Фамилия</small></span>
                         <input type="file" id="rg-batch-file-input" accept=".xlsx,.xls,.csv" style="display:none;" data-act="rgBatchHandleFile" data-self="1">
                     </label>
                     <button type="button" class="btn btn-og imp-big-btn" data-act="rgBatchDownloadTemplate">
-                        <i class="fas fa-file-arrow-down"></i> <span>Скачать шаблон</span>
+                        <i class="fas fa-file-arrow-down"></i> <span data-i18n="ui_63885170ec">Скачать шаблон</span>
                     </button>
                 </div>
                 <div id="rg-batch-status"></div>
@@ -811,61 +813,61 @@
 
             <!-- ФОРМЫ ИМЁН -->
             <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-spell-check"></i> <span>Формы имён — «Наташа» = «Наталья»</span></h2>
+                <h2><i class="fas fa-spell-check"></i> <span data-i18n="ui_d92610877f">Формы имён — «Наташа» = «Наталья»</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
-                    На сайте игрок может быть записан коротким или иным вариантом имени
-                    (<b style="color:var(--gold);">Наташа</b>, <b style="color:var(--gold);">Наталия</b>,
-                    <b style="color:var(--gold);">Natalia</b>), а в базе АГР — полным. Выберите, как сопоставлять имена
-                    при поиске и синхронизации гандикапов. Словарь форм: <code style="color:var(--gold);">js/name-variants.js</code>.
+                    <span data-i18n="ui_4934470186">На сайте игрок может быть записан коротким или иным вариантом имени
+                    (</span><b style="color:var(--gold);" data-i18n="ui_97031dc24d">Наташа</b>, <b style="color:var(--gold);" data-i18n="ui_842b195e2f">Наталия</b>,
+                    <b style="color:var(--gold);">Natalia</b><span data-i18n="ui_16a747fbb9">), а в базе АГР — полным. Выберите, как сопоставлять имена
+                    при поиске и синхронизации гандикапов. Словарь форм:</span> <code style="color:var(--gold);">js/name-variants.js</code>.
                 </p>
                 <div id="nm-mode-list" style="margin-bottom:10px;"></div>
                 <label class="list-item" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:8px 12px;margin-bottom:10px;background:rgba(255,255,255,0.03);border-radius:10px;">
                     <input type="checkbox" id="nm-autoapply" style="width:18px;height:18px;margin-top:2px;cursor:pointer;">
                     <span style="font-size:12px;color:var(--muted);">
-                        <b style="color:var(--white);">Применять совпадения по форме имени автоматически</b> (по умолчанию выключено).<br>
-                        Пока флажок снят, совпадение «Наташа = Наталья» ничего не меняет само, а попадает в блок «Выберите нужного игрока».
-                        Точное совпадение имени и фамилии обновляет HCP всегда — этот флажок на него не влияет.
+                        <b style="color:var(--white);" data-i18n="ui_983582571f">Применять совпадения по форме имени автоматически</b> <span data-i18n="ui_5593de071b">(по умолчанию выключено).</span><br>
+                        <span data-i18n="ui_e3c4ef05e1">Пока флажок снят, совпадение «Наташа = Наталья» ничего не меняет само, а попадает в блок «Выберите нужного игрока».
+                        Точное совпадение имени и фамилии обновляет HCP всегда — этот флажок на него не влияет.</span>
                     </span>
                 </label>
                 <div id="nm-custom-block" class="hidden" style="margin-bottom:10px;">
                     <div class="form-group" style="margin-bottom:6px;">
-                        <label>Свои формы имён (вариант 3) — по одной в строке, например: <code style="color:var(--gold);">Лёля = Ольга</code></label>
-                        <textarea id="nm-custom-aliases" class="form-input" rows="4" placeholder="Лёля = Ольга&#10;Каталина = Наталия" style="resize:vertical;"></textarea>
+                        <label><span data-i18n="ui_2f10dc25cf">Свои формы имён (вариант 3) — по одной в строке, например:</span> <code style="color:var(--gold);" data-i18n="ui_cc49a355ae">Лёля = Ольга</code></label>
+                        <textarea id="nm-custom-aliases" class="form-input" rows="4" placeholder="Лёля = Ольга&#10;Каталина = Наталия" style="resize:vertical;" data-i18n-placeholder="ui_32541c0ddf"></textarea>
                     </div>
                 </div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-g" data-act="nmSaveSettings"><i class="fas fa-save"></i> <span>Сохранить</span></button>
-                    <button type="button" class="btn btn-og" data-act="nmAnalyzeNames"><i class="fas fa-magnifying-glass-chart"></i> <span>Проверить имена игроков</span></button>
+                    <button type="button" class="btn btn-g" data-act="nmSaveSettings"><i class="fas fa-save"></i> <span data-i18n="ui_b4d30cae52">Сохранить</span></button>
+                    <button type="button" class="btn btn-og" data-act="nmAnalyzeNames"><i class="fas fa-magnifying-glass-chart"></i> <span data-i18n="ui_69758cbb1b">Проверить имена игроков</span></button>
                 </div>
                 <div id="nm-analyze-results"></div>
             </div>
 
             <!-- МАССОВАЯ СИНХРОНИЗАЦИЯ -->
             <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-rotate"></i> <span>Синхронизация гандикапов игроков</span></h2>
+                <h2><i class="fas fa-rotate"></i> <span data-i18n="ui_5d2f8a5ca7">Синхронизация гандикапов игроков</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
-                    Проверяет точный гандикап всех зарегистрированных игроков, гостей и участников раундов в базе АГР России.
-                    Совпадение ищется по <b>Фамилия + Имя</b> и по <b>Имя + Фамилия</b>, а также по формам имени
+                    <span data-i18n="ui_53acb9a7ee">Проверяет точный гандикап всех зарегистрированных игроков, гостей и участников раундов в базе АГР России.
+                    Совпадение ищется по</span> <b data-i18n="ui_cfcfdee185">Фамилия + Имя</b> <span data-i18n="ui_e7b7bed99b">и по</span> <b data-i18n="ui_e3849248aa">Имя + Фамилия</b><span data-i18n="ui_eaef777619">, а также по формам имени
                     («Наташа» → «Наталья», «Наталия» — см. блок «Формы имён» выше). При однозначном совпадении HCP обновляется
-                    в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.
+                    в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.</span>
                 </p>
                 <div class="form-group" style="max-width:340px;">
-                    <label for="rg-sync-scope">Кого синхронизировать</label>
+                    <label for="rg-sync-scope" data-i18n="ui_af2c59669e">Кого синхронизировать</label>
                     <select id="rg-sync-scope" class="form-input" data-act="rgRefreshSyncScopeHint">
-                        <option value="all" selected>Всех игроков</option>
-                        <option value="notfound">Не найденных в прошлый раз</option>
-                        <option value="new">Новых (без HCP / без прошлой синхронизации)</option>
-                        <option value="stale">С устаревшими данными (старше 30 дней)</option>
-                        <option value="conflicts">Требующих ручного выбора</option>
+                        <option value="all" selected data-i18n="ui_694548f944">Всех игроков</option>
+                        <option value="notfound" data-i18n="ui_cae7d870b1">Не найденных в прошлый раз</option>
+                        <option value="new" data-i18n="ui_1b3f5ff442">Новых (без HCP / без прошлой синхронизации)</option>
+                        <option value="stale" data-i18n="ui_2c22282914">С устаревшими данными (старше 30 дней)</option>
+                        <option value="conflicts" data-i18n="ui_4633a736fe">Требующих ручного выбора</option>
                     </select>
                 </div>
                 <div id="rg-sync-scope-hint" style="margin:-6px 0 12px;"></div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" data-act="rgSyncAll">
-                        <i class="fas fa-rotate"></i> <span>Синхронизировать гандикапы</span>
+                        <i class="fas fa-rotate"></i> <span data-i18n="ui_8638145363">Синхронизировать гандикапы</span>
                     </button>
                     <button type="button" class="btn btn-r imp-big-btn hidden" id="rg-sync-stop" data-act="rgSyncStop">
-                        <i class="fas fa-stop"></i> <span>Остановить</span>
+                        <i class="fas fa-stop"></i> <span data-i18n="ui_3396400da0">Остановить</span>
                     </button>
                 </div>
                 <div id="rg-sync-progress"></div>
@@ -876,17 +878,17 @@
             <!-- НАСТРОЙКИ ПРОКСИ -->
             <div class="card">
                 <details>
-                    <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:14px;padding:4px 0;"><i class="fas fa-gear"></i> Настройки подключения (прокси к hcp.rusgolf.ru)</summary>
+                    <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:14px;padding:4px 0;"><i class="fas fa-gear"></i> <span data-i18n="ui_edf877bf49">Настройки подключения (прокси к hcp.rusgolf.ru)</span></summary>
                     <p style="color:var(--muted);font-size:12px;margin:12px 0;">
-                        Сайт АГР не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
-                        Если все прокси недоступны — укажите свой прокси-шаблон, где <code style="color:var(--gold);">{url}</code> будет заменён на адрес запроса.<br>
-                        Пример: <code style="color:var(--gold);">https://my-proxy.example.com/?target={url}</code>
+                        <span data-i18n="ui_cdc2875aeb">Сайт АГР не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
+                        Если все прокси недоступны — укажите свой прокси-шаблон, где</span> <code style="color:var(--gold);">{url}</code> <span data-i18n="ui_3d04a4325f">будет заменён на адрес запроса.</span><br>
+                        <span data-i18n="ui_f8649416b7">Пример:</span> <code style="color:var(--gold);">https://my-proxy.example.com/?target={url}</code>
                     </p>
                     <div class="form-group">
-                        <label for="rg-proxy-input">Свой прокси (необязательно)</label>
+                        <label for="rg-proxy-input" data-i18n="ui_fe3869f69d">Свой прокси (необязательно)</label>
                         <input type="text" id="rg-proxy-input" class="form-input" placeholder="https://my-proxy.example.com/?target={url}">
                     </div>
-                    <button type="button" class="btn btn-og btn-sm" data-act="saveRusgolfProxySettings"><i class="fas fa-save"></i> <span>Сохранить</span></button>
+                    <button type="button" class="btn btn-og btn-sm" data-act="saveRusgolfProxySettings"><i class="fas fa-save"></i> <span data-i18n="ui_b4d30cae52">Сохранить</span></button>
                     <span id="rg-proxy-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
                 </details>
             </div>
@@ -938,7 +940,7 @@
                     </div>
                 </div>
                 <!-- Групповые и персональные экранные карточки используют общий набор видов. -->
-                <p style="color:var(--muted);">Экранные карточки игроков и групп настраиваются во вкладке «Отображения счётных карточек».</p>
+                <p style="color:var(--muted);" data-i18n="ui_1ba85ca4f6">Экранные карточки игроков и групп настраиваются во вкладке «Отображения счётных карточек».</p>
                 <!-- Вид лидерборда турнира — 5 вариантов (требование #7) -->
                 <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-ranking-star" style="color:var(--gold);"></i> <span data-i18n="tn_lb_variant_title">Вид лидерборда турнира (страница «Турниры»)</span></span>
@@ -953,68 +955,68 @@
                         <button type="button" id="tn-lb-opt-5" class="btn btn-og btn-sm tn-lb-variant-btn" data-act="saveTnLbVariant" data-arg="5" aria-pressed="false"><i class="fas fa-bolt"></i> <span data-i18n="tn_lb_variant_5">5 · Live-лента</span></button>
                     </div>
                     <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(201,168,76,.5);border-radius:10px;background:rgba(201,168,76,.05);">
-                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
+                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> <span data-i18n="ui_e5b6702ec7">Предпросмотр:</span></div>
                         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:11px;color:var(--muted);">
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">1 · Классика</b><br>Таблица: место, игрок, лунки, гросс, ±, нетто, стейблфорд</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">2 · Компактный</b><br>Только место, игрок, лунки, ± (минимализм)</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">3 · Карточки</b><br>Каждый игрок — карточка с крупными цифрами</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">4 · Детальный</b><br>Все поля: HCP, гросс, нетто, стейблфорд, группа, ТИ</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">5 · Live-лента</b><br>Современный live с индикаторами и анимацией</div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="social_card_variant_1">1 · Классика</b><br><span data-i18n="ui_79fc3f0dc8">Таблица: место, игрок, лунки, гросс, ±, нетто, стейблфорд</span></div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="tn_lb_variant_2">2 · Компактный</b><br><span data-i18n="ui_a3082d359e">Только место, игрок, лунки, ± (минимализм)</span></div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="tn_lb_variant_3">3 · Карточки</b><br><span data-i18n="ui_b35f24ac18">Каждый игрок — карточка с крупными цифрами</span></div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="tn_lb_variant_4">4 · Детальный</b><br><span data-i18n="ui_0af1e08619">Все поля: HCP, гросс, нетто, стейблфорд, группа, ТИ</span></div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="tn_lb_variant_5">5 · Live-лента</b><br><span data-i18n="ui_dee1935da4">Современный live с индикаторами и анимацией</span></div>
                         </div>
                     </div>
                 </div>
                 <!-- Разделение лидерборда турнира по полу — 3 вида (выбирает админ) -->
                 <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(90,173,224,0.07);border:1px solid rgba(90,173,224,0.4);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-venus-mars" style="color:var(--blue);"></i> <span>Разделение лидерборда турнира по полу (страница «Турниры», 3 вида)</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-venus-mars" style="color:var(--blue);"></i> <span data-i18n="ui_a83394b44d">Разделение лидерборда турнира по полу (страница «Турниры», 3 вида)</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="ui_b89fb1b0a2">
                         Мужчины и девушки могут вести зачёт отдельно. Выберите один из 3 видов отображения — настройка выбирается только админом и применяется для всех.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="tn-gs-opt-1" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="1" aria-pressed="true"><i class="fas fa-layer-group"></i> <span>1 · Смешанный (все вместе)</span></button>
-                        <button type="button" id="tn-gs-opt-2" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="2" aria-pressed="false"><i class="fas fa-venus-mars"></i> <span>2 · По полу (вкладки)</span></button>
-                        <button type="button" id="tn-gs-opt-3" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="3" aria-pressed="false"><i class="fas fa-table-columns"></i> <span>3 · Раздельные таблицы</span></button>
+                        <button type="button" id="tn-gs-opt-1" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="1" aria-pressed="true"><i class="fas fa-layer-group"></i> <span data-i18n="ui_236d32f967">1 · Смешанный (все вместе)</span></button>
+                        <button type="button" id="tn-gs-opt-2" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="2" aria-pressed="false"><i class="fas fa-venus-mars"></i> <span data-i18n="ui_9d90e71528">2 · По полу (вкладки)</span></button>
+                        <button type="button" id="tn-gs-opt-3" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="3" aria-pressed="false"><i class="fas fa-table-columns"></i> <span data-i18n="ui_68e05fd372">3 · Раздельные таблицы</span></button>
                     </div>
                     <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(90,173,224,.5);border-radius:10px;background:rgba(90,173,224,.05);">
-                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
+                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> <span data-i18n="ui_e5b6702ec7">Предпросмотр:</span></div>
                         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:11px;color:var(--muted);">
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">1 · Смешанный</b><br>Одна общая таблица, места среди всех игроков (как раньше)</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">2 · По полу</b><br>Вкладки «Все / Мужчины / Девушки», места считаются отдельно внутри каждого пола</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">3 · Раздельные</b><br>Две таблицы рядом: «Мужчины» и «Девушки», каждая со своим зачётом</div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="ui_119652e33e">1 · Смешанный</b><br><span data-i18n="ui_9cbddd9bbf">Одна общая таблица, места среди всех игроков (как раньше)</span></div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="ui_fb5cd66197">2 · По полу</b><br><span data-i18n="ui_207283cc33">Вкладки «Все / Мужчины / Девушки», места считаются отдельно внутри каждого пола</span></div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);" data-i18n="ui_f57daa47b9">3 · Раздельные</b><br><span data-i18n="ui_735a085876">Две таблицы рядом: «Мужчины» и «Девушки», каждая со своим зачётом</span></div>
                         </div>
                     </div>
                 </div>
                 <!-- Группы на странице турниров: вкл/выкл для всех + 4 вида списка участников -->
                 <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-layer-group" style="color:#2ecc71;"></i> <span>Группы и список участников на странице «Турниры»</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-layer-group" style="color:#2ecc71;"></i> <span data-i18n="ui_118f80f98e">Группы и список участников на странице «Турниры»</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="ui_96800570ef">
                         Активный турнир всегда открывается на live-лидерборде. Группы (дивизионы) по умолчанию видны всем — здесь их можно скрыть. Ниже — 4 варианта оформления списка участников и групп. Настройки применяются для всех.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;">
-                        <button type="button" id="tn-groups-visible-btn" class="btn btn-g btn-sm" data-act="saveTnGroupsVisible" aria-pressed="true"><i class="fas fa-eye"></i> <span id="tn-groups-visible-label">Показывать группы: включено</span></button>
+                        <button type="button" id="tn-groups-visible-btn" class="btn btn-g btn-sm" data-act="saveTnGroupsVisible" aria-pressed="true"><i class="fas fa-eye"></i> <span id="tn-groups-visible-label" data-i18n="ui_897c84ceb9">Показывать группы: включено</span></button>
                     </div>
-                    <div style="margin-top:12px;font-size:12px;color:var(--muted);font-weight:700;"><i class="fas fa-list-ul"></i> Вид списка участников:</div>
+                    <div style="margin-top:12px;font-size:12px;color:var(--muted);font-weight:700;"><i class="fas fa-list-ul"></i> <span data-i18n="ui_d8a8a12686">Вид списка участников:</span></div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                        <button type="button" id="tn-roster-opt-1" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="1" aria-pressed="true"><i class="fas fa-table-list"></i> <span>1 · Классика (таблица)</span></button>
-                        <button type="button" id="tn-roster-opt-2" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="2" aria-pressed="false"><i class="fas fa-grip"></i> <span>2 · Карточки</span></button>
-                        <button type="button" id="tn-roster-opt-3" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="3" aria-pressed="false"><i class="fas fa-bars-staggered"></i> <span>3 · Компактные строки</span></button>
-                        <button type="button" id="tn-roster-opt-4" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="4" aria-pressed="false"><i class="fas fa-table"></i> <span>4 · Короткая таблица</span></button>
+                        <button type="button" id="tn-roster-opt-1" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="1" aria-pressed="true"><i class="fas fa-table-list"></i> <span data-i18n="tn_lb_variant_1">1 · Классика (таблица)</span></button>
+                        <button type="button" id="tn-roster-opt-2" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="2" aria-pressed="false"><i class="fas fa-grip"></i> <span data-i18n="ui_45a32387c7">2 · Карточки</span></button>
+                        <button type="button" id="tn-roster-opt-3" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="3" aria-pressed="false"><i class="fas fa-bars-staggered"></i> <span data-i18n="ui_3ed9a1a8ec">3 · Компактные строки</span></button>
+                        <button type="button" id="tn-roster-opt-4" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="4" aria-pressed="false"><i class="fas fa-table"></i> <span data-i18n="ui_ef33d34e09">4 · Короткая таблица</span></button>
                     </div>
                 </div>
                 <!-- Вид блока «Активный турнир» на главной — 5 вариантов -->
                 <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span>Блок «Активный турнир» на главной (5 видов)</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span data-i18n="ui_596c7029ad">Блок «Активный турнир» на главной (5 видов)</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="ui_72830e585c">
                         Выберите один из 5 видов блока активного турнира на главной странице — с топ-3 в разных форматах. Выбирает только админ, применяется для всех пользователей. Виды удобно смотреть и с телефона, и с компьютера.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="v5-homeTournament-1" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="1" aria-pressed="true"><i class="fas fa-table-cells"></i> 1 · Подиум</button>
-                        <button type="button" id="v5-homeTournament-2" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="2" aria-pressed="false"><i class="fas fa-list"></i> 2 · Витрина</button>
-                        <button type="button" id="v5-homeTournament-3" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="3" aria-pressed="false"><i class="fas fa-align-left"></i> 3 · Строки</button>
-                        <button type="button" id="v5-homeTournament-4" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="4" aria-pressed="false"><i class="fas fa-moon"></i> 4 · Тёмный</button>
-                        <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="5" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
+                        <button type="button" id="v5-homeTournament-1" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="1" aria-pressed="true"><i class="fas fa-table-cells"></i> <span data-i18n="ui_a914ec19c9">1 · Подиум</span></button>
+                        <button type="button" id="v5-homeTournament-2" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="2" aria-pressed="false"><i class="fas fa-list"></i> <span data-i18n="ui_0e40d2c698">2 · Витрина</span></button>
+                        <button type="button" id="v5-homeTournament-3" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="3" aria-pressed="false"><i class="fas fa-align-left"></i> <span data-i18n="ui_05bb8b7a66">3 · Строки</span></button>
+                        <button type="button" id="v5-homeTournament-4" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="4" aria-pressed="false"><i class="fas fa-moon"></i> <span data-i18n="ui_f6e44f0aa7">4 · Тёмный</span></button>
+                        <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="5" aria-pressed="false"><i class="fas fa-feather"></i> <span data-i18n="ui_bd4c538c77">5 · Мини</span></button>
                     </div>
                 </div>
-                <div class="display-config-note">Создание раунда использует один компактный сценарий для всех игроков. Прежние настройки 1–5 совместимы и автоматически открывают этот сценарий; данные раундов не меняются.</div>
+                <div class="display-config-note" data-i18n="ui_59de0e7de6">Создание раунда использует один компактный сценарий для всех игроков. Прежние настройки 1–5 совместимы и автоматически открывают этот сценарий; данные раундов не меняются.</div>
 
                 <!-- Глобальные варианты отображения основных страниц -->
                 <div class="page-display-settings-grid">
@@ -1065,34 +1067,34 @@
 
         <section id="tab-designhistory" class="admin-section hidden" aria-labelledby="dh-title">
             <div class="card dh-intro">
-                <p class="dh-eyebrow">Архив оформления · PR 1–187</p>
-                <h2 id="dh-title">История дизайна</h2>
-                <p>Главная страница и экран ввода счёта каждого PR. Нажмите на снимок, чтобы увеличить его и листать соседние PR.</p>
-                <p class="dh-notice"><strong>Реконструкция, не архив продакшена.</strong> Страницы сняты из коммитов PR с одинаковыми демонстрационными данными, в мобильном окне 430 × 1100 px. Реальные игроки и результаты не используются.</p>
+                <p class="dh-eyebrow" data-i18n="ui_5c41619935">Архив оформления · PR 1–187</p>
+                <h2 id="dh-title" data-i18n="ui_9befdd5b37">История дизайна</h2>
+                <p data-i18n="ui_48ff68a668">Главная страница и экран ввода счёта каждого PR. Нажмите на снимок, чтобы увеличить его и листать соседние PR.</p>
+                <p class="dh-notice"><strong data-i18n="ui_c3418ec73a">Реконструкция, не архив продакшена.</strong> <span data-i18n="ui_97c465622a">Страницы сняты из коммитов PR с одинаковыми демонстрационными данными, в мобильном окне 430 × 1100 px. Реальные игроки и результаты не используются.</span></p>
                 <details class="clarity-disclosure">
-                    <summary>Как читать этот архив</summary>
-                    <p>Для слитых PR показано состояние после слияния; для закрытых без слияния — последняя версия ветки PR. Номер PR — не обязательно порядок релизов: ориентируйтесь также на дату и коммит.</p>
-                    <p>Во всех PR сравниваются страницы index.html и scorer.html. Настройки оформления из исторической базы не восстановлены: используется исходное оформление из кода. Внешние шрифты и иконки заменены локальными аналогами; некоторые значки могут отличаться. Внешние сервисы отключены. Это снимки первого экрана, а не страниц целиком. Если исторический JavaScript не запускается, показана статическая HTML-разметка с отдельной пометкой в карточке.</p>
-                    <p>Если PR не менял внешний вид, снимки могут совпадать. Галерея ничего не применяет к текущему сайту и не меняет данные. Изображения содержат только демонстрационные данные и доступны как статические ресурсы сайта.</p>
+                    <summary data-i18n="ui_4aa4d75229">Как читать этот архив</summary>
+                    <p data-i18n="ui_0370f1fefb">Для слитых PR показано состояние после слияния; для закрытых без слияния — последняя версия ветки PR. Номер PR — не обязательно порядок релизов: ориентируйтесь также на дату и коммит.</p>
+                    <p data-i18n="ui_5101f428d8">Во всех PR сравниваются страницы index.html и scorer.html. Настройки оформления из исторической базы не восстановлены: используется исходное оформление из кода. Внешние шрифты и иконки заменены локальными аналогами; некоторые значки могут отличаться. Внешние сервисы отключены. Это снимки первого экрана, а не страниц целиком. Если исторический JavaScript не запускается, показана статическая HTML-разметка с отдельной пометкой в карточке.</p>
+                    <p data-i18n="ui_d5ff61a4fa">Если PR не менял внешний вид, снимки могут совпадать. Галерея ничего не применяет к текущему сайту и не меняет данные. Изображения содержат только демонстрационные данные и доступны как статические ресурсы сайта.</p>
                 </details>
             </div>
             <div class="card dh-controls">
-                <div class="form-group"><label for="dh-search">Номер PR, название или коммит</label><input id="dh-search" class="form-input" type="search" placeholder="Например: 42 или дизайн" autocomplete="off"></div>
-                <div class="form-group"><label for="dh-range">Диапазон PR</label><select id="dh-range" class="form-input"><option value="all">Все · №1–187</option><option value="1-100">№1–100</option><option value="101-187">Новые · №101–187</option></select></div>
-                <div class="form-group"><label for="dh-screen">Снимки</label><select id="dh-screen" class="form-input"><option value="both">Оба экрана</option><option value="home">Только главная</option><option value="scoring">Только ввод счёта</option></select></div>
-                <div class="form-group"><label for="dh-status">Статус PR</label><select id="dh-status" class="form-input"><option value="all">Все PR</option><option value="merged">Только слитые</option><option value="closed">Закрытые без слияния</option></select></div>
-                <div class="form-group"><label for="dh-order">Порядок</label><select id="dh-order" class="form-input"><option value="asc">От №1 к №187</option><option value="desc">От №187 к №1</option></select></div>
-                <button id="dh-reset" type="button" class="btn btn-ol">Сбросить</button>
+                <div class="form-group"><label for="dh-search" data-i18n="ui_d780fc28a8">Номер PR, название или коммит</label><input id="dh-search" class="form-input" type="search" placeholder="Например: 42 или дизайн" autocomplete="off" data-i18n-placeholder="ui_30e0a41688"></div>
+                <div class="form-group"><label for="dh-range" data-i18n="ui_af1034f05e">Диапазон PR</label><select id="dh-range" class="form-input"><option value="all" data-i18n="ui_0142ff8eb9">Все · №1–187</option><option value="1-100">№1–100</option><option value="101-187" data-i18n="ui_93ee53cdb5">Новые · №101–187</option></select></div>
+                <div class="form-group"><label for="dh-screen" data-i18n="ui_c241f6db67">Снимки</label><select id="dh-screen" class="form-input"><option value="both" data-i18n="ui_96c52b09d0">Оба экрана</option><option value="home" data-i18n="ui_fcfc354fd2">Только главная</option><option value="scoring" data-i18n="ui_efa324b62e">Только ввод счёта</option></select></div>
+                <div class="form-group"><label for="dh-status" data-i18n="ui_36c690d37b">Статус PR</label><select id="dh-status" class="form-input"><option value="all" data-i18n="ui_0fe8ec7f51">Все PR</option><option value="merged" data-i18n="ui_f6b34ec37f">Только слитые</option><option value="closed" data-i18n="ui_953c2969d9">Закрытые без слияния</option></select></div>
+                <div class="form-group"><label for="dh-order" data-i18n="ui_f7ca1ccfc6">Порядок</label><select id="dh-order" class="form-input"><option value="asc" data-i18n="ui_3bd2dc0215">От №1 к №187</option><option value="desc" data-i18n="ui_6236dd5e17">От №187 к №1</option></select></div>
+                <button id="dh-reset" type="button" class="btn btn-ol" data-i18n="date_filter_reset">Сбросить</button>
             </div>
             <p id="dh-summary" class="dh-summary" role="status" aria-live="polite"></p>
-            <div id="dh-grid" class="dh-grid"><p>Загружаем архив…</p></div>
-            <nav id="dh-pager" class="dh-pager" aria-label="Страницы истории PR"></nav>
+            <div id="dh-grid" class="dh-grid"><p data-i18n="ui_05336bbf2e">Загружаем архив…</p></div>
+            <nav id="dh-pager" class="dh-pager" aria-label="Страницы истории PR" data-i18n-aria-label="ui_e01f87de68"></nav>
             <dialog id="dh-dialog" class="dh-dialog" aria-labelledby="dh-dialog-title" aria-describedby="dh-dialog-sub">
-                <div class="dh-dialog-head"><div><h2 id="dh-dialog-title"></h2><p id="dh-dialog-sub"></p></div><button id="dh-dialog-close" type="button" class="btn btn-ol" autofocus>Закрыть</button></div>
-                <div class="dh-dialog-actions"><button id="dh-dialog-prev" type="button" class="btn btn-ol">← PR</button><button id="dh-dialog-screen" type="button" class="btn btn-ol">Другой экран</button><button id="dh-dialog-next" type="button" class="btn btn-ol">PR →</button></div>
-                <p id="dh-dialog-note" class="dh-meta">Реконструкция · демонстрационные данные · 430 × 1100 px</p>
+                <div class="dh-dialog-head"><div><h2 id="dh-dialog-title"></h2><p id="dh-dialog-sub"></p></div><button id="dh-dialog-close" type="button" class="btn btn-ol" autofocus data-i18n="ui_a7a4033657">Закрыть</button></div>
+                <div class="dh-dialog-actions"><button id="dh-dialog-prev" type="button" class="btn btn-ol">← PR</button><button id="dh-dialog-screen" type="button" class="btn btn-ol" data-i18n="ui_1d471cdfa4">Другой экран</button><button id="dh-dialog-next" type="button" class="btn btn-ol">PR →</button></div>
+                <p id="dh-dialog-note" class="dh-meta" data-i18n="ui_98cf8011c5">Реконструкция · демонстрационные данные · 430 × 1100 px</p>
                 <img id="dh-dialog-image" width="430" height="1100" alt="">
-                <div class="dh-dialog-actions"><a id="dh-original" class="btn btn-ol" target="_blank" rel="noopener noreferrer">Открыть оригинал</a><a id="dh-dialog-source" class="btn btn-ol" target="_blank" rel="noopener noreferrer">PR на GitHub ↗</a></div>
+                <div class="dh-dialog-actions"><a id="dh-original" class="btn btn-ol" target="_blank" rel="noopener noreferrer" data-i18n="ui_e07a01d59a">Открыть оригинал</a><a id="dh-dialog-source" class="btn btn-ol" target="_blank" rel="noopener noreferrer" data-i18n="ui_9ce8dc7534">PR на GitHub ↗</a></div>
             </dialog>
         </section>
 
@@ -1147,17 +1149,17 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.138.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.139.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=d079085c"></script>
+<script type="module" src="dist/livescoring-modules.js?v=9dd82553"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/admin-lazy.js?v=1db11384"></script>
-<script defer src="js/admin.js?v=cc17f1a4"></script>
+<script defer src="js/admin.js?v=b0323f4f"></script>
 <script defer src="js/admin-channels.js?v=e1c74f92"></script>
 <script defer src="js/admin-alerts.js?v=47469903"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
@@ -1185,12 +1187,12 @@
 <script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-exports.js?v=089f4c04"></script>
 <script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-players-excel.js?v=b1441d0a"></script>
 <script type="text/plain" data-admin-lazy="rusgolf" data-admin-src="js/admin-agr.js?v=9a96fde3"></script>
-<script type="text/plain" data-admin-lazy="display" data-admin-src="js/admin-display.js?v=6da21c66"></script>
+<script type="text/plain" data-admin-lazy="display" data-admin-src="js/admin-display.js?v=a7eae245"></script>
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
 <script type="text/plain" data-admin-lazy="design" data-admin-src="js/design-admin.js?v=92d8e512"></script>
 <script type="text/plain" data-admin-lazy="broadcasts" data-admin-src="js/admin-broadcasts.js?v=f76a4469"></script>
 <script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/design-history-data.js?v=deecb4d4"></script>
-<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/admin-design-history.js?v=02e058f5"></script>
+<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/admin-design-history.js?v=1c9ccfd1"></script>
 </body>
 </html>

@@ -233,6 +233,7 @@
     // Полоса шагов: 1 формат → 2 игроки → 3 старт. Показываем реальное
     // состояние, а не декоративную анимацию: шаг «готов», когда данные есть.
     function buildSteps() {
+        if (document.getElementById('unified-setup-card')) return; // No decorative steps above the unified form.
         if (document.getElementById('pv-steps')) return;
         // Мастер (админ-вариант 5) и мобильный степпер уже рисуют шаги —
         // второй индикатор на экране не нужен.

@@ -83,7 +83,7 @@ setTimeout(() => {
     ok(cards().length === 2, 'после «Добавить игрока» — 2 карточки');
     ok(doc.getElementById('unified-count-badge').textContent === '2', 'счётчик игроков = 2');
     ok(/групп/i.test(doc.getElementById('unified-mode-note').textContent), 'подсказка режима: группа');
-    ok(!!doc.getElementById('p0-wizard-steps'), 'степпер #p0-wizard-steps создан (2 игрока)');
+    ok(!doc.getElementById('p0-wizard-steps'), 'степпер #p0-wizard-steps не создаётся (2 игрока)');
     ok(!doc.getElementById('bottom-tabbar'), 'нижний таббар не создан (удалён)');
     win.eval('addSetupPlayer()');
     ok(cards().length === 3, 'третья карточка добавлена');

@@ -1,0 +1,38 @@
+/* Admin-only navigation and layout corrections; no changes to public page themes. */
+.admin-page .admin-nav { padding: 22px; margin: 0 0 24px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 6px 24px rgba(0,0,0,.06); }
+.admin-page .admin-nav-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.admin-page .admin-nav-heading > span { font-family: var(--ff); font-size: 21px; font-weight: 700; color: var(--text); }
+.admin-page .admin-nav-heading > small { color: var(--muted); font-size: 12px; }
+.admin-page .admin-nav-groups { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 0 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.admin-page .admin-nav-group { min-width: 0; min-height: 48px; padding: 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--input); color: var(--muted); font: 600 13px/1.4 var(--fb); cursor: pointer; white-space: normal; }
+.admin-page .admin-nav-group.active { background: linear-gradient(135deg, #e0c76a, #c9a84c); color: #142017; border-color: var(--gold); box-shadow: 0 3px 10px rgba(201,168,76,.12); }
+.admin-page .admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; position: static; overflow: visible; background: transparent; border: 0; box-shadow: none; }
+.admin-page .admin-tabs.hidden { display: none; }
+.admin-page .admin-tab { display: inline-flex; align-items: center; justify-content: center; flex: 0 1 auto; min-height: 44px; max-width: 100%; margin: 0; padding: 10px 14px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--muted); font: 500 12px/1.5 var(--fb); text-transform: none; letter-spacing: 0; white-space: normal; text-align: center; cursor: pointer; }
+.admin-page .admin-tab.active { color: var(--gold); background: rgba(201,168,76,.1); border-color: var(--gold); font-weight: 700; box-shadow: none; }
+.admin-page :is(.admin-tab, .admin-nav-group):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media (hover: hover) {
+    .admin-page :is(.admin-tab, .admin-nav-group):not(.active):hover { background: rgba(201,168,76,.06); color: var(--text); border-color: var(--border); }
+}
+/* Generic .btn previously constrained these composite controls to a single row.
+   Give names, miniatures and descriptions their own intrinsic-height rows. */
+.admin-page .sev-variants { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; align-items: stretch; }
+.admin-page .sev-card.btn { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 14px; height: auto; min-height: 176px; padding: 16px; white-space: normal; overflow: visible; text-align: left; }
+.admin-page .sev-card .sev-card-top { min-height: 36px; flex-shrink: 0; align-items: start; }
+.admin-page .sev-card .sev-card-name { min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.admin-page .sev-card .sev-thumb { display: flex; flex-direction: column; flex-shrink: 0; min-height: 30px; margin: 0; }
+.admin-page .sev-card .sev-card-desc { display: block; margin: 0; line-height: 1.6; }
+@media (max-width: 650px) {
+    .admin-page .admin-nav { padding: 16px; border-radius: 14px; }
+    .admin-page .admin-nav-groups { display: flex; flex-wrap: wrap; gap: 8px; }
+    .admin-page .admin-nav-group { flex: 1 1 calc(33.333% - 8px); font-size: 12px; padding: 10px 8px; }
+    .admin-page .admin-tab { flex: 1 1 calc(50% - 8px); padding: 10px; }
+    .admin-page .sev-variants { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-page .sev-card.btn { min-height: 190px; padding: 12px; }
+    .admin-page .sev-card .sev-card-top { padding-right: 0; flex-wrap: wrap; }
+    .admin-page .sev-card .sev-card-name { flex-basis: 100%; }
+    .admin-page .sev-card .sev-card-check { top: 12px; right: 12px; }
+}
+@media (max-width: 360px) {
+    .admin-page .sev-variants { grid-template-columns: 1fr; }
+}

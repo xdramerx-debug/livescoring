@@ -1,4 +1,4 @@
-const Z = "Пестово", De = 72, ee = "МО, г. Мытищи, Никольская ул., 1, Румянцево", w = {
+const Z = "Пестово", xe = 72, ee = "МО, г. Мытищи, Никольская ул., 1, Румянцево", w = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -17,171 +17,171 @@ const Z = "Пестово", De = 72, ee = "МО, г. Мытищи, Николь�
   16: { p: 4, hcp: 14, bk: 423, bl: 391, wh: 368, rd: 312 },
   17: { p: 3, hcp: 10, bk: 199, bl: 188, wh: 174, rd: 151 },
   18: { p: 4, hcp: 6, bk: 375, bl: 349, wh: 335, rd: 302 }
-}, G = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, te = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, re = ["bk", "bl", "wh", "rd"], ae = {
+}, G = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, ae = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, te = ["bk", "bl", "wh", "rd"], re = {
   men: { bk: { cr: 76, sr: 144 }, bl: { cr: 73.8, sr: 137 }, wh: { cr: 72, sr: 135 }, rd: { cr: 69.2, sr: 134 } },
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
 function ne(e) {
   return w[e] ? w[e].p : 4;
 }
-function oe(e, r) {
-  return r = r || "wh", w[e] && w[e][r] || 0;
+function ie(e, a) {
+  return a = a || "wh", w[e] && w[e][a] || 0;
 }
-function se(e) {
+function oe(e) {
   return w[e] ? w[e].hcp : e;
 }
-function le(e) {
+function se(e) {
   return G[e] || 15;
 }
-typeof window < "u" && Object.assign(window, { CLUB: Z, TOTAL_PAR: 72, ADDR: ee, HOLES: w, TIMINGS: G, TEES: te, TEE_ORDER: re, COURSE_RATINGS: ae, holePar: ne, holeDist: oe, holeHcp: se, holeTiming: le });
-function ie(e) {
+typeof window < "u" && Object.assign(window, { CLUB: Z, TOTAL_PAR: 72, ADDR: ee, HOLES: w, TIMINGS: G, TEES: ae, TEE_ORDER: te, COURSE_RATINGS: re, holePar: ne, holeDist: ie, holeHcp: oe, holeTiming: se });
+function le(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
 function _e(e) {
   return e == null ? "" : e < 0 ? "s-un" : e > 0 ? "s-ov" : "s-ev";
 }
-function de(e, r) {
-  if (!e || e < 1 || !r) return "";
-  var a = e - r;
-  return a <= -2 ? "r-eag" : a === -1 ? "r-bir" : a === 0 ? "r-par" : a === 1 ? "r-bog" : "r-dbl";
+function de(e, a) {
+  if (!e || e < 1 || !a) return "";
+  var r = e - a;
+  return r <= -2 ? "r-eag" : r === -1 ? "r-bir" : r === 0 ? "r-par" : r === 1 ? "r-bog" : "r-dbl";
 }
-function ce(e, r) {
-  if (!e || !r) return "";
+function ue(e, a) {
+  if (!e || !a) return "";
   if (e === 1) return t("res_hio");
-  var a = e - r;
-  return a <= -3 ? t("res_albatross") : a === -2 ? t("res_eagle") : a === -1 ? t("res_birdie") : a === 0 ? t("res_par") : a === 1 ? t("res_bogey") : a === 2 ? t("res_double") : "+" + a;
+  var r = e - a;
+  return r <= -3 ? t("res_albatross") : r === -2 ? t("res_eagle") : r === -1 ? t("res_birdie") : r === 0 ? t("res_par") : r === 1 ? t("res_bogey") : r === 2 ? t("res_double") : "+" + r;
 }
 typeof window < "u" && Object.assign(window, {
-  fmtScore: ie,
+  fmtScore: le,
   scoreClass: _e,
   holeResClass: de,
-  holeResName: ce,
-  fmtDate: ue,
+  holeResName: ue,
+  fmtDate: ce,
   fmtTime: pe,
-  tnDateTs: me,
+  tnDateTs: fe,
   normalizeTimestampMs: k,
-  isTodayTimestamp: fe
+  isTodayTimestamp: be
 });
-function ue(e) {
+function ce(e) {
   if (!e) return "—";
-  var r = typeof currentLang < "u" && currentLang ? currentLang : "ru";
+  var a = typeof currentLang < "u" && currentLang ? currentLang : "ru";
   try {
-    return new Date(e).toLocaleDateString(r === "en" ? "en-US" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" });
+    return new Date(e).toLocaleDateString(a === "en" ? "en-US" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" });
   } catch {
-    var a = new Date(e);
-    return (a.getDate() < 10 ? "0" : "") + a.getDate() + "." + (a.getMonth() + 1 < 10 ? "0" : "") + (a.getMonth() + 1) + "." + a.getFullYear();
+    var r = new Date(e);
+    return (r.getDate() < 10 ? "0" : "") + r.getDate() + "." + (r.getMonth() + 1 < 10 ? "0" : "") + (r.getMonth() + 1) + "." + r.getFullYear();
   }
 }
 function pe(e) {
   if (e == null || e === "") return "—";
-  var r = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
-  if (r) {
-    var a = parseInt(r[1], 10), n = parseInt(r[2], 10);
-    if (a >= 0 && a < 24 && n >= 0 && n < 60) return (a < 10 ? "0" : "") + a + ":" + (n < 10 ? "0" : "") + n;
+  var a = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
+  if (a) {
+    var r = parseInt(a[1], 10), n = parseInt(a[2], 10);
+    if (r >= 0 && r < 24 && n >= 0 && n < 60) return (r < 10 ? "0" : "") + r + ":" + (n < 10 ? "0" : "") + n;
   }
-  var o = typeof k == "function" ? k(e) : Number(e);
-  if (!o || !isFinite(o)) return "—";
+  var i = typeof k == "function" ? k(e) : Number(e);
+  if (!i || !isFinite(i)) return "—";
   try {
-    var s = new Date(o), l = s.getHours(), m = s.getMinutes();
-    return isNaN(l) || isNaN(m) ? "—" : (l < 10 ? "0" : "") + l + ":" + (m < 10 ? "0" : "") + m;
+    var o = new Date(i), s = o.getHours(), f = o.getMinutes();
+    return isNaN(s) || isNaN(f) ? "—" : (s < 10 ? "0" : "") + s + ":" + (f < 10 ? "0" : "") + f;
   } catch {
     return "—";
   }
 }
-function me(e) {
+function fe(e) {
   if (typeof e == "number" && isFinite(e)) return e;
-  var r = String(e ?? "").trim();
-  if (!r) return NaN;
-  var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r);
-  if (a) {
-    var n = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 12, 0, 0, 0).getTime();
+  var a = String(e ?? "").trim();
+  if (!a) return NaN;
+  var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a);
+  if (r) {
+    var n = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 12, 0, 0, 0).getTime();
     return isNaN(n) ? NaN : n;
   }
-  var o = Date.parse(r);
-  return isNaN(o) ? NaN : o;
+  var i = Date.parse(a);
+  return isNaN(i) ? NaN : i;
 }
 function k(e) {
   if (e instanceof Date) return e.getTime() || 0;
-  var r = Number(e);
-  return (!isFinite(r) || r <= 0) && (r = typeof e == "string" ? Date.parse(e) : 0), r > 0 && r < 1e11 && (r *= 1e3), isFinite(r) && r > 0 ? r : 0;
+  var a = Number(e);
+  return (!isFinite(a) || a <= 0) && (a = typeof e == "string" ? Date.parse(e) : 0), a > 0 && a < 1e11 && (a *= 1e3), isFinite(a) && a > 0 ? a : 0;
 }
-function fe(e, r) {
-  var a = k(e);
-  if (!a) return !1;
-  var n = new Date(k(r || Date.now())), o = new Date(a);
-  return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
+function be(e, a) {
+  var r = k(e);
+  if (!r) return !1;
+  var n = new Date(k(a || Date.now())), i = new Date(r);
+  return !isNaN(i.getTime()) && !isNaN(n.getTime()) && i.getFullYear() === n.getFullYear() && i.getMonth() === n.getMonth() && i.getDate() === n.getDate();
 }
-var C = ["today", "7d", "30d", "month", "year", "all"];
+var R = ["today", "7d", "30d", "month", "year", "all"];
 function B(e) {
-  var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
-  if (!r) return null;
-  var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 0, 0, 0, 0).getTime();
-  return isNaN(a) ? null : a;
+  var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
+  if (!a) return null;
+  var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 0, 0, 0, 0).getTime();
+  return isNaN(r) ? null : r;
 }
 function V(e) {
-  var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
-  if (!r) return null;
-  var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 23, 59, 59, 999).getTime();
-  return isNaN(a) ? null : a;
+  var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
+  if (!a) return null;
+  var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 23, 59, 59, 999).getTime();
+  return isNaN(r) ? null : r;
 }
-function x(e) {
+function E(e) {
   if (!e) return "";
-  var r = new Date(e), a = r.getMonth() + 1, n = r.getDate();
-  return r.getFullYear() + "-" + (a < 10 ? "0" : "") + a + "-" + (n < 10 ? "0" : "") + n;
+  var a = new Date(e), r = a.getMonth() + 1, n = a.getDate();
+  return a.getFullYear() + "-" + (r < 10 ? "0" : "") + r + "-" + (n < 10 ? "0" : "") + n;
 }
-function j(e) {
+function U(e) {
   return !e || typeof e != "object" ? 0 : Number(e.startTime) || Number(e.createdAt) || 0;
 }
 function M(e) {
-  var r = /* @__PURE__ */ new Date(), a = new Date(r.getFullYear(), r.getMonth(), r.getDate()), n = null;
-  return e === "today" ? n = a : e === "7d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 6) : e === "30d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 29) : e === "month" ? n = new Date(a.getFullYear(), a.getMonth(), 1) : e === "year" && (n = new Date(a.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(a.getTime()) } : { from: "", to: "" };
+  var a = /* @__PURE__ */ new Date(), r = new Date(a.getFullYear(), a.getMonth(), a.getDate()), n = null;
+  return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: E(n.getTime()), to: E(r.getTime()) } : { from: "", to: "" };
 }
-function R(e, r) {
-  var a = e && e.value || "", n = r && r.value || "", o = a ? B(a) : null, s = n ? V(n) : null, l = o !== null && s !== null && o > s;
+function C(e, a) {
+  var r = e && e.value || "", n = a && a.value || "", i = r ? B(r) : null, o = n ? V(n) : null, s = i !== null && o !== null && i > o;
   return {
-    from: o,
-    to: s,
-    fromValue: a,
+    from: i,
+    to: o,
+    fromValue: r,
     toValue: n,
-    invalid: l,
-    active: !l && (o !== null || s !== null)
+    invalid: s,
+    active: !s && (i !== null || o !== null)
   };
 }
-function he(e, r) {
-  return !r || !r.active ? e.slice() : e.filter(function(a) {
-    var n = j(a && a[1]);
-    return !(!n || r.from !== null && n < r.from || r.to !== null && n > r.to);
+function me(e, a) {
+  return !a || !a.active ? e.slice() : e.filter(function(r) {
+    var n = U(r && r[1]);
+    return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
   });
 }
-function q(e, r, a, n, o) {
+function q(e, a, r, n, i) {
   if (e) {
-    var s = typeof currentLang < "u" && currentLang === "en", l = '<i class="fas fa-calendar-check"></i> ';
-    if (r && r.active) {
-      var m = r.from !== null ? fmtDate(r.from) : s ? "the beginning" : "с начала", u = r.to !== null ? fmtDate(r.to) : s ? "today" : "сегодня";
-      l += '<span class="rs-period">' + escapeHtml(m + " — " + u) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + a + "</b>", typeof n == "number" && n !== a && (l += ' <span class="rs-dim">' + (s ? "of" : "из") + " " + n + "</span>");
+    var o = typeof currentLang < "u" && currentLang === "en", s = '<i class="fas fa-calendar-check"></i> ';
+    if (a && a.active) {
+      var f = a.from !== null ? fmtDate(a.from) : o ? "the beginning" : "с начала", c = a.to !== null ? fmtDate(a.to) : o ? "today" : "сегодня";
+      s += '<span class="rs-period">' + escapeHtml(f + " — " + c) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + r + "</b>", typeof n == "number" && n !== r && (s += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
     } else
-      l += t("rounds_total_label") + ": <b>" + a + "</b>";
-    o && o.windowed && o.limit && (l += ' <span class="rs-dim">' + escapeHtml(s ? "· latest " + o.limit + " loaded" : "· загружены последние " + o.limit) + "</span>"), e.innerHTML = l;
+      s += t("rounds_total_label") + ": <b>" + r + "</b>";
+    i && i.windowed && i.limit && (s += ' <span class="rs-dim">' + escapeHtml(o ? "· latest " + i.limit + " loaded" : "· загружены последние " + i.limit) + "</span>"), e.innerHTML = s;
   }
 }
-var T = /* @__PURE__ */ Object.create(null);
-function be(e) {
+var P = /* @__PURE__ */ Object.create(null);
+function he(e) {
   if (!e) return null;
-  var r = document.getElementById(e.fromId), a = document.getElementById(e.toId);
-  if (!r || !a) return null;
-  var n = e.presetsId ? document.getElementById(e.presetsId) : null, o = e.resetId ? document.getElementById(e.resetId) : null, s = e.hintId ? document.getElementById(e.hintId) : null, l = "pestovo_date_filter_" + e.key;
-  function m() {
+  var a = document.getElementById(e.fromId), r = document.getElementById(e.toId);
+  if (!a || !r) return null;
+  var n = e.presetsId ? document.getElementById(e.presetsId) : null, i = e.resetId ? document.getElementById(e.resetId) : null, o = e.hintId ? document.getElementById(e.hintId) : null, s = "pestovo_date_filter_" + e.key;
+  function f() {
     try {
-      localStorage.setItem(l, JSON.stringify({ from: r.value || "", to: a.value || "" }));
+      localStorage.setItem(s, JSON.stringify({ from: a.value || "", to: r.value || "" }));
     } catch (p) {
       console.warn("[silent]", p);
     }
   }
-  function u() {
-    var p = R(r, a);
+  function c() {
+    var p = C(a, r);
     if (!p.fromValue && !p.toValue) return "all";
-    for (var y = 0; y < C.length; y++) {
-      var v = C[y];
+    for (var y = 0; y < R.length; y++) {
+      var v = R[y];
       if (v !== "all") {
         var S = M(v);
         if (S.from === p.fromValue && S.to === p.toValue) return v;
@@ -189,30 +189,30 @@ function be(e) {
     }
     return "";
   }
-  function c() {
+  function u() {
     if (n) {
-      var p = u();
-      n.innerHTML = C.map(function(y) {
+      var p = c();
+      n.innerHTML = R.map(function(y) {
         return '<button type="button" class="date-chip' + (p === y ? " active" : "") + '" data-preset="' + y + '">' + t("date_preset_" + y) + "</button>";
       }).join("");
     }
   }
-  function i() {
-    a.value ? r.setAttribute("max", a.value) : r.removeAttribute("max"), r.value ? a.setAttribute("min", r.value) : a.removeAttribute("min");
+  function l() {
+    r.value ? a.setAttribute("max", r.value) : a.removeAttribute("max"), a.value ? r.setAttribute("min", a.value) : r.removeAttribute("min");
   }
   function _() {
-    var p = R(r, a).invalid;
-    r.classList.toggle("is-invalid", p), a.classList.toggle("is-invalid", p), s && (s.textContent = p ? t("date_filter_invalid") : "", s.classList.toggle("hidden", !p));
+    var p = C(a, r).invalid;
+    a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), o && (o.textContent = p ? t("date_filter_invalid") : "", o.classList.toggle("hidden", !p));
   }
-  function b() {
+  function h() {
     _(), typeof e.onChange == "function" && e.onChange(d.getRange());
   }
   var d = {
     key: e.key,
     getRange: function() {
-      return R(r, a);
+      return C(a, r);
     },
-    renderPresets: c,
+    renderPresets: u,
     lastSummary: null,
     renderSummary: function(p, y, v) {
       d.lastSummary = { count: p, total: y, opts: v || null }, q(e.summaryId ? document.getElementById(e.summaryId) : null, d.getRange(), p, y, v);
@@ -222,129 +222,129 @@ function be(e) {
     }
   };
   try {
-    var g = JSON.parse(localStorage.getItem(l) || "null");
-    g && typeof g == "object" && (g.from && (r.value = g.from), g.to && (a.value = g.to));
+    var g = JSON.parse(localStorage.getItem(s) || "null");
+    g && typeof g == "object" && (g.from && (a.value = g.from), g.to && (r.value = g.to));
   } catch (p) {
     console.warn("[silent]", p);
   }
-  return r.addEventListener("change", function() {
-    i(), m(), c(), b();
-  }), a.addEventListener("change", function() {
-    i(), m(), c(), b();
+  return a.addEventListener("change", function() {
+    l(), f(), u(), h();
+  }), r.addEventListener("change", function() {
+    l(), f(), u(), h();
   }), n && n.addEventListener("click", function(p) {
     var y = p.target && p.target.closest ? p.target.closest(".date-chip") : null, v = y && y.getAttribute("data-preset");
     if (v) {
       var S = M(v);
-      r.value = S.from, a.value = S.to, i(), m(), c(), b();
+      a.value = S.from, r.value = S.to, l(), f(), u(), h();
     }
-  }), o && o.addEventListener("click", function() {
-    r.value = "", a.value = "", i(), m(), c(), b();
-  }), i(), c(), _(), T[d.key] = d, d;
+  }), i && i.addEventListener("click", function() {
+    a.value = "", r.value = "", l(), f(), u(), h();
+  }), l(), u(), _(), P[d.key] = d, d;
 }
 function ye(e) {
-  return T[e] || null;
+  return P[e] || null;
 }
 function ge() {
-  Object.keys(T).forEach(function(e) {
-    var r = T[e];
-    r && (r.renderPresets(), r.rerenderSummary());
+  Object.keys(P).forEach(function(e) {
+    var a = P[e];
+    a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: x, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
-function K(e) {
-  return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: E, getRoundFilterTs: U, datePresetRange: M, readDateRange: C, filterEntriesByDateRange: me, renderRoundsPeriodSummary: q, dateRangeFilters: P, initDateRangeFilter: he, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+function j(e) {
+  return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
 function ve() {
-  for (var e = arguments[0], r = Array.prototype.slice.call(arguments, 1), a = "", n = 0; n < e.length; n++)
-    a += e[n], n < r.length && (a += K(r[n]));
-  return a;
+  for (var e = arguments[0], a = Array.prototype.slice.call(arguments, 1), r = "", n = 0; n < e.length; n++)
+    r += e[n], n < a.length && (r += j(a[n]));
+  return r;
 }
-function we(e, r) {
-  e && (e.innerHTML = r == null ? "" : String(r));
+function we(e, a) {
+  e && (e.innerHTML = a == null ? "" : String(a));
 }
-typeof window < "u" && Object.assign(window, { esc: K, html: ve, setSafeHtml: we });
-var F = 3e3;
-function U() {
+typeof window < "u" && Object.assign(window, { esc: j, html: ve, setSafeHtml: we });
+var N = 3e3;
+function K() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
   return e || (e = document.createElement("div"), e.id = "toast-root", e.className = "toast-root", e.setAttribute("aria-live", "polite"), document.body.appendChild(e)), e;
 }
-function Y(e) {
+function z(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
-function I(e, r, a) {
-  r = r || "success", a = a || {};
-  var n = parseInt(a.duration) > 0 ? parseInt(a.duration) : F;
+function L(e, a, r) {
+  a = a || "success", r = r || {};
+  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : N;
   try {
     if (typeof document > "u" || !document.body) return null;
-    var o = U();
-    if (!o) return null;
-    for (; o.children.length >= 3; )
+    var i = K();
+    if (!i) return null;
+    for (; i.children.length >= 3; )
       try {
-        var s = o.firstChild;
-        if (!s) break;
-        s._pestovoDismiss && s._pestovoDismiss(!0), o.removeChild(s);
+        var o = i.firstChild;
+        if (!o) break;
+        o._pestovoDismiss && o._pestovoDismiss(!0), i.removeChild(o);
       } catch {
         break;
       }
-    var l = document.createElement("div");
-    l.className = "toast t-" + r + (a.clubNotification ? " t-club" : ""), l.setAttribute("role", "status");
-    var m = a.html ? e == null ? "" : String(e) : J(e);
-    l.innerHTML = '<span class="toast-ico">' + Y(r) + '</span><span class="toast-msg">' + m + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
-    var u = !1, c = function(i) {
-      if (!u) {
-        u = !0;
+    var s = document.createElement("div");
+    s.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), s.setAttribute("role", "status");
+    var f = r.html ? e == null ? "" : String(e) : W(e);
+    s.innerHTML = '<span class="toast-ico">' + z(a) + '</span><span class="toast-msg">' + f + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    var c = !1, u = function(l) {
+      if (!c) {
+        c = !0;
         try {
-          l.classList.remove("t-show"), l.classList.add("t-hide"), setTimeout(function() {
+          s.classList.remove("t-show"), s.classList.add("t-hide"), setTimeout(function() {
             try {
-              l.remove();
+              s.remove();
             } catch {
             }
-          }, i ? 0 : 320);
+          }, l ? 0 : 320);
         } catch {
         }
       }
     };
-    return l._pestovoDismiss = c, l.addEventListener("click", function(i) {
-      if (i && i.target && i.target.classList && i.target.classList.contains("toast-x")) {
-        i.stopPropagation(), c(!1);
+    return s._pestovoDismiss = u, s.addEventListener("click", function(l) {
+      if (l && l.target && l.target.classList && l.target.classList.contains("toast-x")) {
+        l.stopPropagation(), u(!1);
         return;
       }
-      if (typeof a.onClick == "function") {
+      if (typeof r.onClick == "function") {
         try {
-          a.onClick();
+          r.onClick();
         } catch {
         }
-        c(!1);
+        u(!1);
       } else
-        c(!1);
-    }), o.appendChild(l), setTimeout(function() {
+        u(!1);
+    }), i.appendChild(s), setTimeout(function() {
       try {
-        l.classList.add("t-show");
+        s.classList.add("t-show");
       } catch {
       }
     }, 10), setTimeout(function() {
-      c(!1);
-    }, n), l;
+      u(!1);
+    }, n), s;
   } catch {
     return null;
   }
 }
-function Se(e, r) {
-  r = r || {};
-  var a = (e || []).slice();
-  if (a.length) {
-    var n = parseInt(r.gap) > 0 ? parseInt(r.gap) : 350, o = F + n;
-    a.forEach(function(s, l) {
+function Se(e, a) {
+  a = a || {};
+  var r = (e || []).slice();
+  if (r.length) {
+    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, i = N + n;
+    r.forEach(function(o, s) {
       setTimeout(function() {
-        typeof s == "string" ? I(s, r.type || "warn", r.toastOpts || {}) : I(s.msg || s.html || "", s.type || r.type || "warn", s.opts || r.toastOpts || {});
-      }, l * o);
+        typeof o == "string" ? L(o, a.type || "warn", a.toastOpts || {}) : L(o.msg || o.html || "", o.type || a.type || "warn", o.opts || a.toastOpts || {});
+      }, s * i);
     });
   }
 }
-function W(e) {
+function Q(e) {
   try {
     return localStorage.getItem(e) === "1";
   } catch {
@@ -353,24 +353,427 @@ function W(e) {
 }
 function ke(e) {
   if (navigator.vibrate) {
-    var r = e ?? 50;
-    W("pestovo_strong_vibration") && (Array.isArray(r) ? r = r.map(function(a, n) {
-      return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(a) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(a) || 0) * 0.9)));
-    }) : r = Math.min(650, Math.max(70, Math.round((parseInt(r) || 50) * 1.5))));
+    var a = e ?? 50;
+    Q("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
+      return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(r) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(r) || 0) * 0.9)));
+    }) : a = Math.min(650, Math.max(70, Math.round((parseInt(a) || 50) * 1.5))));
     try {
-      navigator.vibrate(r);
+      navigator.vibrate(a);
     } catch {
     }
   }
 }
-function J(e) {
-  return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
+function W(e) {
+  return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: F, ensureToastRoot: U, toastIconFor: Y, toast: I, toastSequence: Se, isPlayerModeEnabled: W, vib: ke, escapeHtml: J });
-var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", h = {
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: z, toast: L, toastSequence: Se, isPlayerModeEnabled: Q, vib: ke, escapeHtml: W });
+var b = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", m = {
   ru: {
+    ui_bc997c1edb: "Управление клубом",
+    ui_31e9780267: "Разделы админки",
+    ui_bcef39ebdf: "Иванов Пётр",
+    ui_798ff83284: "Фамилия Имя",
+    ui_9626d7ac8c: "например: Иван Тестов",
+    ui_c5c1c59988: "13.0 или +2.4",
+    ui_9dc027291b: "🔍 Поиск: имя, email, телефон… / Search…",
+    ui_d8abc3263c: "Например: Тестов Иван или RU000732",
+    ui_32541c0ddf: `Лёля = Ольга
+Каталина = Наталия`,
+    ui_30e0a41688: "Например: 42 или дизайн",
+    ui_e01f87de68: "Страницы истории PR",
+    ui_372a391df1: "Развернуть счётную карточку",
+    ui_cb8c5d52e1: "Минус",
+    ui_ac0d11c0a3: "Плюс",
+    ui_68660731cc: "Минус маркируемого",
+    ui_3470822c60: "Плюс маркируемого",
+    ui_0e32051f71: "Пауза / Возобновление",
+    ui_1ba5263bd8: "Шаблоны оформления",
+    ui_3c4ef14e00: "Текущий дизайн + 5 альтернативных шаблонов: для всего сайта, для каждой страницы и для каждого блока",
+    ui_b9f1fffef4: "Как это работает",
+    ui_651c92f849: `Каждый шаблон меняет оформление целиком: цвета, фон, рамки, тени, типографику, форму кнопок и бейджей,
+            вид таблиц, шапки и подвала — все детали и мелочи. Ниже видно характерные отличия каждого шаблона
+            от предыдущего. Выбор сохраняется в`,
+    ui_881d791541: "Админ-панель → Дизайн 🎨",
+    ui_d4576e5a46: "и применяется у всех игроков.",
+    ui_613bd6e0c9: "Дизайн можно",
+    ui_4b5926bddb: "собрать из шаблонов",
+    ui_0a6792dd1e: `: выбрать базовый шаблон, а затем назначить свой шаблон
+            отдельной странице (Главная, Статистика, Турниры и т.д.) или отдельному блоку (шапка, карточки,
+            кнопки, таблицы, бейджи, подвал...). Конструктор — в самом низу страницы.`,
+    ui_cf09d75992: "Быстрый предпросмотр любой страницы в конкретном шаблоне: добавьте к адресу",
+    ui_37d7a2cb26: "(например,",
+    ui_40ea39625c: "). Ничего не сохраняется.",
+    ui_33aa9be74a: "Все шаблоны целиком",
+    ui_83a0cd9f0a: "Один и тот же образец разметки в шести оформлениях.",
+    ui_7911dda73e: "Отличия по блокам",
+    ui_c2b480d644: "Каждый блок показан отдельно — видно, чем именно шаблоны различаются.",
+    ui_70dbdf297a: "Матрица характерных отличий",
+    ui_4568b826cb: "Конструктор: собрать дизайн из шаблонов",
+    ui_1ccc4ef533: `Выберите базовый шаблон, затем — свой шаблон для любого блока. Справа сразу видно результат.
+            Сохранить собранный дизайн для всего сайта можно в админ-панели.`,
+    ui_f6408ec13b: "Результат сборки",
+    ui_ea58bb0bc6: "Дальше",
+    ui_77b6544cd7: "Открыть админ-панель",
+    ui_ad94907f64: "На главную",
+    ui_b60aec20f0: "Галочка гандикапа: выбор варианта",
+    ui_3d8a25781e: "Зелёная галочка",
+    ui_3ea256e8e5: "появляется, когда гандикап игрока",
+    ui_ecb734a856: "синхронизирован и изменён",
+    ui_4e3aac4cb1: `:
+            при синхронизации с базой АГР России (RUSGOLF), при импорте Excel или при ручном изменении в админ-панели.
+            Рядом показывается`,
+    ui_5612b79e93: "дата последнего обновления",
+    ui_d932268240: `гандикапа, а источник — при наведении
+            (в профиле — открыто). Игроки, у которых гандикап ещё не синхронизирован, галочку`,
+    ui_3c86ea8bd6: "не получают",
+    ui_64ddfe38d8: "(см. карточку «Иван Кузнецов» в каждом варианте).",
+    ui_ba17dc61c0: "Вариант отображается: во",
+    ui_e2a152f678: "вкладке «Игроки»",
+    ui_2b1f8a0919: ", в",
+    ui_7e38742eb5: "личном профиле игрока",
+    ui_4370f56467: "и в",
+    ui_14b9794b43: "админ-панели",
+    ui_5fbd949349: `(«Игроки и роли»). Ниже — живые примеры на реальных данных разметки сайта.
+            Кнопка`,
+    ui_da950719bc: "«Выбрать этот вариант»",
+    ui_5d732dd44b: "включает его",
+    ui_12d296173f: "в этом браузере",
+    ui_8af581ead5: "для предпросмотра.",
+    ui_f7b3462438: "Глобальный выбор для всех игроков",
+    ui_0974cf527b: "— в",
+    ui_3e23e0c898: "Админ-панели",
+    ui_a64a2db415: `,
+            вкладка`,
+    ui_7c6da828ce: "«Данные» → «Стиль галочки гандикапа»",
+    ui_63669f17cf: `: он сохраняется в облако и мгновенно
+            применяется на всех устройствах (эта страница подхватит его при обновлении).`,
+    ui_04589d0f49: "Компактная галочка",
+    ui_7f8a03d69e: "— минимализм",
+    ui_1c6adb3f41: "Небольшая зелёная галочка",
+    ui_90641a8e61: "и дата обновления (ДД.ММ.ГГ) сразу после значения HCP. Не загромождает карточку, но статус и дата всегда на виду. В профиле — полная дата и источник обновления.",
+    ui_8e6ae01d92: "Вкладка «Игроки»",
+    ui_d2151bdbf0: "Личный профиль игрока",
+    ui_ef4e961f6a: "Выбрать этот вариант",
+    ui_5136e92f25: "Светящийся бейдж «пилюля»",
+    ui_8a1f20cd03: "— максимальная заметность",
+    ui_1d0841a615: "Зелёная «пилюля»",
+    ui_0ad04468e5: "обновлён",
+    ui_622f083bfd: "с лёгким свечением рядом с HCP. В профиле — отдельный крупный зелёный баннер «Гандикап синхронизирован» с полной датой обновления и источником (RUSGOLF / Excel / вручную).",
+    ui_fdbcebcc6c: "«Верифицированный» аватар",
+    ui_7f81d13850: "— как в соцсетях",
+    ui_bc6cc166b2: "Зелёная галочка-«верификация» закрепляется на углу аватара игрока (как подтверждённый аккаунт), а дата обновления показывается рядом с HCP в списке и профиле. Статус виден «с первого взгляда» по аватару.",
+    ui_cc8aaf7006: "Открыть вкладку «Игроки»",
+    ui_af947ab16f: "Примеры — демонстрационные данные. На сайте галочка появится автоматически у всех игроков, у кого гандикап уже синхронизирован (есть дата обновления).",
+    ui_d827cf9eaa: "© Пестово — подбор варианта отображения гандикапа",
+    ui_43f0c259b7: "Счётные карточки на странице ввода результата (setup-round.html). Один игрок — «Счётная карточка по лункам», два и больше — «Общая карточка». Для каждой выберите вид, размер и элементы; для турнирного ввода можно задать свой вид.",
+    ui_b939086787: "Эта вкладка меняет только экраны ввода счёта. Карточки на главной, в лидербордах и истории настраиваются во вкладке «Отображения счётных карточек».",
+    ui_ae1ebf647f: "Гибко настройте элементы экрана, который открывается по QR-коду стартового листа. Эти параметры действуют для всех турниров и игроков; если турнирных переопределений нет, используются общие настройки ввода счёта.",
+    ui_e4404ae752: "Ввод счёта и панель «Мой счёт» остаются включёнными. Для возврата к общим параметрам нажмите «Использовать настройки обычного раунда».",
+    ui_828ac5a2bb: "Отмеченные элементы будут показаны на экранах ввода по турнирному QR.",
+    ui_bd01c82261: "Меняйте последовательность информации, навигации по лункам и панели ввода.",
+    ui_39659830f3: "Турнирные настройки сохраняются отдельно и применяются сразу на всех устройствах.",
+    ui_36a643d966: "Один общий дизайн без сохранённых старых вариантов. Настройте видимость каждого элемента и порядок основных блоков; конфигурация применяется ко всем игрокам, обычным и групповым раундам.",
+    ui_37b74d9a02: "Блок ввода и сохранения счёта, а также панель «Мой счёт» обязательны и не могут быть скрыты. Вкладка «Турнирный ввод счёта» задаёт отдельные переопределения для QR-раундов.",
+    ui_fd846f05e5: "Выберите компоновку: она действует для всех игроков — в одиночном и групповом раунде, на телефоне и на большом экране. Вид применяется сразу после сохранения.",
+    ui_c06456492c: "Цвет активной лунки, рамки счёта, кнопки «+» и кнопки подтверждения. Работает с любым видом.",
+    ui_25f2120510: "Насколько крупно показывать введённый счёт. «Очень крупный» удобен на ярком солнце.",
+    ui_0af9ddb0c8: "Порядок сверху вниз. Кнопки перемещения доступны для нажатия на телефоне.",
+    ui_a832c196d4: "Изменения сохраняются глобально. Уже открытые экраны обновятся автоматически.",
+    ui_914b6f179a: "Сохранённые сервером действия за последние 30 дней. QR-доступ без входа отмечается отдельно: личность оператора не подтверждена. Время показано в часовом поясе устройства.",
+    ui_f8c420259d: "Сбои, которые приложение само отправило с устройств игроков (",
+    ui_2b31c31735: "→ узел",
+    ui_6b762724a8: "). Не более 20 сообщений за сессию и 3 повтора одной ошибки с устройства — список группируется по тексту. Требует правил БД с узлом",
+    ui_e7ab4c0825: "Кто и когда обновил гандикап игрока: из RUSGOLF при создании раунда (ФИО, которое ввёл создатель), вручную в админке, синхронизация АГР и импорт Excel. Видно старое и новое значение.",
+    ui_0429aea676: "Как получить токен сообщества",
+    ui_c30c05cc7d: "Войдите в",
+    ui_9eaa725bc8: "Управление сообществом",
+    ui_9ff04885fb: "Работа с API",
+    ui_58207ae860: "Ключи доступа",
+    ui_fad2f82e70: "Нажмите",
+    ui_45cc94ebe8: "«Создать ключ»",
+    ui_df82e5bc7c: ", выберите права:",
+    ui_b28d2cd212: "Сообщения",
+    ui_c9b591fe97: "Скопируйте полученный ключ (",
+    ui_57a22a6638: ") в поле ниже",
+    ui_9123450c26: "Peer ID беседы",
+    ui_8457bff7f2: ": откройте беседу ВК → ссылка вида",
+    ui_85da1e3647: "Peer ID пользователя",
+    ui_12fcfb70ef: ": числовой ID из профиля ВКонтакте",
+    ui_e695053fe0: "Добавьте сообщество в беседу и",
+    ui_0dd6b37fa5: "разрешите боту писать",
+    ui_56e22910e6: "в настройках беседы",
+    ui_4bdac71815: "Для беседы: 2000000000 + номер чата. Для личных сообщений: ID пользователя.",
+    ui_fade085486: "Получателей: все игроки клуба",
+    ui_aa8da22e16: "Фоновые пуши (при закрытом приложении)",
+    ui_c6ba963938: `Анонсы и вызовы судьи доставляются, даже когда PWA закрыта. Требуется
+                    одноразовое развёртывание Cloud Function (см.`,
+    ui_eead37caf8: "и",
+    ui_f0f83935aa: "URL функции vapidSetup (если регион не us-central1)",
+    ui_dca5579aa0: "Создать/проверить VAPID-ключи",
+    ui_821c616097: "Турниры — гибкая настройка страницы",
+    ui_3954e489e4: "Компоновка, порядок и видимость элементов сохраняются для всех пользователей. Старые числовые варианты удалены; по умолчанию используются адаптивные карточки.",
+    ui_18f791f55a: "Меняйте расположение активного турнира, предстоящих стартов и архива.",
+    ui_979c1e906b: "Сохранённые настройки применяются к каталогу и подробной странице турнира.",
+    ui_b2a1629832: "Добавьте нового игрока в систему клуба (имя, точный HCP и пол). ТИ игрока определяется его группой в стартовом протоколе.",
+    ui_e15533e8fb: "Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).",
+    ui_1eb1a40bf2: "📋 Столбцы таблицы:",
+    ui_4273fc6f1a: "(например",
+    ui_bcacbff7a5: "или",
+    ui_342a931cc4: "). Опционально можно добавить столбец",
+    ui_c79219bb6a: "(муж/жен).",
+    ui_afcac97610: "Загрузите файл .xlsx / .xls / .csv — игроки появятся в списке игроков сайта. Дубликаты определяются по имени и фамилии: для них можно обновить точный гандикап.",
+    ui_b3a2803940: ".xlsx, .xls или .csv · столбцы: Имя, Фамилия, Точный гандикап",
+    ui_545f879d01: "Загрузите таблицу Excel со списком игроков (столбцы",
+    ui_546a52b7e1: `).
+                    Система найдёт каждого в базе АГР России и покажет список найденных результатов — отметьте нужных и добавьте их на сайт одним кликом.`,
+    ui_20212f11a2: ".xlsx, .xls или .csv · столбцы: Имя, Фамилия",
+    ui_d92610877f: "Формы имён — «Наташа» = «Наталья»",
+    ui_4934470186: `На сайте игрок может быть записан коротким или иным вариантом имени
+                    (`,
+    ui_97031dc24d: "Наташа",
+    ui_842b195e2f: "Наталия",
+    ui_16a747fbb9: `), а в базе АГР — полным. Выберите, как сопоставлять имена
+                    при поиске и синхронизации гандикапов. Словарь форм:`,
+    ui_983582571f: "Применять совпадения по форме имени автоматически",
+    ui_5593de071b: "(по умолчанию выключено).",
+    ui_e3c4ef05e1: `Пока флажок снят, совпадение «Наташа = Наталья» ничего не меняет само, а попадает в блок «Выберите нужного игрока».
+                        Точное совпадение имени и фамилии обновляет HCP всегда — этот флажок на него не влияет.`,
+    ui_2f10dc25cf: "Свои формы имён (вариант 3) — по одной в строке, например:",
+    ui_cc49a355ae: "Лёля = Ольга",
+    ui_53acb9a7ee: `Проверяет точный гандикап всех зарегистрированных игроков, гостей и участников раундов в базе АГР России.
+                    Совпадение ищется по`,
+    ui_cfcfdee185: "Фамилия + Имя",
+    ui_e7b7bed99b: "и по",
+    ui_e3849248aa: "Имя + Фамилия",
+    ui_eaef777619: `, а также по формам имени
+                    («Наташа» → «Наталья», «Наталия» — см. блок «Формы имён» выше). При однозначном совпадении HCP обновляется
+                    в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.`,
+    ui_cdc2875aeb: `Сайт АГР не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
+                        Если все прокси недоступны — укажите свой прокси-шаблон, где`,
+    ui_3d04a4325f: "будет заменён на адрес запроса.",
+    ui_1ba85ca4f6: "Экранные карточки игроков и групп настраиваются во вкладке «Отображения счётных карточек».",
+    ui_79fc3f0dc8: "Таблица: место, игрок, лунки, гросс, ±, нетто, стейблфорд",
+    ui_a3082d359e: "Только место, игрок, лунки, ± (минимализм)",
+    ui_b35f24ac18: "Каждый игрок — карточка с крупными цифрами",
+    ui_0af1e08619: "Все поля: HCP, гросс, нетто, стейблфорд, группа, ТИ",
+    ui_dee1935da4: "Современный live с индикаторами и анимацией",
+    ui_a83394b44d: "Разделение лидерборда турнира по полу (страница «Турниры», 3 вида)",
+    ui_b89fb1b0a2: "Мужчины и девушки могут вести зачёт отдельно. Выберите один из 3 видов отображения — настройка выбирается только админом и применяется для всех.",
+    ui_9cbddd9bbf: "Одна общая таблица, места среди всех игроков (как раньше)",
+    ui_207283cc33: "Вкладки «Все / Мужчины / Девушки», места считаются отдельно внутри каждого пола",
+    ui_735a085876: "Две таблицы рядом: «Мужчины» и «Девушки», каждая со своим зачётом",
+    ui_118f80f98e: "Группы и список участников на странице «Турниры»",
+    ui_96800570ef: "Активный турнир всегда открывается на live-лидерборде. Группы (дивизионы) по умолчанию видны всем — здесь их можно скрыть. Ниже — 4 варианта оформления списка участников и групп. Настройки применяются для всех.",
+    ui_596c7029ad: "Блок «Активный турнир» на главной (5 видов)",
+    ui_72830e585c: "Выберите один из 5 видов блока активного турнира на главной странице — с топ-3 в разных форматах. Выбирает только админ, применяется для всех пользователей. Виды удобно смотреть и с телефона, и с компьютера.",
+    ui_59de0e7de6: "Создание раунда использует один компактный сценарий для всех игроков. Прежние настройки 1–5 совместимы и автоматически открывают этот сценарий; данные раундов не меняются.",
+    ui_48ff68a668: "Главная страница и экран ввода счёта каждого PR. Нажмите на снимок, чтобы увеличить его и листать соседние PR.",
+    ui_97c465622a: "Страницы сняты из коммитов PR с одинаковыми демонстрационными данными, в мобильном окне 430 × 1100 px. Реальные игроки и результаты не используются.",
+    ui_4aa4d75229: "Как читать этот архив",
+    ui_0370f1fefb: "Для слитых PR показано состояние после слияния; для закрытых без слияния — последняя версия ветки PR. Номер PR — не обязательно порядок релизов: ориентируйтесь также на дату и коммит.",
+    ui_5101f428d8: "Во всех PR сравниваются страницы index.html и scorer.html. Настройки оформления из исторической базы не восстановлены: используется исходное оформление из кода. Внешние шрифты и иконки заменены локальными аналогами; некоторые значки могут отличаться. Внешние сервисы отключены. Это снимки первого экрана, а не страниц целиком. Если исторический JavaScript не запускается, показана статическая HTML-разметка с отдельной пометкой в карточке.",
+    ui_d5ff61a4fa: "Если PR не менял внешний вид, снимки могут совпадать. Галерея ничего не применяет к текущему сайту и не меняет данные. Изображения содержат только демонстрационные данные и доступны как статические ресурсы сайта.",
+    ui_d780fc28a8: "Номер PR, название или коммит",
+    ui_af1034f05e: "Диапазон PR",
+    ui_0142ff8eb9: "Все · №1–187",
+    ui_93ee53cdb5: "Новые · №101–187",
+    ui_c241f6db67: "Снимки",
+    ui_96c52b09d0: "Оба экрана",
+    ui_fcfc354fd2: "Только главная",
+    ui_efa324b62e: "Только ввод счёта",
+    ui_36c690d37b: "Статус PR",
+    ui_0fe8ec7f51: "Все PR",
+    ui_f6b34ec37f: "Только слитые",
+    ui_953c2969d9: "Закрытые без слияния",
+    ui_f7ca1ccfc6: "Порядок",
+    ui_3bd2dc0215: "От №1 к №187",
+    ui_6236dd5e17: "От №187 к №1",
+    ui_05336bbf2e: "Загружаем архив…",
+    ui_a7a4033657: "Закрыть",
+    ui_1d471cdfa4: "Другой экран",
+    ui_98cf8011c5: "Реконструкция · демонстрационные данные · 430 × 1100 px",
+    ui_e07a01d59a: "Открыть оригинал",
+    ui_9ce8dc7534: "PR на GitHub ↗",
+    ui_f4635472cd: "Проверить права / Войти",
+    ui_a726a4d98e: "Уведомления для всех игроков",
+    ui_159f8996b8: "Проверка настройки…",
+    ui_db491ef503: "Загрузка…",
+    ui_738bc2a3c4: "История PR · 1–187",
+    ui_74fc14c766: "Интеграции",
+    ui_6a4154a7b4: "Отображения счётных карточек",
+    ui_1b9445b0ba: "Единое оформление для всех игроков: главная, активные и завершённые раунды, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.",
+    ui_70cbac7057: "Для всех игроков",
+    ui_ea774426cf: "Общий вид карточки",
+    ui_f6bb92d043: "Пять видов одной карточки. Выберите — пример ниже обновится сразу.",
+    ui_c85201ffd9: "Бланк клуба",
+    ui_80945904b8: "Две девятки, как в «Поле клуба».",
+    ui_b8b309415b: "Блоки по 3 лунки",
+    ui_9ef5e101ef: "Крупнее, без горизонтальной прокрутки.",
+    ui_2604161591: "Крупная лента",
+    ui_5eed24f577: "Крупные цифры, прокрутка внутри карточки.",
+    ui_f3c8e4b47f: "Вертикальный список",
+    ui_0036ec360b: "Одна лунка на строку, всё по порядку.",
+    ui_93e97a4adc: "Плитки",
+    ui_05112402c7: "Акцент на счёте каждой лунки.",
+    ui_d08d823b89: "Вид завершённых раундов",
+    ui_95b75ea948: "Как общий вид",
+    ui_e978047dc5: "1 · Бланк клуба",
+    ui_7926130a5d: "2 · Блоки по 3 лунки",
+    ui_aeba52bfb2: "3 · Крупная лента",
+    ui_e2f0805e35: "4 · Вертикальный список",
+    ui_d1354fcd52: "5 · Плитки",
+    ui_4ba0cd97dc: "Отдельное оформление не меняет карточки активных раундов. Итоги завершённых раундов всегда видны сверху, лунки раскрываются по нажатию.",
+    ui_4632084292: "Применить для всех",
+    ui_abf5591727: "Вернуть предыдущий",
+    ui_4e42078f83: "Оба вида сохраняются вместе. «Вернуть предыдущий» восстановит предыдущую пару настроек для всех игроков.",
+    ui_bf858b74a1: "Предпросмотр для телефона",
+    ui_4ab35c6031: "Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.",
+    ui_f31c927b94: "Демонстрационный раунд",
+    ui_6fe17b125b: "1 игрок",
+    ui_6c8ca669b6: "2 игрока",
+    ui_8d6dfcf06e: "4 игрока",
+    ui_a0e5860a63: "Лунки",
+    ui_306270531f: "18 лунок",
+    ui_8ad6f5ac21: "9 лунок",
+    ui_ca285db3dd: "Состояние",
+    ui_be6881d53f: "Активный",
+    ui_08611623e4: "Завершённый",
+    ui_274b9850af: "Карточки на вводе счёта",
+    ui_07b10af87d: "для всех",
+    ui_c5bfa629ee: "Турнирный ввод счёта",
+    ui_c1476781c7: "Элементы турнирного экрана",
+    ui_54990f6075: "Порядок основных блоков",
+    ui_38dd3df1fb: "Применить для всех турниров",
+    ui_80e951569d: "Использовать настройки обычного раунда",
+    ui_6dfeded55b: "Краткий предпросмотр",
+    ui_31d879f14c: "Экран ввода счёта — гибкие настройки",
+    ui_6a5e9bae78: "Вид экрана ввода — 10 вариантов",
+    ui_2c1fc844a6: "Акцент",
+    ui_79e251f781: "Размер цифр счёта",
+    ui_01059180ff: "Элементы экрана ввода",
+    ui_ad357c2171: "Применить для всех игроков",
+    ui_f904239d48: "Сбросить к настройкам по умолчанию",
+    ui_a5a61148ad: "— все —",
+    ui_2e25784bee: "🔴 Активный",
+    ui_f38626436a: "⏳ Запланированный",
+    ui_9d95526c14: "✅ Завершённый",
+    ui_0d60c3c52a: "Загрузка раундов…",
+    ui_89bd355ac1: "Журнал действий со счётом",
+    ui_9cb2510ad8: "ФИО или ID игрока",
+    ui_1ba816fbaa: "Дата подтверждения",
+    ui_d9132c1651: "Все 30 дней",
+    ui_c2ddbf6168: "Ошибки клиентов",
+    ui_8965271d3c: "Очистить",
+    ui_2913d18a6c: "Журнал гандикапов",
+    ui_7deb244ce4: "Игрок или кто обновил",
+    ui_66d6d374ce: "Сортировка",
+    ui_78df4874e9: "Сначала отстающие",
+    ui_98e7d488b3: "По времени старта",
+    ui_89a28116ec: "По текущей лунке",
+    ui_638f8008a1: "Проверка…",
+    ui_83553fb558: "Обновить статус",
+    ui_c432469e67: "Компоновка страницы",
+    ui_1fb247e9b6: "Карточки клуба — по умолчанию",
+    ui_c038d4521f: "Лента стартов",
+    ui_5abae0a639: "Компактный обзор",
+    ui_60759e83ad: "Видимые элементы",
+    ui_7b51a77806: "Порядок разделов каталога",
+    ui_cba24a2554: "Применить страницу для всех",
+    ui_8f2cb9764e: "Сбросить к умолчанию",
+    ui_163a76ac41: "Открыть страницу турниров",
+    ui_9ce56ee20f: "Создать игрока",
+    ui_50c46937d9: "Имя и фамилия",
+    ui_3019fcbf07: "Email (опционально)",
+    ui_56b3cd42a3: "Точный HCP",
+    ui_3ae687a699: "👨 Мужчина",
+    ui_b1759eaca5: "👩 Девушка",
+    ui_ebd4563f5a: "Роль",
+    ui_6c7719973e: "Администратор",
+    ui_8eeba5c915: "Удалить всех игроков",
+    ui_ff1489805d: "Экспорт игроков в Excel",
+    ui_5b297215a0: "Скачать шаблон таблицы",
+    ui_1da7e9372e: "Имя",
+    ui_353eafa3bb: "Фамилия",
+    ui_d45e798e71: "Точный гандикап",
+    ui_d06ce0270e: "Импорт игроков из Excel",
+    ui_095183c100: "Выберите файл Excel",
+    ui_be6156b8e4: "Найти",
+    ui_826b2ede80: "Проверка гандикапа из таблицы Excel",
+    ui_63885170ec: "Скачать шаблон",
+    ui_b4d30cae52: "Сохранить",
+    ui_69758cbb1b: "Проверить имена игроков",
+    ui_5d2f8a5ca7: "Синхронизация гандикапов игроков",
+    ui_af2c59669e: "Кого синхронизировать",
+    ui_694548f944: "Всех игроков",
+    ui_cae7d870b1: "Не найденных в прошлый раз",
+    ui_1b3f5ff442: "Новых (без HCP / без прошлой синхронизации)",
+    ui_2c22282914: "С устаревшими данными (старше 30 дней)",
+    ui_4633a736fe: "Требующих ручного выбора",
+    ui_8638145363: "Синхронизировать гандикапы",
+    ui_3396400da0: "Остановить",
+    ui_edf877bf49: "Настройки подключения (прокси к hcp.rusgolf.ru)",
+    ui_f8649416b7: "Пример:",
+    ui_fe3869f69d: "Свой прокси (необязательно)",
+    ui_e5b6702ec7: "Предпросмотр:",
+    ui_236d32f967: "1 · Смешанный (все вместе)",
+    ui_9d90e71528: "2 · По полу (вкладки)",
+    ui_68e05fd372: "3 · Раздельные таблицы",
+    ui_119652e33e: "1 · Смешанный",
+    ui_fb5cd66197: "2 · По полу",
+    ui_f57daa47b9: "3 · Раздельные",
+    ui_897c84ceb9: "Показывать группы: включено",
+    ui_d8a8a12686: "Вид списка участников:",
+    ui_45a32387c7: "2 · Карточки",
+    ui_3ed9a1a8ec: "3 · Компактные строки",
+    ui_ef33d34e09: "4 · Короткая таблица",
+    ui_a914ec19c9: "1 · Подиум",
+    ui_0e40d2c698: "2 · Витрина",
+    ui_05bb8b7a66: "3 · Строки",
+    ui_f6e44f0aa7: "4 · Тёмный",
+    ui_bd4c538c77: "5 · Мини",
+    ui_5c41619935: "Архив оформления · PR 1–187",
+    ui_9befdd5b37: "История дизайна",
+    ui_c3418ec73a: "Реконструкция, не архив продакшена.",
+    ui_2449e9a501: "Версия сайта:",
+    ui_93ad246ba5: "Все форматы",
+    ui_f5adc4edc2: "Ввод счёта",
+    ui_720b952962: "Выбор числа",
+    ui_60940bd864: "Плюс / минус",
+    ui_37badbe057: "Уменьшить счёт",
+    ui_e45cf03864: "Увеличить счёт",
+    ui_54121f46af: "Счёт",
+    ui_b0e6eca51b: "Нет соединения. Вернитесь к карточке, чтобы проверить состояние сохранения счёта. После восстановления сети проверьте отправку результатов.",
+    ui_1f0e24193d: "Пестово · Стартовый протокол",
+    ui_5ffd06c6d9: "← Админка",
+    ui_b326e2ccc9: "📐 QR-карточки:",
+    ui_12da0d1a9f: "1 игрок — 1 карточка",
+    ui_cfef57bde3: "2 игрока — 1 карточка (по вертикали)",
+    ui_f35eb2049b: "4 игрока — 1 карточка (2×2)",
+    ui_d31f327693: "QR заново",
+    ui_03061be853: "Документ:",
+    ui_2bd8f9ea51: "QR-карточки",
+    ui_ec9bb75920: "Стартовый лист",
+    ui_e922cbb358: "Печать",
+    ui_e27b6a1649: "Загрузка протокола…",
+    ui_54065e54bc: "⚠️ Протокол не найден",
+    ui_a2bea1f4c8: "Проверьте ссылку или вернитесь в админку.",
+    ui_a10539f7f6: "← Вернуться в админ-панель",
+    ui_325a1d2269: "Stroke Play — все показатели",
+    ui_d6e81b3942: "Gross (без HCP)",
+    ui_93efc37d4c: "Net (с HCP)",
+    ui_08ff4e3814: "Мой счёт: —",
+    ui_be83f247cd: "Счёт игрока: —",
+    ui_65530fd463: "Пауза",
+    ui_1b19144ee0: "Турниры и результаты",
+    ui_106957f5af: "Загрузка турниров…",
+    ui_958ca6ecb7: "Активный турнир",
+    ui_c115a87773: "Лидерборд обновляется автоматически",
+    ui_e4c1a21426: "Предстоящие старты",
+    ui_c94979019a: "Прошедшие турниры",
+    ui_b2bbe98857: "Открыть меню",
+    ui_ad7cd87bea: "Поиск по названию",
     brand_name: "Пестово",
     nav_home: "Главная",
     nav_round: "Играть",
@@ -1042,7 +1445,390 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tee_label: "ТИ"
   },
   en: {
-    brand_name: "Пестово",
+    ui_bc997c1edb: "Club management",
+    ui_31e9780267: "Admin sections",
+    ui_bcef39ebdf: "Peter Smith",
+    ui_798ff83284: "Last name First name",
+    ui_9626d7ac8c: "e.g. John Smith",
+    ui_c5c1c59988: "13.0 or +2.4",
+    ui_9dc027291b: "🔍 Search: name, email, phone…",
+    ui_d8abc3263c: "e.g. John Smith or RU000732",
+    ui_32541c0ddf: `Lyolya = Olga
+Catalina = Natalia`,
+    ui_30e0a41688: "e.g. 42 or design",
+    ui_e01f87de68: "PR history pages",
+    ui_372a391df1: "Expand scorecard",
+    ui_cb8c5d52e1: "Decrease score",
+    ui_ac0d11c0a3: "Increase score",
+    ui_68660731cc: "Decrease marked player score",
+    ui_3470822c60: "Increase marked player score",
+    ui_0e32051f71: "Pause / Resume",
+    ui_1ba5263bd8: "Design templates",
+    ui_3c4ef14e00: "The current design plus five alternative templates for the whole site, individual pages and individual sections",
+    ui_b9f1fffef4: "How it works",
+    ui_651c92f849: "Each template changes the full appearance: colors, backgrounds, borders, shadows, typography, buttons, badges, tables, header and footer. Compare the differences below. The selection is saved in",
+    ui_881d791541: "Admin panel → Design 🎨",
+    ui_d4576e5a46: "and applies to all players.",
+    ui_613bd6e0c9: "You can",
+    ui_4b5926bddb: "combine templates",
+    ui_0a6792dd1e: ": select a base template, then override individual pages or sections such as the header, cards, buttons, tables, badges and footer. The builder is at the bottom of this page.",
+    ui_cf09d75992: "To preview any page with a specific template, append to its URL",
+    ui_37d7a2cb26: "(for example,",
+    ui_40ea39625c: "). Nothing is saved.",
+    ui_33aa9be74a: "Complete templates",
+    ui_83a0cd9f0a: "The same sample layout in six designs.",
+    ui_7911dda73e: "Section-by-section comparison",
+    ui_c2b480d644: "Each section is shown separately so you can compare the differences.",
+    ui_70dbdf297a: "Design comparison matrix",
+    ui_4568b826cb: "Builder: combine design templates",
+    ui_1ccc4ef533: "Select a base template, then choose a template for each section. The result appears immediately on the right. Save a site-wide design in the admin panel.",
+    ui_f6408ec13b: "Your design",
+    ui_ea58bb0bc6: "Next",
+    ui_77b6544cd7: "Open admin panel",
+    ui_ad94907f64: "Home",
+    ui_b60aec20f0: "Handicap verification badge: choose a style",
+    ui_3d8a25781e: "A green check mark",
+    ui_3ea256e8e5: "appears when a player's handicap has been",
+    ui_ecb734a856: "synchronized and updated",
+    ui_4e3aac4cb1: ": through the RGA (RUSGOLF) database, an Excel import or a manual admin update. Beside it is the",
+    ui_5612b79e93: "last update date",
+    ui_d932268240: "and the source appears on hover (always visible in the profile). Players without a synchronized handicap",
+    ui_3c86ea8bd6: "do not receive a check mark",
+    ui_64ddfe38d8: "(see the Ivan Kuznetsov example in each style).",
+    ui_ba17dc61c0: "The style appears on the",
+    ui_e2a152f678: "Players tab",
+    ui_2b1f8a0919: ", in the",
+    ui_7e38742eb5: "player profile",
+    ui_4370f56467: "and in the",
+    ui_14b9794b43: "admin panel",
+    ui_5fbd949349: "(Players and roles). Below are examples using the site's actual markup. The",
+    ui_da950719bc: "Choose this style",
+    ui_5d732dd44b: "button enables it",
+    ui_12d296173f: "in this browser",
+    ui_8af581ead5: "for preview.",
+    ui_f7b3462438: "The global selection for all players",
+    ui_0974cf527b: "is in the",
+    ui_3e23e0c898: "Admin panel",
+    ui_a64a2db415: ", under",
+    ui_7c6da828ce: "Data → Handicap badge style",
+    ui_63669f17cf: ": saved in the cloud and applied to all devices immediately (reload this page to update).",
+    ui_04589d0f49: "Compact check mark",
+    ui_7f8a03d69e: "— minimal",
+    ui_1c6adb3f41: "A small green check mark",
+    ui_90641a8e61: "and update date (DD.MM.YY) follow the handicap. The status stays visible without clutter. Profiles show the full date and source.",
+    ui_8e6ae01d92: "Players tab",
+    ui_d2151bdbf0: "Player profile",
+    ui_ef4e961f6a: "Choose this style",
+    ui_5136e92f25: "Glowing pill badge",
+    ui_8a1f20cd03: "— highly visible",
+    ui_1d0841a615: "A green pill labelled",
+    ui_0ad04468e5: "updated",
+    ui_622f083bfd: "with a subtle glow beside the handicap. Profiles show a larger Handicap synchronized banner with the full update date and source (RUSGOLF / Excel / manual).",
+    ui_fdbcebcc6c: "Verified avatar",
+    ui_7f81d13850: "— social profile style",
+    ui_bc6cc166b2: "A green verification check appears on the avatar. The update date is shown next to the handicap in the list and profile, making status easy to recognize.",
+    ui_cc8aaf7006: "Open Players",
+    ui_af947ab16f: "Examples use demo data. On the site, the check mark appears automatically for players whose handicaps have already been synchronized and have an update date.",
+    ui_d827cf9eaa: "© Pestovo — handicap badge style preview",
+    ui_43f0c259b7: "Scorecards on the score-entry page (setup-round.html). One player uses a hole-by-hole scorecard; multiple players use a shared scorecard. Choose layout, size and elements for each; tournament entry can have a separate layout.",
+    ui_b939086787: "This tab affects score-entry screens only. Home, leaderboard and history cards are configured under Scorecard appearance.",
+    ui_ae1ebf647f: "Customize the screen opened by a starting-sheet QR code. These settings apply to all tournaments and players; regular score-entry settings are used where no tournament override is set.",
+    ui_e4404ae752: "Score entry and the My score panel remain enabled. To restore shared settings, select Use regular-round settings.",
+    ui_828ac5a2bb: "Checked elements appear on tournament QR score-entry screens.",
+    ui_bd01c82261: "Change the order of information, hole navigation and score input.",
+    ui_39659830f3: "Tournament settings are saved separately and take effect on all devices.",
+    ui_36a643d966: "One shared design without saved legacy variants. Configure element visibility and section order for all players, solo and group rounds.",
+    ui_37b74d9a02: "Score entry, saving and the My score panel are mandatory. Tournament score entry provides separate overrides for QR rounds.",
+    ui_fd846f05e5: "Choose a layout for all players, solo and group rounds, on mobile and desktop. It takes effect after saving.",
+    ui_c06456492c: "Accent for the active hole, score border, plus button and confirmation button. Works with every layout.",
+    ui_25f2120510: "Choose how large entered scores appear. Extra large is useful in bright sunlight.",
+    ui_0af9ddb0c8: "Top-to-bottom order. Move buttons are touch-friendly.",
+    ui_a832c196d4: "Changes are saved globally. Screens that are already open update automatically.",
+    ui_914b6f179a: "Server-recorded actions from the last 30 days. Unsigned QR access is marked separately: the operator's identity is not verified. Times use your device's time zone.",
+    ui_f8c420259d: "Errors reported automatically by player devices (",
+    ui_2b31c31735: "→ node",
+    ui_6b762724a8: "). Up to 20 messages per session and 3 repeats of the same error per device; grouped by message. Database rules must include the node",
+    ui_e7ab4c0825: "Who updated a handicap and when: RUSGOLF lookup during round setup (using the entered name), manual admin changes, RGA synchronization and Excel imports. Previous and new values are shown.",
+    ui_0429aea676: "How to obtain a community token",
+    ui_c30c05cc7d: "Go to",
+    ui_9eaa725bc8: "Community management",
+    ui_9ff04885fb: "API access",
+    ui_58207ae860: "Access keys",
+    ui_fad2f82e70: "Select",
+    ui_45cc94ebe8: "Create key",
+    ui_df82e5bc7c: ", then select permissions:",
+    ui_b28d2cd212: "Messages",
+    ui_c9b591fe97: "Copy the generated key (",
+    ui_57a22a6638: ") into the field below",
+    ui_9123450c26: "Conversation Peer ID",
+    ui_8457bff7f2: ": open the VK conversation → the link looks like",
+    ui_85da1e3647: "User Peer ID",
+    ui_12fcfb70ef: ": numeric ID from the VK profile",
+    ui_e695053fe0: "Add the community to the conversation and",
+    ui_0dd6b37fa5: "allow the bot to send messages",
+    ui_56e22910e6: "in conversation settings",
+    ui_4bdac71815: "For conversations: 2000000000 + chat number. For direct messages: user ID.",
+    ui_fade085486: "Recipients: all club players",
+    ui_aa8da22e16: "Background push notifications (app closed)",
+    ui_c6ba963938: "Announcements and referee calls can arrive even when the PWA is closed. A one-time Cloud Function deployment is required (see",
+    ui_eead37caf8: "and",
+    ui_f0f83935aa: "vapidSetup function URL (if the region is not us-central1)",
+    ui_dca5579aa0: "Create/check VAPID keys",
+    ui_821c616097: "Tournament page settings",
+    ui_3954e489e4: "Layout, section order and visibility are saved for everyone. Legacy numeric variants are removed; responsive cards are the default.",
+    ui_18f791f55a: "Reorder the live tournament, upcoming starts and archive.",
+    ui_979c1e906b: "Saved settings apply to the tournament catalog and detail page.",
+    ui_b2a1629832: "Add a player to the club system (name, handicap index and gender). The starting-sheet group determines the player's tee.",
+    ui_e15533e8fb: "Permanently delete all players: the list will become empty. Their rounds, history and tournament registrations will also be deleted.",
+    ui_1eb1a40bf2: "📋 Spreadsheet columns:",
+    ui_4273fc6f1a: "(for example",
+    ui_bcacbff7a5: "or",
+    ui_342a931cc4: "). You can optionally add a column",
+    ui_c79219bb6a: "(male/female).",
+    ui_afcac97610: "Upload an .xlsx, .xls or .csv file to add players. Duplicates are matched by first and last name; their handicap index can be updated.",
+    ui_b3a2803940: ".xlsx, .xls or .csv · columns: First name, Last name, Handicap index",
+    ui_545f879d01: "Upload an Excel spreadsheet of players (columns",
+    ui_546a52b7e1: "). The system searches the RGA database for each player and lists matches. Select the correct entries and add them with one click.",
+    ui_20212f11a2: ".xlsx, .xls or .csv · columns: First name, Last name",
+    ui_d92610877f: "Name variants — Natasha = Natalya",
+    ui_4934470186: "A player's name on this site may be a short or alternative form (",
+    ui_97031dc24d: "Natasha",
+    ui_842b195e2f: "Natalia",
+    ui_16a747fbb9: "), while the RGA database uses a full name. Choose how to match names during handicap lookup and synchronization. Name dictionary:",
+    ui_983582571f: "Automatically apply name-variant matches",
+    ui_5593de071b: "(disabled by default).",
+    ui_e3c4ef05e1: "When unchecked, variant matches such as Natasha = Natalya require manual selection. Exact first- and last-name matches always update the handicap, regardless of this setting.",
+    ui_2f10dc25cf: "Custom name variants (option 3), one per line, for example:",
+    ui_cc49a355ae: "Lyolya = Olga",
+    ui_53acb9a7ee: "Checks handicap indexes of registered players, guests and round participants in the RGA database. Matches by",
+    ui_cfcfdee185: "Last name + First name",
+    ui_e7b7bed99b: "and by",
+    ui_e3849248aa: "First name + Last name",
+    ui_eaef777619: ", and by name variants (Natasha → Natalya, Natalia; see Name variants above). An unambiguous match updates profiles, rounds, history and tournaments. Results are grouped as updated / current / not found / needs selection.",
+    ui_cdc2875aeb: "The RGA website does not allow direct browser requests, so a chain of public CORS proxies is used. If none are available, provide a custom proxy template where",
+    ui_3d04a4325f: "is replaced with the request URL.",
+    ui_1ba85ca4f6: "On-screen player and group cards are configured under Scorecard appearance.",
+    ui_79fc3f0dc8: "Table: place, player, holes, gross, relative to par, net, Stableford",
+    ui_a3082d359e: "Place, player, holes and relative to par only",
+    ui_b35f24ac18: "One card per player with large numbers",
+    ui_0af1e08619: "All fields: handicap, gross, net, Stableford, group and tee",
+    ui_dee1935da4: "Live feed with indicators and animation",
+    ui_a83394b44d: "Tournament leaderboard by gender (three layouts)",
+    ui_b89fb1b0a2: "Men and women can compete separately. The administrator selects one of three layouts for everyone.",
+    ui_9cbddd9bbf: "One combined table with overall places",
+    ui_207283cc33: "All / Men / Women tabs, with places calculated separately for each gender",
+    ui_735a085876: "Separate Men's and Women's tables, each with its own standings",
+    ui_118f80f98e: "Groups and participants on the Tournaments page",
+    ui_96800570ef: "The live tournament opens on its live leaderboard. Groups (divisions) are visible to everyone by default; hide them here if needed. Four participant/group layouts are available below. Settings apply to everyone.",
+    ui_596c7029ad: "Home live-tournament block (five layouts)",
+    ui_72830e585c: "Choose one of five home live-tournament layouts showing the top three. Only administrators can choose; the setting applies to everyone on mobile and desktop.",
+    ui_59de0e7de6: "Round creation uses one compact flow for all players. Stored legacy options 1–5 automatically open this flow; round data is unchanged.",
+    ui_48ff68a668: "Home and score-entry screens for each PR. Select an image to enlarge it and browse nearby PRs.",
+    ui_97c465622a: "Captured from PR commits using identical demo data in a 430 × 1100 px mobile viewport. No real players or results are used.",
+    ui_4aa4d75229: "How to read this archive",
+    ui_0370f1fefb: "Merged PRs show the post-merge state; closed unmerged PRs show the last branch version. PR numbers do not necessarily follow release order: also check the date and commit.",
+    ui_5101f428d8: "All PRs compare index.html and scorer.html. Historical database design preferences are not restored; code defaults are used. External fonts and icons use local equivalents, so some symbols may differ. External services are disabled. These are first-screen captures, not full-page captures. If historical JavaScript cannot run, a labelled static HTML reconstruction is shown.",
+    ui_d5ff61a4fa: "PRs that did not change the appearance may have identical images. This gallery does not apply settings or change data. Images contain demo data only and are served as static site resources.",
+    ui_d780fc28a8: "PR number, title or commit",
+    ui_af1034f05e: "PR range",
+    ui_0142ff8eb9: "All · #1–187",
+    ui_93ee53cdb5: "New · #101–187",
+    ui_c241f6db67: "Screenshots",
+    ui_96c52b09d0: "Both screens",
+    ui_fcfc354fd2: "Home only",
+    ui_efa324b62e: "Score entry only",
+    ui_36c690d37b: "PR status",
+    ui_0fe8ec7f51: "All PRs",
+    ui_f6b34ec37f: "Merged only",
+    ui_953c2969d9: "Closed without merge",
+    ui_f7ca1ccfc6: "Order",
+    ui_3bd2dc0215: "#1 to #187",
+    ui_6236dd5e17: "#187 to #1",
+    ui_05336bbf2e: "Loading archive…",
+    ui_a7a4033657: "Close",
+    ui_1d471cdfa4: "Other screen",
+    ui_98cf8011c5: "Reconstruction · demo data · 430 × 1100 px",
+    ui_e07a01d59a: "Open original",
+    ui_9ce8dc7534: "PR on GitHub ↗",
+    ui_f4635472cd: "Verify access / Sign in",
+    ui_a726a4d98e: "Notifications for all players",
+    ui_159f8996b8: "Checking settings…",
+    ui_db491ef503: "Loading…",
+    ui_738bc2a3c4: "PR history · 1–187",
+    ui_74fc14c766: "Integrations",
+    ui_6a4154a7b4: "Scorecard appearance",
+    ui_1b9445b0ba: "One appearance for all players: home, live and completed rounds, leaderboards, tournaments and history. Distances are hidden; tees appear next to names. Print and PNG layouts are unchanged.",
+    ui_70cbac7057: "For all players",
+    ui_ea774426cf: "Default scorecard layout",
+    ui_f6bb92d043: "Five layouts for the same scorecard. Select one to update the preview below.",
+    ui_c85201ffd9: "Club scorecard",
+    ui_80945904b8: "Front and back nine, like the club course card.",
+    ui_b8b309415b: "Three-hole blocks",
+    ui_9ef5e101ef: "Larger scores, no horizontal scrolling.",
+    ui_2604161591: "Large strip",
+    ui_5eed24f577: "Large numbers; scroll within the scorecard.",
+    ui_f3c8e4b47f: "Vertical list",
+    ui_0036ec360b: "One hole per row, in playing order.",
+    ui_93e97a4adc: "Tiles",
+    ui_05112402c7: "Focus on the score for each hole.",
+    ui_d08d823b89: "Completed-round layout",
+    ui_95b75ea948: "Use default layout",
+    ui_e978047dc5: "1 · Club scorecard",
+    ui_7926130a5d: "2 · Three-hole blocks",
+    ui_aeba52bfb2: "3 · Large strip",
+    ui_e2f0805e35: "4 · Vertical list",
+    ui_d1354fcd52: "5 · Tiles",
+    ui_4ba0cd97dc: "This setting does not affect live rounds. Completed-round totals remain visible at the top; tap to reveal the holes.",
+    ui_4632084292: "Apply to everyone",
+    ui_abf5591727: "Restore previous",
+    ui_4e42078f83: "Both layouts are saved together. Restore previous restores the previous pair of settings for all players.",
+    ui_bf858b74a1: "Mobile preview",
+    ui_4ab35c6031: "Demo data · up to 390 px wide. Strokes indicate handicap allowances; red strokes are given back. A dash means no score has been entered. Marker disagreements are highlighted.",
+    ui_f31c927b94: "Demo round",
+    ui_6fe17b125b: "1 player",
+    ui_6c8ca669b6: "2 players",
+    ui_8d6dfcf06e: "4 players",
+    ui_a0e5860a63: "Holes",
+    ui_306270531f: "18 holes",
+    ui_8ad6f5ac21: "9 holes",
+    ui_ca285db3dd: "Status",
+    ui_be6881d53f: "Active",
+    ui_08611623e4: "Completed",
+    ui_274b9850af: "Score-entry scorecards",
+    ui_07b10af87d: "for everyone",
+    ui_c5bfa629ee: "Tournament score entry",
+    ui_c1476781c7: "Tournament screen elements",
+    ui_54990f6075: "Main section order",
+    ui_38dd3df1fb: "Apply to all tournaments",
+    ui_80e951569d: "Use regular-round settings",
+    ui_6dfeded55b: "Quick preview",
+    ui_31d879f14c: "Score-entry screen settings",
+    ui_6a5e9bae78: "Score-entry layout — 10 options",
+    ui_2c1fc844a6: "Accent",
+    ui_79e251f781: "Score number size",
+    ui_01059180ff: "Score-entry screen elements",
+    ui_ad357c2171: "Apply to all players",
+    ui_f904239d48: "Reset to defaults",
+    ui_a5a61148ad: "— all —",
+    ui_2e25784bee: "🔴 Active",
+    ui_f38626436a: "⏳ Scheduled",
+    ui_9d95526c14: "✅ Completed",
+    ui_0d60c3c52a: "Loading rounds…",
+    ui_89bd355ac1: "Score audit log",
+    ui_9cb2510ad8: "Player name or ID",
+    ui_1ba816fbaa: "Confirmation date",
+    ui_d9132c1651: "All 30 days",
+    ui_c2ddbf6168: "Client errors",
+    ui_8965271d3c: "Clear",
+    ui_2913d18a6c: "Handicap history",
+    ui_7deb244ce4: "Player or updated by",
+    ui_66d6d374ce: "Sort order",
+    ui_78df4874e9: "Behind schedule first",
+    ui_98e7d488b3: "By start time",
+    ui_89a28116ec: "By current hole",
+    ui_638f8008a1: "Checking…",
+    ui_83553fb558: "Refresh status",
+    ui_c432469e67: "Page layout",
+    ui_1fb247e9b6: "Club cards — default",
+    ui_c038d4521f: "Starting times feed",
+    ui_5abae0a639: "Compact overview",
+    ui_60759e83ad: "Visible elements",
+    ui_7b51a77806: "Catalog section order",
+    ui_cba24a2554: "Apply page to everyone",
+    ui_8f2cb9764e: "Reset to defaults",
+    ui_163a76ac41: "Open tournaments",
+    ui_9ce56ee20f: "Create player",
+    ui_50c46937d9: "First and last name",
+    ui_3019fcbf07: "Email (optional)",
+    ui_56b3cd42a3: "Handicap index",
+    ui_3ae687a699: "👨 Man",
+    ui_b1759eaca5: "👩 Woman",
+    ui_ebd4563f5a: "Role",
+    ui_6c7719973e: "Administrator",
+    ui_8eeba5c915: "Delete all players",
+    ui_ff1489805d: "Export players to Excel",
+    ui_5b297215a0: "Download spreadsheet template",
+    ui_1da7e9372e: "First name",
+    ui_353eafa3bb: "Last name",
+    ui_d45e798e71: "Handicap index",
+    ui_d06ce0270e: "Import players from Excel",
+    ui_095183c100: "Choose Excel file",
+    ui_be6156b8e4: "Find",
+    ui_826b2ede80: "Check handicaps from a spreadsheet",
+    ui_63885170ec: "Download template",
+    ui_b4d30cae52: "Save",
+    ui_69758cbb1b: "Check player names",
+    ui_5d2f8a5ca7: "Player handicap synchronization",
+    ui_af2c59669e: "Players to synchronize",
+    ui_694548f944: "All players",
+    ui_cae7d870b1: "Not found last time",
+    ui_1b3f5ff442: "New (no handicap / not previously synchronized)",
+    ui_2c22282914: "Outdated records (over 30 days old)",
+    ui_4633a736fe: "Requiring manual selection",
+    ui_8638145363: "Synchronize handicaps",
+    ui_3396400da0: "Stop",
+    ui_edf877bf49: "Connection settings (proxy for hcp.rusgolf.ru)",
+    ui_f8649416b7: "Example:",
+    ui_fe3869f69d: "Custom proxy (optional)",
+    ui_e5b6702ec7: "Preview:",
+    ui_236d32f967: "1 · Mixed (everyone)",
+    ui_9d90e71528: "2 · By gender (tabs)",
+    ui_68e05fd372: "3 · Separate tables",
+    ui_119652e33e: "1 · Mixed",
+    ui_fb5cd66197: "2 · By gender",
+    ui_f57daa47b9: "3 · Separate",
+    ui_897c84ceb9: "Show groups: enabled",
+    ui_d8a8a12686: "Participant list layout:",
+    ui_45a32387c7: "2 · Cards",
+    ui_3ed9a1a8ec: "3 · Compact rows",
+    ui_ef33d34e09: "4 · Short table",
+    ui_a914ec19c9: "1 · Podium",
+    ui_0e40d2c698: "2 · Showcase",
+    ui_05bb8b7a66: "3 · Rows",
+    ui_f6e44f0aa7: "4 · Dark",
+    ui_bd4c538c77: "5 · Mini",
+    ui_5c41619935: "Design archive · PR 1–187",
+    ui_9befdd5b37: "Design history",
+    ui_c3418ec73a: "Reconstruction, not production snapshots.",
+    ui_2449e9a501: "Site version:",
+    ui_93ad246ba5: "All formats",
+    ui_f5adc4edc2: "Score input",
+    ui_720b952962: "Number pad",
+    ui_60940bd864: "Plus / minus",
+    ui_37badbe057: "Decrease score",
+    ui_e45cf03864: "Increase score",
+    ui_54121f46af: "Score",
+    ui_b0e6eca51b: "No connection. Return to your scorecard to check whether your score was saved. When you reconnect, check that your results have been sent.",
+    ui_1f0e24193d: "Pestovo · Starting sheet",
+    ui_5ffd06c6d9: "← Admin",
+    ui_b326e2ccc9: "📐 QR cards:",
+    ui_12da0d1a9f: "1 player per card",
+    ui_cfef57bde3: "2 players per card (vertical)",
+    ui_f35eb2049b: "4 players per card (2×2)",
+    ui_d31f327693: "Regenerate QR codes",
+    ui_03061be853: "Document:",
+    ui_2bd8f9ea51: "QR cards",
+    ui_ec9bb75920: "Starting sheet",
+    ui_e922cbb358: "Print",
+    ui_e27b6a1649: "Loading starting sheet…",
+    ui_54065e54bc: "⚠️ Starting sheet not found",
+    ui_a2bea1f4c8: "Check the link or return to the admin panel.",
+    ui_a10539f7f6: "← Back to admin panel",
+    ui_325a1d2269: "Stroke Play — all metrics",
+    ui_d6e81b3942: "Gross (without handicap)",
+    ui_93efc37d4c: "Net (with handicap)",
+    ui_08ff4e3814: "My score: —",
+    ui_be83f247cd: "Player score: —",
+    ui_65530fd463: "Paused",
+    ui_1b19144ee0: "Tournaments & results",
+    ui_106957f5af: "Loading tournaments…",
+    ui_958ca6ecb7: "Live tournament",
+    ui_c115a87773: "Leaderboard updates automatically",
+    ui_e4c1a21426: "Upcoming tournaments",
+    ui_c94979019a: "Past tournaments",
+    ui_b2bbe98857: "Open menu",
+    ui_ad7cd87bea: "Search by name",
+    brand_name: "Pestovo",
     nav_home: "Home",
     nav_round: "Play",
     nav_leaderboard: "Results",
@@ -1712,352 +2498,355 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
 };
 (function() {
   var e = (/* @__PURE__ */ new Date()).getFullYear();
-  h.ru && (h.ru.footer_club = "© " + e + " Пестово"), h.en && (h.en.footer_club = "© " + e + " Pestovo");
+  m.ru && (m.ru.footer_club = "© " + e + " Пестово"), m.en && (m.en.footer_club = "© " + e + " Pestovo");
 })();
-function z(e) {
-  var r = typeof f < "u" && f ? f : "ru";
+function Y(e) {
+  var a = typeof b < "u" && b ? b : "ru";
   try {
-    if (h[r] && h[r][e] !== void 0)
-      return h[r][e];
-    if (h.ru && h.ru[e] !== void 0)
-      return h.ru[e];
-  } catch (a) {
-    console.warn("[silent]", a);
+    if (m[a] && m[a][e] !== void 0)
+      return m[a][e];
+    if (m.ru && m.ru[e] !== void 0)
+      return m.ru[e];
+  } catch (r) {
+    console.warn("[silent]", r);
   }
   return e;
 }
-function Te() {
-  f = f === "ru" ? "en" : "ru", typeof localStorage < "u" && localStorage.setItem("pestovo_lang", f);
+function Pe() {
+  b = b === "ru" ? "en" : "ru", typeof window < "u" && (window.currentLang = b), typeof localStorage < "u" && localStorage.setItem("pestovo_lang", b);
   try {
-    document.documentElement.setAttribute("lang", f);
-  } catch (o) {
-    console.warn("[silent]", o);
+    document.documentElement.setAttribute("lang", b);
+  } catch (i) {
+    console.warn("[silent]", i);
   }
-  if (D(), Q(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (x(), J(), typeof updateSunModeButtons == "function" && updateSunModeButtons(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
   if (typeof buildMobileDrawer == "function") {
-    var r = document.getElementById("mobile-drawer-root"), a = r && r.classList.contains("open");
-    buildMobileDrawer(), a && r && r.classList.add("open");
+    var a = document.getElementById("mobile-drawer-root"), r = a && a.classList.contains("open");
+    buildMobileDrawer(), r && a && a.classList.add("open");
   }
   if (typeof initP0MobileEnhancements == "function") try {
     initP0MobileEnhancements();
-  } catch (o) {
-    console.warn("[silent]", o);
+  } catch (i) {
+    console.warn("[silent]", i);
   }
-  if (typeof toast == "function" && toast(f === "en" ? "🇬🇧 English language enabled" : "🇷🇺 Выбран русский язык", "info"), typeof loadLiveRounds == "function" && loadLiveRounds(), typeof loadRecentResults == "function" && loadRecentResults(), typeof loadLB == "function" && loadLB(), typeof loadPlayers == "function" && loadPlayers(), typeof loadStats == "function" && loadStats(), typeof loadPestovoWeather == "function" && loadPestovoWeather("nav-weather-container"), typeof showGroupSetup == "function") {
+  if (typeof toast == "function" && toast(b === "en" ? "🇬🇧 English language enabled" : "🇷🇺 Выбран русский язык", "info"), typeof loadLiveRounds == "function" && loadLiveRounds(), typeof loadRecentResults == "function" && loadRecentResults(), typeof loadLB == "function" && loadLB(), typeof loadPlayers == "function" && loadPlayers(), typeof loadStats == "function" && loadStats(), typeof loadPestovoWeather == "function" && loadPestovoWeather("nav-weather-container"), typeof showGroupSetup == "function") {
     var n = document.getElementById("group-setup") || document.getElementById("setup");
     n && !n.classList.contains("hidden") && showGroupSetup();
   }
   typeof initRoundView == "function" && typeof curRid < "u" && curRid && initRoundView(), typeof initSoloView == "function" && initSoloView(), typeof updateHcpTable == "function" && updateHcpTable(), typeof loadClubStats == "function" && loadClubStats(), typeof loadMyActiveRounds == "function" && loadMyActiveRounds("my-active-rounds-container");
 }
-function Q() {
+function J() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
-    e.innerHTML = f === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
+    e.innerHTML = b === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
 }
-function D() {
+function x() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
-    var r = e.getAttribute("data-i18n");
-    r && h[f] && h[f][r] !== void 0 && (e.tagName === "TITLE" && r !== "brand_name" ? e.textContent = h[f][r] + " — " + z("brand_name") : e.innerHTML = h[f][r]);
+    var a = e.getAttribute("data-i18n");
+    a && m[b] && m[b][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = m[b][a] + " — " + Y("brand_name") : e.innerHTML = m[b][a]);
   }), document.querySelectorAll("[data-i18n-placeholder]").forEach(function(e) {
-    var r = e.getAttribute("data-i18n-placeholder");
-    r && h[f] && h[f][r] !== void 0 && e.setAttribute("placeholder", h[f][r]);
+    var a = e.getAttribute("data-i18n-placeholder");
+    a && m[b] && m[b][a] !== void 0 && e.setAttribute("placeholder", m[b][a]);
   }), document.querySelectorAll("[data-i18n-title]").forEach(function(e) {
-    var r = e.getAttribute("data-i18n-title");
-    r && h[f] && h[f][r] !== void 0 && e.setAttribute("title", h[f][r]);
+    var a = e.getAttribute("data-i18n-title");
+    a && m[b] && m[b][a] !== void 0 && e.setAttribute("title", m[b][a]);
+  }), document.querySelectorAll("[data-i18n-aria-label]").forEach(function(e) {
+    var a = e.getAttribute("data-i18n-aria-label");
+    a && m[b] && m[b][a] !== void 0 && e.setAttribute("aria-label", m[b][a]);
   }), typeof refreshDateRangeFilters == "function" && refreshDateRangeFilters());
 }
 try {
-  document.documentElement && typeof document.documentElement.setAttribute == "function" && document.documentElement.setAttribute("lang", f);
+  document.documentElement && typeof document.documentElement.setAttribute == "function" && document.documentElement.setAttribute("lang", b);
 } catch (e) {
   console.warn("[silent]", e);
 }
 try {
-  D();
+  x();
 } catch (e) {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  D(), L();
+  x(), F();
 });
-function L() {
+function F() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
-    document.querySelectorAll(".footer-bottom p").forEach(function(r) {
-      r.innerHTML = r.innerHTML.replace(/(©|&copy;)\s*\d{4}/g, "$1 " + e).replace(/&copy;\s*\d{4}/g, "&copy; " + e);
+    document.querySelectorAll(".footer-bottom p").forEach(function(a) {
+      a.innerHTML = a.innerHTML.replace(/(©|&copy;)\s*\d{4}/g, "$1 " + e).replace(/&copy;\s*\d{4}/g, "&copy; " + e);
     });
   }
 }
-L();
-typeof window < "u" && Object.assign(window, { currentLang: f, I18N: h, t: z, toggleLang: Te, updateLangButtons: Q, applyTranslations: D, updateFooterYear: L });
-function E(e, r, a, n, o) {
-  var s = !!o, l = s ? escapeHtml : function(d) {
+F();
+typeof window < "u" && Object.assign(window, { currentLang: b, I18N: m, t: Y, toggleLang: Pe, updateLangButtons: J, applyTranslations: x, updateFooterYear: F });
+function D(e, a, r, n, i) {
+  var o = !!i, s = o ? escapeHtml : function(d) {
     return String(d);
-  }, m = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", c = s ? "<b>" : "", i = s ? "</b>" : "", _ = [];
-  _.push(s ? "<b>" + u + "</b>" : u), _.push(c + "Кто вызвал:" + i + " " + l(a || "Игрок")), _.push(c + "Лунка:" + i + " №" + r), _.push(c + "Время:" + i + " " + m);
-  var b = (n || []).map(function(d) {
+  }, f = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), c = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", u = o ? "<b>" : "", l = o ? "</b>" : "", _ = [];
+  _.push(o ? "<b>" + c + "</b>" : c), _.push(u + "Кто вызвал:" + l + " " + s(r || "Игрок")), _.push(u + "Лунка:" + l + " №" + a), _.push(u + "Время:" + l + " " + f);
+  var h = (n || []).map(function(d) {
     return String(d || "").trim();
   }).filter(Boolean);
-  return b.length && _.push(c + "Состав флайта:" + i + " " + l(b.join(", "))), _.join(`
+  return h.length && _.push(u + "Состав флайта:" + l + " " + s(h.join(", "))), _.join(`
 `);
 }
 function A(e) {
-  var r = A._state || (A._state = { at: 0, cfg: null, promise: null }), a = 5 * 60 * 1e3, n = { telegram: {}, vk: {}, mode: "client", readAt: 0 };
-  return !e && r.cfg && Date.now() - r.at < a ? Promise.resolve(r.cfg) : !e && r.promise ? r.promise : typeof db > "u" || !db ? Promise.resolve(n) : (r.promise = Promise.all([
-    db.ref("channels").once("value").catch(function(o) {
-      return console.warn("[alerts] channels read failed", o && o.message), null;
+  var a = A._state || (A._state = { at: 0, cfg: null, promise: null }), r = 5 * 60 * 1e3, n = { telegram: {}, vk: {}, mode: "client", readAt: 0 };
+  return !e && a.cfg && Date.now() - a.at < r ? Promise.resolve(a.cfg) : !e && a.promise ? a.promise : typeof db > "u" || !db ? Promise.resolve(n) : (a.promise = Promise.all([
+    db.ref("channels").once("value").catch(function(i) {
+      return console.warn("[alerts] channels read failed", i && i.message), null;
     }),
     db.ref("settings/alert_delivery_mode").once("value").catch(function() {
       return null;
     })
-  ]).then(function(o) {
-    var s = o[0] && o[0].val() || {}, l = s.telegram || {}, m = s.vk || {}, u = String(o[1] && o[1].val() || "client"), c = String(l.groupToken || l.botToken || "").trim(), i = String(l.groupId || l.chatId || "").trim(), _ = String(l.channelId || "").trim();
-    return r.cfg = {
+  ]).then(function(i) {
+    var o = i[0] && i[0].val() || {}, s = o.telegram || {}, f = o.vk || {}, c = String(i[1] && i[1].val() || "client"), u = String(s.groupToken || s.botToken || "").trim(), l = String(s.groupId || s.chatId || "").trim(), _ = String(s.channelId || "").trim();
+    return a.cfg = {
       telegram: {
-        groupToken: c,
-        groupId: i,
+        groupToken: u,
+        groupId: l,
         // «Или использовать один и тот же бот» (подсказка в админке):
         // для канала достаточно ID, токен берём у группы.
-        channelToken: String(l.channelToken || "").trim() || (_ ? c : ""),
+        channelToken: String(s.channelToken || "").trim() || (_ ? u : ""),
         channelId: _
       },
       vk: {
-        token: String(m.token || "").trim(),
-        peerId: String(m.peerId == null ? "" : m.peerId).trim()
+        token: String(f.token || "").trim(),
+        peerId: String(f.peerId == null ? "" : f.peerId).trim()
       },
-      mode: u === "server" ? "server" : "client",
+      mode: c === "server" ? "server" : "client",
       readAt: Date.now()
-    }, r.at = Date.now(), r.promise = null, r.cfg;
-  }).catch(function(o) {
-    return r.promise = null, console.warn("[alerts] channels unavailable", o && o.message), n;
-  }), r.promise);
+    }, a.at = Date.now(), a.promise = null, a.cfg;
+  }).catch(function(i) {
+    return a.promise = null, console.warn("[alerts] channels unavailable", i && i.message), n;
+  }), a.promise);
 }
-function Pe(e, r, a, n, o, s, l) {
-  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) {
-    toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (a || "Telegram"), "error");
+function Te(e, a, r, n, i, o, s) {
+  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
+    toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (r || "Telegram"), "error");
     return;
   }
-  var m = E(n, o, s, l, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
+  var f = D(n, i, o, s, !0), c = typeof AbortController < "u" ? new AbortController() : null, u = c ? setTimeout(function() {
     try {
-      u.abort();
+      c.abort();
     } catch (_) {
       console.warn("[silent]", _);
     }
-  }, 6e3) : null, i = {
+  }, 6e3) : null, l = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      chat_id: r,
-      text: m,
+      chat_id: a,
+      text: f,
       parse_mode: "HTML"
     })
   };
-  u && (i.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", i).then(function(_) {
-    return c && clearTimeout(c), _.json();
+  c && (l.signal = c.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", l).then(function(_) {
+    return u && clearTimeout(u), _.json();
   }).then(function(_) {
     if (_ && _.ok)
-      console.log("✅ Telegram alert delivered to " + a + ":", _.result), toast("✅ Telegram сообщение доставлено в " + (a || "чат") + "!", "success");
+      console.log("✅ Telegram alert delivered to " + r + ":", _.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
     else {
-      var b = _ && _.description ? _.description : "Ошибка Telegram API";
-      console.error("❌ Telegram Bot API Error (" + a + "):", b), toast("❌ Ошибка Telegram (" + (a || "чат") + "): " + b, "error");
+      var h = _ && _.description ? _.description : "Ошибка Telegram API";
+      console.error("❌ Telegram Bot API Error (" + r + "):", h), toast("❌ Ошибка Telegram (" + (r || "чат") + "): " + h, "error");
     }
   }).catch(function(_) {
-    c && clearTimeout(c);
-    var b = _ && _.name === "AbortError", d = b ? "Таймаут соединения (6 сек)" : _ ? _.message : "Ошибка сети";
-    console.error("❌ Telegram Fetch Error (" + a + "):", _), toast("❌ Ошибка сети / Таймаут Telegram: " + d, "error");
+    u && clearTimeout(u);
+    var h = _ && _.name === "AbortError", d = h ? "Таймаут соединения (6 сек)" : _ ? _.message : "Ошибка сети";
+    console.error("❌ Telegram Fetch Error (" + r + "):", _), toast("❌ Ошибка сети / Таймаут Telegram: " + d, "error");
   });
 }
-function N(e, r, a, n, o, s) {
-  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) return Promise.resolve("not_configured");
-  var l = E(a, n, o, s, !0), m = typeof AbortController < "u" ? new AbortController() : null, u = m ? setTimeout(function() {
+function I(e, a, r, n, i, o) {
+  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) return Promise.resolve("not_configured");
+  var s = D(r, n, i, o, !0), f = typeof AbortController < "u" ? new AbortController() : null, c = f ? setTimeout(function() {
     try {
-      m.abort();
-    } catch (i) {
-      console.warn("[silent]", i);
+      f.abort();
+    } catch (l) {
+      console.warn("[silent]", l);
     }
-  }, 6e3) : null, c = {
+  }, 6e3) : null, u = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: r, text: l, parse_mode: "HTML" })
+    body: JSON.stringify({ chat_id: a, text: s, parse_mode: "HTML" })
   };
-  return m && (c.signal = m.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", c).then(function(i) {
-    return u && clearTimeout(u), i.json();
-  }).then(function(i) {
-    if (i && i.ok) return "sent";
-    var _ = i && i.description ? i.description : "Ошибка Telegram API";
+  return f && (u.signal = f.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", u).then(function(l) {
+    return c && clearTimeout(c), l.json();
+  }).then(function(l) {
+    if (l && l.ok) return "sent";
+    var _ = l && l.description ? l.description : "Ошибка Telegram API";
     return console.warn("⚠️ Telegram silent send failed:", _), "error: " + _;
-  }).catch(function(i) {
-    u && clearTimeout(u);
-    var _ = i && i.name === "AbortError";
-    return console.warn("⚠️ Telegram silent send error (suppressed):", i && i.message), "error: " + (_ ? "таймаут (6 сек)" : i && i.message ? i.message : "ошибка сети");
+  }).catch(function(l) {
+    c && clearTimeout(c);
+    var _ = l && l.name === "AbortError";
+    return console.warn("⚠️ Telegram silent send error (suppressed):", l && l.message), "error: " + (_ ? "таймаут (6 сек)" : l && l.message ? l.message : "ошибка сети");
   });
 }
-function Ce(e, r, a, n, o, s) {
-  return P(e, r, a, n, s);
+function Re(e, a, r, n, i, o) {
+  return T(e, a, r, n, o);
 }
-function H(e, r, a, n) {
-  return e = (e || "").trim(), r = (r || "").trim(), !e || !r ? (n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error"), Promise.resolve("not_configured")) : new Promise(function(o) {
-    var s = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), l = Math.floor(Math.random() * 2e9), m = null, u = null, c = !1, i = function(d) {
-      c || (c = !0, o(d));
+function H(e, a, r, n) {
+  return e = (e || "").trim(), a = (a || "").trim(), !e || !a ? (n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error"), Promise.resolve("not_configured")) : new Promise(function(i) {
+    var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), s = Math.floor(Math.random() * 2e9), f = null, c = null, u = !1, l = function(d) {
+      u || (u = !0, i(d));
     }, _ = function() {
       try {
-        u && u.parentNode && u.parentNode.removeChild(u);
+        c && c.parentNode && c.parentNode.removeChild(c);
       } catch (d) {
         console.warn("[silent]", d);
       }
       try {
-        delete window[s];
+        delete window[o];
       } catch {
-        window[s] = void 0;
+        window[o] = void 0;
       }
-      m && clearTimeout(m);
+      f && clearTimeout(f);
     };
-    window[s] = function(d) {
+    window[o] = function(d) {
       if (_(), d && d.response !== void 0 && d.response)
-        n || (console.log("✅ VK message sent, id:", d.response), toast("✅ Сообщение ВКонтакте доставлено!", "success")), i("sent");
+        n || (console.log("✅ VK message sent, id:", d.response), toast("✅ Сообщение ВКонтакте доставлено!", "success")), l("sent");
       else {
         var g = d && d.error && d.error.error_code, p = d && d.error && d.error.error_msg ? d.error.error_msg : "Ошибка VK API";
-        console.error("❌ VK API Error " + g + ":", p, d), n ? console.warn("⚠️ VK silent send failed (code " + g + "):", p) : toast("❌ VK API: " + p, "error"), i("error: code " + (g || "?") + ": " + p);
+        console.error("❌ VK API Error " + g + ":", p, d), n ? console.warn("⚠️ VK silent send failed (code " + g + "):", p) : toast("❌ VK API: " + p, "error"), l("error: code " + (g || "?") + ": " + p);
       }
     };
-    var b = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(r) + "&message=" + encodeURIComponent(a) + "&random_id=" + l + "&v=5.199&callback=" + s;
-    u = document.createElement("script"), u.src = b, u.onerror = function() {
-      _(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error"), i("error: сеть/CSP (JSONP не загрузился)");
-    }, m = setTimeout(function() {
-      _(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error"), i("error: таймаут (10 сек)");
-    }, 1e4), (document.head || document.body).appendChild(u);
+    var h = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + s + "&v=5.199&callback=" + o;
+    c = document.createElement("script"), c.src = h, c.onerror = function() {
+      _(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error"), l("error: сеть/CSP (JSONP не загрузился)");
+    }, f = setTimeout(function() {
+      _(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error"), l("error: таймаут (10 сек)");
+    }, 1e4), (document.head || document.body).appendChild(c);
   });
 }
-function O(e, r, a, n) {
-  return E(e, r, a, n, !1);
+function O(e, a, r, n) {
+  return D(e, a, r, n, !1);
 }
-function Re(e, r, a, n, o, s) {
-  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) {
+function Ce(e, a, r, n, i, o) {
+  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var l = O(a, n, o, s);
-  H(e, r, l, !1);
+  var s = O(r, n, i, o);
+  H(e, a, s, !1);
 }
-function $(e, r, a, n, o, s) {
-  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) return Promise.resolve("not_configured");
-  var l = O(a, n, o, s);
-  return H(e, r, l, !0);
+function $(e, a, r, n, i, o) {
+  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) return Promise.resolve("not_configured");
+  var s = O(r, n, i, o);
+  return H(e, a, s, !0);
 }
-function Ae(e, r, a, n, o) {
-  return P(e, r, a, n, o);
+function Ae(e, a, r, n, i) {
+  return T(e, a, r, n, i);
 }
-function P(e, r, a, n, o) {
-  var s = P._state || (P._state = { done: {} }), l = o ? "id:" + o : "k:" + [e, r, a, Math.floor(Date.now() / 5e3)].join("|");
-  if (s.done[l]) return s.done[l].promise;
-  var m = typeof pestovoCheckGlobalNotificationsEnabled == "function" ? pestovoCheckGlobalNotificationsEnabled().catch(function() {
+function T(e, a, r, n, i) {
+  var o = T._state || (T._state = { done: {} }), s = i ? "id:" + i : "k:" + [e, a, r, Math.floor(Date.now() / 5e3)].join("|");
+  if (o.done[s]) return o.done[s].promise;
+  var f = typeof pestovoCheckGlobalNotificationsEnabled == "function" ? pestovoCheckGlobalNotificationsEnabled().catch(function() {
     return !0;
-  }) : Promise.resolve(!0), u = m.then(function(c) {
-    return c === !1 ? { skipped: "notifications_disabled" } : A().then(function(i) {
-      if (i.mode === "server")
+  }) : Promise.resolve(!0), c = f.then(function(u) {
+    return u === !1 ? { skipped: "notifications_disabled" } : A().then(function(l) {
+      if (l.mode === "server")
         return typeof console < "u" && console.debug && console.debug("[alerts] delivery mode = server, browser stays silent"), { skipped: "server_mode" };
-      var _ = i.telegram || {}, b = i.vk || {}, d = {}, g = {
+      var _ = l.telegram || {}, h = l.vk || {}, d = {}, g = {
         "telegram:group": !!(_.groupToken && _.groupId),
         "telegram:channel": !!(_.channelToken && _.channelId),
-        vk: !!(b.token && b.peerId)
+        vk: !!(h.token && h.peerId)
       }, p = [];
-      return g["telegram:group"] ? p.push(N(_.groupToken, _.groupId, e, r, a, n).then(function(y) {
+      return g["telegram:group"] ? p.push(I(_.groupToken, _.groupId, e, a, r, n).then(function(y) {
         d["telegram:group"] = y;
-      })) : d["telegram:group"] = "not_configured", g["telegram:channel"] ? p.push(N(_.channelToken, _.channelId, e, r, a, n).then(function(y) {
+      })) : d["telegram:group"] = "not_configured", g["telegram:channel"] ? p.push(I(_.channelToken, _.channelId, e, a, r, n).then(function(y) {
         d["telegram:channel"] = y;
-      })) : d["telegram:channel"] = "not_configured", g.vk ? p.push($(b.token, b.peerId, e, r, a, n).then(function(y) {
+      })) : d["telegram:channel"] = "not_configured", g.vk ? p.push($(h.token, h.peerId, e, a, r, n).then(function(y) {
         d.vk = y;
       })) : d.vk = "not_configured", !g["telegram:group"] && !g["telegram:channel"] && !g.vk && console.warn("[alerts] в channels/ ничего не настроено — вызов никуда не отправлен"), Promise.all(p).then(function() {
-        return X(o, d, g);
+        return X(i, d, g);
       });
     });
-  }).catch(function(c) {
-    return console.warn("[alerts] delivery failed", c && c.message), { skipped: "error", error: String(c && c.message || c).slice(0, 200) };
+  }).catch(function(u) {
+    return console.warn("[alerts] delivery failed", u && u.message), { skipped: "error", error: String(u && u.message || u).slice(0, 200) };
   });
-  return s.done[l] = { promise: u, at: Date.now() }, Object.keys(s.done).forEach(function(c) {
-    Date.now() - s.done[c].at > 6e4 && delete s.done[c];
-  }), u;
+  return o.done[s] = { promise: c, at: Date.now() }, Object.keys(o.done).forEach(function(u) {
+    Date.now() - o.done[u].at > 6e4 && delete o.done[u];
+  }), c;
 }
-function X(e, r, a) {
+function X(e, a, r) {
   var n = {
     by: "client",
     at: Date.now(),
-    channels: r || {},
-    configured: a || {}
-  }, o = 0;
-  return Object.keys(r || {}).forEach(function(s) {
-    r[s] === "sent" && o++;
-  }), n.sent = o, !e || typeof db > "u" || !db ? Promise.resolve(n) : db.ref("alerts/" + e + "/delivery").update(n).then(function() {
+    channels: a || {},
+    configured: r || {}
+  }, i = 0;
+  return Object.keys(a || {}).forEach(function(o) {
+    a[o] === "sent" && i++;
+  }), n.sent = i, !e || typeof db > "u" || !db ? Promise.resolve(n) : db.ref("alerts/" + e + "/delivery").update(n).then(function() {
     return n;
-  }).catch(function(s) {
-    return console.warn("[alerts] delivery report not saved", s && s.message), n;
+  }).catch(function(o) {
+    return console.warn("[alerts] delivery report not saved", o && o.message), n;
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: E, pestovoOfficialChannels: A, sendTelegramDirectAlert: Pe, sendTelegramSilentAlert: N, sendTelegramOfficialAlert: Ce, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Re, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: P, pestovoRecordClientDelivery: X });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, pestovoOfficialChannels: A, sendTelegramDirectAlert: Te, sendTelegramSilentAlert: I, sendTelegramOfficialAlert: Re, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Ce, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: T, pestovoRecordClientDelivery: X });
 export {
   ee as ADDR,
   Z as CLUB,
-  ae as COURSE_RATINGS,
-  C as DATE_RANGE_PRESETS,
+  re as COURSE_RATINGS,
+  R as DATE_RANGE_PRESETS,
   w as HOLES,
-  h as I18N,
-  te as TEES,
-  re as TEE_ORDER,
+  m as I18N,
+  ae as TEES,
+  te as TEE_ORDER,
   G as TIMINGS,
-  F as TOAST_DURATION_MS,
-  De as TOTAL_PAR,
-  D as applyTranslations,
-  E as buildOfficialCallText,
-  f as currentLang,
+  N as TOAST_DURATION_MS,
+  xe as TOTAL_PAR,
+  x as applyTranslations,
+  D as buildOfficialCallText,
+  b as currentLang,
   V as dateInputToEndTs,
   B as dateInputToStartTs,
   M as datePresetRange,
-  T as dateRangeFilters,
-  U as ensureToastRoot,
-  K as esc,
-  J as escapeHtml,
-  he as filterEntriesByDateRange,
-  ue as fmtDate,
-  ie as fmtScore,
+  P as dateRangeFilters,
+  K as ensureToastRoot,
+  j as esc,
+  W as escapeHtml,
+  me as filterEntriesByDateRange,
+  ce as fmtDate,
+  le as fmtScore,
   pe as fmtTime,
   ye as getDateRangeFilter,
-  j as getRoundFilterTs,
-  oe as holeDist,
-  se as holeHcp,
+  U as getRoundFilterTs,
+  ie as holeDist,
+  oe as holeHcp,
   ne as holePar,
   de as holeResClass,
-  ce as holeResName,
-  le as holeTiming,
+  ue as holeResName,
+  se as holeTiming,
   ve as html,
-  be as initDateRangeFilter,
-  W as isPlayerModeEnabled,
-  fe as isTodayTimestamp,
+  he as initDateRangeFilter,
+  Q as isPlayerModeEnabled,
+  be as isTodayTimestamp,
   k as normalizeTimestampMs,
-  P as pestovoDeliverOfficialCall,
+  T as pestovoDeliverOfficialCall,
   A as pestovoOfficialChannels,
   X as pestovoRecordClientDelivery,
-  R as readDateRange,
+  C as readDateRange,
   ge as refreshDateRangeFilters,
   q as renderRoundsPeriodSummary,
   _e as scoreClass,
-  Pe as sendTelegramDirectAlert,
-  Ce as sendTelegramOfficialAlert,
-  N as sendTelegramSilentAlert,
-  Re as sendVKDirectAlert,
+  Te as sendTelegramDirectAlert,
+  Re as sendTelegramOfficialAlert,
+  I as sendTelegramSilentAlert,
+  Ce as sendVKDirectAlert,
   Ae as sendVKOfficialAlert,
   $ as sendVKSilentAlert,
   we as setSafeHtml,
-  z as t,
-  me as tnDateTs,
-  I as toast,
-  Y as toastIconFor,
+  Y as t,
+  fe as tnDateTs,
+  L as toast,
+  z as toastIconFor,
   Se as toastSequence,
-  Te as toggleLang,
-  x as tsToDateInputValue,
-  L as updateFooterYear,
-  Q as updateLangButtons,
+  Pe as toggleLang,
+  E as tsToDateInputValue,
+  F as updateFooterYear,
+  J as updateLangButtons,
   ke as vib,
   O as vkBuildAlertText,
   H as vkSendMessageJsonp

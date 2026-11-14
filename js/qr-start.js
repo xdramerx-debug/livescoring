@@ -9,6 +9,8 @@
 //  • группа из одного игрока → одиночная карточка scorer.html.
 // ==========================================================
 
+function qrBi(ru, en) { return typeof currentLang !== 'undefined' && currentLang === 'en' ? en : ru; }
+
 function qrGet(id) { try { return document.getElementById(id); } catch (e) { return null; } }
 
 function qrEsc(str) {
@@ -55,7 +57,7 @@ function qrImgFail(img) {
         if (box && !box.querySelector('.qr-fail')) {
             var d = document.createElement('div');
             d.className = 'qr-fail';
-            d.textContent = '⚠️ QR не загрузился — нажмите «🔄 QR заново»';
+            d.textContent = qrBi("⚠️ QR не загрузился — нажмите «🔄 QR заново»", "\u26a0\ufe0f QR code failed \u2014 select Regenerate QR codes");
             box.insertBefore(d, img);
         }
     } catch (e) { console.warn("[silent]", e); }
@@ -106,9 +108,9 @@ function qrUpdateStatus() {
     var total = imgs.length;
     var txt = '';
     if (!total) txt = '';
-    else if (failed) txt = '⚠️ QR: ' + done + '/' + total + ' · не загрузилось: ' + failed;
-    else if (done < total) txt = '⏳ QR загружаются: ' + done + '/' + total + '…';
-    else txt = '✅ Все QR загружены (' + total + ')';
+    else if (failed) txt = '⚠️ QR: ' + done + '/' + total + qrBi(" · не загрузилось: ", " \u00b7 failed: ") + failed;
+    else if (done < total) txt = qrBi("⏳ QR загружаются: ", "\u23f3 Loading QR codes: ") + done + '/' + total + '…';
+    else txt = qrBi("✅ Все QR загружены (", "\u2705 All QR codes loaded (") + total + ')';
     try { el.textContent = txt; } catch (e) { console.warn("[silent]", e); }
 }
 function qrHcp(v) {
@@ -128,10 +130,10 @@ function qrDate(ts) {
     if (!ts) return '';
     var d = new Date(ts);
     if (isNaN(d.getTime())) return String(ts).slice(0, 10);
-    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString(typeof currentLang !== 'undefined' && currentLang === 'en' ? 'en-GB' : 'ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 function qrTeeName(code) {
-    var map = { bk: 'Чёрный', bl: 'Синий', wh: 'Белый', rd: 'Красный' };
+    var map = typeof currentLang !== 'undefined' && currentLang === 'en' ? { bk: 'Black', bl: 'Blue', wh: 'White', rd: 'Red' } : { bk: 'Чёрный', bl: 'Синий', wh: 'Белый', rd: 'Красный' };
     var normalized = typeof code === 'string' ? code.trim().toLowerCase() : '';
     return Object.prototype.hasOwnProperty.call(map, normalized) ? map[normalized] : '—';
 }
@@ -140,7 +142,7 @@ function qrFio(p) {
     ['lastName', 'firstName', 'middleName'].forEach(function(k) {
         if (p && String(p[k] || '').trim()) parts.push(String(p[k]).trim());
     });
-    return parts.join(' ') || (p && p.name) || 'Игрок';
+    return parts.join(' ') || (p && p.name) || qrBi("Игрок", "Player");
 }
 function qrFullBase() {
     var loc = window.location;
@@ -224,8 +226,8 @@ function qrDivRange(d) {
     var f = (d.hcpFrom === '' || d.hcpFrom == null) ? null : parseFloat(d.hcpFrom);
     var t = (d.hcpTo === '' || d.hcpTo == null) ? null : parseFloat(d.hcpTo);
     if (f != null && !isNaN(f) && t != null && !isNaN(t)) return qrHcp(f) + '–' + qrHcp(t);
-    if (t != null && !isNaN(t)) return 'до ' + qrHcp(t);
-    if (f != null && !isNaN(f)) return 'от ' + qrHcp(f);
+    if (t != null && !isNaN(t)) return qrBi("до ", "up to ") + qrHcp(t);
+    if (f != null && !isNaN(f)) return qrBi("от ", "from ") + qrHcp(f);
     return '';
 }
 
@@ -274,7 +276,7 @@ function qrWaveLetter(idx) {
     // раскладку букв. Без utils.js (печать офлайн/тесты) остаётся русский.
     if (typeof pestovoWaveLetter === 'function') return pestovoWaveLetter(idx);
     idx = Math.max(0, parseInt(idx, 10) || 0);
-    var alphabet = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
+    var alphabet = typeof currentLang !== 'undefined' && currentLang === 'en' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
     if (idx < alphabet.length) return alphabet.charAt(idx);
     return String(idx + 1);
 }
@@ -441,20 +443,20 @@ function qrPlayerColHtml(g, geIdx, groupEntries, scheme, p) {
     var html = '<div class="pcol">';
     html += '<div class="grp-row">';
     html += '<span class="grp-badge">' + qrEsc(qrGroupLabel(g, geIdx, groupEntries, scheme)) + '</span>';
-    html += '<span class="time-badge">⏱ ' + qrTime(g.startTime) + ' · ЛУНКА ' + startHoleTxt + '</span>';
+    html += '<span class="time-badge">⏱ ' + qrTime(g.startTime) + qrBi(' · ЛУНКА ', ' · HOLE ') + startHoleTxt + '</span>';
     html += pdivHtml + '</div>';
     html += '<div class="pname">' + qrEsc(qrFio(p)) + '</div>';
     html += '<div class="pmeta">';
-    html += '<span>ТИ: <b>' + qrTeeName(p.tee) + '</b></span>';
-    html += '<span>Точный HCP: <b>' + qrHcp(p.exactHcp) + '</b></span>';
-    html += '<span>Полевой HCP: <b>' + qrHcp(p.fieldHcp) + '</b></span>';
-    html += (markName ? '<span class="mark-chip">👁 Маркирует: <b>' + qrEsc(markName) + '</b></span>' : '');
+    html += qrBi("<span>ТИ: <b>", "<span>Tee: <b>") + qrTeeName(p.tee) + '</b></span>';
+    html += qrBi("<span>Точный HCP: <b>", "<span>Handicap index: <b>") + qrHcp(p.exactHcp) + '</b></span>';
+    html += qrBi("<span>Полевой HCP: <b>", "<span>Course handicap: <b>") + qrHcp(p.fieldHcp) + '</b></span>';
+    html += (markName ? qrBi("<span class=\"mark-chip\">👁 Маркирует: <b>", "<span class=\"mark-chip\">\ud83d\udc41 Marks: <b>") + qrEsc(markName) + '</b></span>' : '');
     html += '</div>';
     html += '<div class="qr-grid">';
     html += '<div class="qr-box"><div class="qr-lbl">' +
         (isGroupCard
-            ? '📱 Моя карточка — свой счёт и счёт маркируемого партнёра'
-            : '📱 Моя карточка — ввод счёта') +
+            ? qrBi("📱 Моя карточка — свой счёт и счёт маркируемого партнёра", "\ud83d\udcf1 My scorecard \u2014 my score and the player I mark")
+            : qrBi("📱 Моя карточка — ввод счёта", "\ud83d\udcf1 My scorecard \u2014 enter scores")) +
         '</div>' +
         // loading="eager": все коды грузятся сразу, а не при прокрутке —
         // иначе в печать уходят пустые места. onerror — цепочка провайдеров.
@@ -474,7 +476,7 @@ function qrMembersNote(members, cardIds) {
             ? '<b style="color:#6d5717;">' + qrEsc(qrFio(m)) + '</b>'
             : qrEsc(qrFio(m));
     });
-    return '<div class="members-note"><b>Состав флайта:</b> ' + names.join(' · ') + '</div>';
+    return qrBi("<div class=\"members-note\"><b>Состав флайта:</b> ", "<div class=\"members-note\"><b>Flight players:</b> ") + names.join(' · ') + '</div>';
 }
 
 function qrRender(doc, divs) {
@@ -499,12 +501,12 @@ function qrRender(doc, divs) {
     groupEntries.forEach(function(ge) { totalPlayers += (ge.g.players || []).length; });
 
     var titleHtml = '';
-    titleHtml += '<h1 class="qr-h">🏌️ Стартовый протокол</h1>';
+    titleHtml += qrBi("<h1 class=\"qr-h\">🏌️ Стартовый протокол</h1>", "<h1 class=\"qr-h\">\ud83c\udfcc\ufe0f Starting sheet</h1>");
     titleHtml += '<p class="sub">' +
         (doc.tournamentName ? '🏆 ' + qrEsc(doc.tournamentName) + ' · ' : '') +
         qrEsc(doc.name || '') + (doc.date ? ' · ' + qrDate(new Date(doc.date + 'T00:00:00')) : '') +
         (qrFormatsLabel(doc) ? ' · ' + qrEsc(qrFormatsLabel(doc)) : '') +
-        ' · групп: ' + groupEntries.length + ' · игроков: ' + totalPlayers + '</p>';
+        qrBi(" · групп: ", " \u00b7 groups: ") + groupEntries.length + qrBi(" · игроков: ", " \u00b7 players: ") + totalPlayers + '</p>';
 
     // ── Стартовый лист: визуально отделённые флайты (группы) ──
     // Каждый флайт — свой блок с шапкой «Группа · Лунка · Время»:
@@ -515,18 +517,18 @@ function qrRender(doc, divs) {
         var members = g.players || [];
         var glabel = qrGroupLabel(g, geIdx, groupEntries, doc.scheme);
         var holeTxt = (g.startHole === 10 ? '10' : String(g.startHole || 1));
-        var cntTxt = members.length + ' ' + (members.length === 1 ? 'игрок' : (members.length < 5 ? 'игрока' : 'игроков'));
+        var cntTxt = members.length + ' ' + (typeof currentLang !== 'undefined' && currentLang === 'en' ? (members.length === 1 ? 'player' : 'players') : (members.length === 1 ? 'игрок' : (members.length < 5 ? 'игрока' : 'игроков')));
         sheetHtml += '<div class="flight-block">';
         sheetHtml += '<div class="flight-head">' +
             '<span class="flight-title">🚩 ' + qrEsc(glabel) + '</span>' +
-            '<span class="flight-hole">Лунка ' + qrEsc(holeTxt) + '</span>' +
+            qrBi("<span class=\"flight-hole\">Лунка ", "<span class=\"flight-hole\">Hole ") + qrEsc(holeTxt) + '</span>' +
             '<span class="flight-time">⏱ ' + qrTime(g.startTime) + '</span>' +
             (qrGroupFormatsLabel(g, doc) ? '<span class="flight-fmt">🏌 ' + qrEsc(qrGroupFormatsLabel(g, doc)) + '</span>' : '') +
             (parseInt(g.startOrder, 10) ? '<span class="flight-queue">' + qrEsc((typeof currentLang !== 'undefined' && currentLang === 'en') ? 'tee-off #' : 'старт №') + ' ' + parseInt(g.startOrder, 10) + '</span>' : '') +
             '<span class="flight-count">' + qrEsc(cntTxt) + '</span>' +
             '</div>';
         sheetHtml += '<table><thead><tr>' +
-            '<th style="width:26px;">№</th><th>Игрок</th><th>ТИ</th><th>Точный HCP</th><th>Полевой HCP</th><th>Маркирует</th>' +
+            qrBi("<th style=\"width:26px;\">№</th><th>Игрок</th><th>ТИ</th><th>Точный HCP</th><th>Полевой HCP</th><th>Маркирует</th>", "<th style=\"width:26px;\">#</th><th>Player</th><th>Tee</th><th>Handicap index</th><th>Course handicap</th><th>Marks</th>") +
             '</tr></thead><tbody>';
         members.forEach(function(p, i) {
             sheetHtml += '<tr>' +
@@ -582,15 +584,15 @@ function qrRender(doc, divs) {
     });
     cardsHtml += '</div>';
 
-    var cardsTitle = '<h1 class="qr-h" style="font-size:19px;">🏌️ QR-карточки игроков</h1>' +
+    var cardsTitle = qrBi("<h1 class=\"qr-h\" style=\"font-size:19px;\">🏌️ QR-карточки игроков</h1>", "<h1 class=\"qr-h\" style=\"font-size:19px;\">\ud83c\udfcc\ufe0f Player QR cards</h1>") +
         '<p class="sub">' + (doc.tournamentName ? '🏆 ' + qrEsc(doc.tournamentName) + ' · ' : '') + qrEsc(doc.name || '') +
-        ' · групп: ' + groupEntries.length + ' · игроков: ' + totalPlayers + (qrFormatsLabel(doc) ? ' · ' + qrEsc(qrFormatsLabel(doc)) : '') + '</p>';
+        qrBi(" · групп: ", " \u00b7 groups: ") + groupEntries.length + qrBi(" · игроков: ", " \u00b7 players: ") + totalPlayers + (qrFormatsLabel(doc) ? ' · ' + qrEsc(qrFormatsLabel(doc)) : '') + '</p>';
     content.innerHTML = '<div class="sheet-wrap">' + titleHtml + sheetHtml + '</div>' +
         '<div class="cards-wrap"><div class="qr-cards-head">' + cardsTitle + '</div>' + cardsHtml + '</div>';
 
     // Предупреждение, если нет ни одной карточки
     if (!totalPlayers) {
-        content.innerHTML = '<div class="errbox"><h2>ℹ️ Пустой протокол</h2><p>В этом протоколе нет игроков.</p></div>';
+        content.innerHTML = qrBi("<div class=\"errbox\"><h2>ℹ️ Пустой протокол</h2><p>В этом протоколе нет игроков.</p></div>", "<div class=\"errbox\"><h2>\u2139\ufe0f Empty starting sheet</h2><p>No players in this starting sheet.</p></div>");
     }
 }
 

@@ -31,6 +31,20 @@ const { JSDOM } = require('jsdom');
     module.toggleLang();
     assert.strictEqual(window.currentLang, 'ru');
     assert.strictEqual(document.querySelector('[data-i18n]').textContent, 'Статистика');
+    // Invalid preferences and browser storage restrictions must not break boot/toggle.
+    for (const source of ['js/i18n.js', 'src/i18n.js']) {
+        for (const mode of ['invalid', 'blocked']) {
+            const isolated = new JSDOM('<html><body><span data-i18n="nav_stats"></span></body></html>', { runScripts: 'outside-only', url: 'https://example.test/' });
+            if (mode === 'invalid') isolated.window.localStorage.setItem('pestovo_lang', 'xx');
+            else Object.defineProperty(isolated.window, 'localStorage', { get() { throw new Error('Storage denied'); } });
+            isolated.window.eval(fs.readFileSync(source, 'utf8').replace(/export /g, ''));
+            assert.strictEqual(isolated.window.currentLang, 'ru', source + ': safe default');
+            isolated.window.toggleLang();
+            assert.strictEqual(isolated.window.document.documentElement.lang, 'en');
+            assert.strictEqual(isolated.window.document.querySelector('[data-i18n]').textContent, 'Statistics');
+            isolated.window.close();
+        }
+    }
     dom.window.close();
     delete global.window; delete global.document; delete global.localStorage; delete global.updateSunModeButtons;
     console.log('PASS: all static Russian UI text has localization metadata; actual ESM language changes propagate to legacy renderers and theme controls');

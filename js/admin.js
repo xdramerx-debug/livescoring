@@ -488,12 +488,37 @@ function switchTabApply(t, b) {
     }
 }
 
+var adminTabGeneration = 0;
 function switchTab(t, b) {
     // При делегировании кнопка приходит как this (data-act="switchTab").
     // Прямые вызовы switchTab('rusgolf') передают только имя — тогда this не
     // элемент, и подсветку активной вкладки просто не трогаем.
     if (!b && this && this.classList) b = this;
-    var proceed = function () { switchTabApply(t, b); };
+    var generation = ++adminTabGeneration;
+    if (!b) {
+        b = Array.prototype.find.call(document.querySelectorAll('.admin-tab'), function (el) {
+            return el.getAttribute('data-arg') === t;
+        });
+    }
+    var proceed = function () {
+        // A slower lazy import must not reopen a previously selected tab.
+        if (generation !== adminTabGeneration) return;
+        if (b) {
+            var strip = b.closest('.admin-tabs[data-admin-group]');
+            var group = strip && strip.getAttribute('data-admin-group');
+            if (group) {
+                document.querySelectorAll('.admin-nav-group').forEach(function (el) {
+                    var active = el.getAttribute('data-arg') === group;
+                    el.classList.toggle('active', active);
+                    el.setAttribute('aria-pressed', String(active));
+                });
+                document.querySelectorAll('.admin-tabs[data-admin-group]').forEach(function (el) {
+                    el.classList.toggle('hidden', el !== strip);
+                });
+            }
+        }
+        switchTabApply(t, b);
+    };
     if (typeof pestovoEnsureAdminTab === 'function') {
         return pestovoEnsureAdminTab(t).then(proceed).catch(function (err) {
             console.warn('[admin-lazy]', err);

@@ -369,7 +369,13 @@ function W(e) {
   });
 }
 typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: z, toast: L, toastSequence: Se, isPlayerModeEnabled: Q, vib: ke, escapeHtml: W });
-var b = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", m = {
+var b = function() {
+  try {
+    return localStorage.getItem("pestovo_lang") === "en" ? "en" : "ru";
+  } catch {
+    return "ru";
+  }
+}(), m = {
   ru: {
     ui_bc997c1edb: "Управление клубом",
     ui_31e9780267: "Разделы админки",
@@ -2513,7 +2519,11 @@ function Y(e) {
   return e;
 }
 function Pe() {
-  b = b === "ru" ? "en" : "ru", typeof window < "u" && (window.currentLang = b), typeof localStorage < "u" && localStorage.setItem("pestovo_lang", b);
+  b = b === "ru" ? "en" : "ru", typeof window < "u" && (window.currentLang = b);
+  try {
+    localStorage.setItem("pestovo_lang", b);
+  } catch {
+  }
   try {
     document.documentElement.setAttribute("lang", b);
   } catch (i) {

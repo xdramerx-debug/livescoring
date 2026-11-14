@@ -7,7 +7,10 @@
 // ==========================================
 // МЕЖДУНАРОДНЫЙ ЯЗЫКОВОЙ ПЕРЕКЛЮЧАТЕЛЬ (RU / EN)
 // ==========================================
-var currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('pestovo_lang')) || 'ru';
+var currentLang = (function () {
+    try { return localStorage.getItem('pestovo_lang') === 'en' ? 'en' : 'ru'; }
+    catch (e) { return 'ru'; }
+})();
 
 var I18N = {
     ru: {
@@ -1977,9 +1980,8 @@ function toggleLang(event) {
     // ESM bindings are live, but Object.assign(window, ...) is only a snapshot.
     // Legacy page renderers must see the new language in the same turn.
     if (typeof window !== 'undefined') window.currentLang = currentLang;
-    if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('pestovo_lang', currentLang);
-    }
+    // Storage can be blocked or full; language switching must still work.
+    try { localStorage.setItem('pestovo_lang', currentLang); } catch (e) { /* optional preference */ }
     try { document.documentElement.setAttribute('lang', currentLang); } catch (e) { console.warn("[silent]", e); }
     applyTranslations();
     updateLangButtons();

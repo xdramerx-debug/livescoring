@@ -122,9 +122,9 @@ function renderStatsRecordsDisplay(records, variant) {
             return '<div><span>' + r.label + '</span><b>' + r.value + '</b></div>';
         }).join('') + '</div></div>';
     }
-    return records.map(function(r) {
-        return '<div class="list-item"><span>' + r.label + '</span><strong>' + r.value + '</strong></div>';
-    }).join('');
+    return '<div class="stats-record-cards">' + records.map(function(r) {
+        return '<div class="stats-record-card"><i class="fas ' + r.icon + '" aria-hidden="true"></i><span>' + r.label + '</span><strong>' + r.value + '</strong></div>';
+    }).join('') + '</div>';
 }
 
 function renderHoleDifficultyVariant(holeScores, variant, langIsEn) {
@@ -373,7 +373,7 @@ function loadStats(refresh) {
             { icon: 'fa-circle-dot', value: hio, label: 'Hole-in-One' },
             { icon: 'fa-golf-ball-tee', value: totalHoles, label: lHoles }
         ];
-        safeSetHTML('general-stats', renderGeneralStatsDisplay(generalItems.slice(0, 4), variant) + '<details class="clarity-disclosure stats-more"><summary>' + (langIsEn ? 'More metrics' : 'Другие показатели') + '</summary><div class="stats-grid">' + renderGeneralStatsDisplay(generalItems.slice(4), '1') + '</div></details>');
+        safeSetHTML('general-stats', renderGeneralStatsDisplay(generalItems, variant));
 
         var minimumField = document.getElementById('stats-min-rounds');
         var minimum = minimumField ? Number(minimumField.value) || 3 : 1;
@@ -397,18 +397,18 @@ function loadStats(refresh) {
             topEl.innerHTML = renderTopPlayersDisplay(sortedByAvg, langIsEn, variant);
         }
 
-        var lBestGross18 = langIsEn ? '🏆 Best Gross (18 holes)' : '🏆 Лучший gross (18 лунок)';
-        var lBestStbl18 = langIsEn ? '⭐ Best Stableford (18 holes)' : '⭐ Лучший stableford (18 лунок)';
-        var lFastest18 = langIsEn ? '⏱️ Fastest Round (18 holes)' : '⏱️ Самый быстрый раунд (18 лунок)';
+        var lBestGross18 = langIsEn ? 'Best Gross (18 holes)' : 'Лучший gross (18 лунок)';
+        var lBestStbl18 = langIsEn ? 'Best Stableford (18 holes)' : 'Лучший stableford (18 лунок)';
+        var lFastest18 = langIsEn ? 'Fastest Round (18 holes)' : 'Самый быстрый раунд (18 лунок)';
 
         var records = [
             { icon: 'fa-trophy', label: lBestGross18, value: bestGross < Infinity ? bestGross + ' (' + escapeHtml(bestGrossPlayer) + ')' : '—' },
             { icon: 'fa-star', label: lBestStbl18, value: bestStableford > 0 ? bestStableford + ' (' + escapeHtml(bestStablefordPlayer) + ')' : '—' },
             { icon: 'fa-stopwatch', label: lFastest18, value: fastestStr + (fastestPlayer !== '—' ? ' (' + escapeHtml(fastestPlayer) + ')' : '') },
-            { icon: 'fa-bullseye', label: '🎯 Hole-in-One', value: hio },
-            { icon: 'fa-bolt', label: '🦅 Eagles', value: eagles },
-            { icon: 'fa-fire', label: '🐦 Birdies', value: birdies },
-            { icon: 'fa-circle-check', label: '✅ Pars', value: pars }
+            { icon: 'fa-bullseye', label: 'Hole-in-One', value: hio },
+            { icon: 'fa-bolt', label: 'Eagles', value: eagles },
+            { icon: 'fa-fire', label: 'Birdies', value: birdies },
+            { icon: 'fa-circle-check', label: 'Pars', value: pars }
         ];
         safeSetHTML('club-records', renderStatsRecordsDisplay(records, variant));
 

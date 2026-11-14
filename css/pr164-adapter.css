@@ -17,8 +17,6 @@ body .page-head .page-sub { margin-inline: auto; }
 body .score-pad-key { background: var(--input); color: var(--text); border: 1px solid var(--border); border-radius: var(--rs); font-family: var(--fb); }
 body .score-pad-key.selected { border-color: var(--gold); color: var(--gold-l); }
 body .score-save-status { color: var(--muted); font-size: 13px; line-height: 1.5; }
-body .pv-chip { background: var(--input); color: var(--text); border-color: var(--border); border-radius: var(--rs); box-shadow: none; }
-body .pv-chip[aria-pressed="true"] { color: var(--bg); background: var(--gold); border-color: var(--gold); }
 body .pv-skip-link { position: fixed; top: -120px; left: 12px; z-index: 99999; }
 body .pv-skip-link:focus { top: 12px; background: var(--card); padding: 12px; color: var(--gold); }
 /* New archive and filters use the same original card vocabulary. */
@@ -48,4 +46,91 @@ body #club-stats .stat-l { max-width: 190px; font-size: 13px; line-height: 1.45;
     body .club-stats-section { padding: 32px 0; }
     body #club-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     body #club-stats .stat { padding: 20px 10px; border-radius: 14px; }
+}
+
+/* Shared filter controls: home live feed, leaderboard, date ranges, tournament groups.
+   Unlayered: these controls must not inherit cramped legacy button/icon rules. */
+body .pv-chips, body .tnm-filters {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0 20px;
+}
+body :is(.pv-chip, .date-chip, .tnm-filter-btn) {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    min-height: 44px; max-width: 100%; padding: 10px 16px; margin: 0;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card); color: var(--text);
+    font-family: var(--fb); font-size: 13px; font-weight: 600; line-height: 1.4;
+    text-transform: none; letter-spacing: 0; text-decoration: none;
+    cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 6px rgba(0,0,0,.04);
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+body :is(.pv-chip, .date-chip, .tnm-filter-btn):is([aria-pressed="true"], .active) {
+    background: linear-gradient(135deg, #e0c76a, #c9a84c); border-color: #c9a84c; color: #142017;
+    box-shadow: 0 3px 10px rgba(201,168,76,.14); font-weight: 700;
+}
+body .pv-chip > i {
+    display: inline-block; flex: 0 0 16px; width: 16px; height: auto; margin: 0;
+    padding: 0; font-size: 14px; line-height: 1; color: var(--gold);
+    background: none; border: 0; border-radius: 0; box-shadow: none;
+}
+body .pv-chip[aria-pressed="true"] > i { color: #142017; }
+body :is(.pv-chip-count, .tnm-count) {
+    display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+    min-width: 24px; height: 24px; padding: 0 6px; margin: 0; border-radius: 8px;
+    background: rgba(201,168,76,.1); color: var(--muted);
+    font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+}
+body .pv-chip[aria-pressed="true"] .pv-chip-count,
+body .tnm-filter-btn.active .tnm-count { background: rgba(20,32,23,.12); color: #142017; }
+body :is(.pv-chip, .date-chip, .tnm-filter-btn):focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+@media (hover: hover) {
+    body :is(.pv-chip, .date-chip, .tnm-filter-btn):not([aria-pressed="true"]):not(.active):hover {
+        border-color: var(--gold); background: var(--input); color: var(--text); box-shadow: 0 3px 12px rgba(0,0,0,.08);
+    }
+}
+@media (max-width: 600px) {
+    body .pv-chips, body .tnm-filters { gap: 8px; }
+    body :is(.pv-chip, .date-chip, .tnm-filter-btn) { padding: 10px 12px; font-size: 12px; gap: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body :is(.pv-chip, .date-chip, .tnm-filter-btn) { transition: none; }
+}
+
+/* Header: use the actual club mark, without the later circular frame. */
+body #main-nav .nav-logo { border-radius: 0; border: 0; padding: 0; background: transparent; box-shadow: none; filter: none; }
+body #main-nav .nav-c > div:first-child { overflow: visible; flex: 0 0 auto; gap: 12px !important; }
+body #nav-weather-container { flex: 0 0 auto; min-width: max-content; }
+body #nav-weather-container .weather-widget { max-width: none; overflow: visible; padding: 7px 9px; border-radius: 10px; }
+body #nav-weather-container .weather-item { flex-shrink: 0; }
+body #nav-weather-container[data-weather-state="loading"] .weather-desc,
+body #nav-weather-container[data-weather-state="unavailable"] .weather-desc { display: inline; max-width: 120px; white-space: normal; line-height: 1.3; }
+body #main-nav .nav-link { padding-inline: 8px; }
+body #main-nav .nav-uname { max-width: 104px; }
+@media (min-width: 769px) and (max-width: 1180px) {
+    body #main-nav .nav-brand-text { display: none; }
+    body #main-nav .nav-link { padding-inline: 5px; font-size: 12px; }
+    body #main-nav .nav-uname { max-width: 65px; }
+    body #main-nav .nav-user { gap: 5px; }
+    body #nav-weather-container .weather-widget > .weather-item:last-child { display: none; }
+}
+@media (max-width: 768px) {
+    body #main-nav .nav-c > div:first-child { flex: 1 1 auto; min-width: 0; }
+    body #nav-weather-container .weather-widget { padding: 6px 8px; font-size: 11px; }
+}
+/* Navigation is in the header/drawer only. No bottom menu or floating setup CTA.
+   The original #unified-start-btn remains at the end of the setup form. */
+body .pv-bottomnav, body .pv-cta-dock { display: none !important; }
+body.pv-has-bottomnav { --bottomnav-h: 0px; }
+body.pv-ux.pv-has-bottomnav main { padding-bottom: 40px; }
+body #unified-start-btn { position: static; width: 100%; }
+/* Softer buttons with consistent icon rhythm; scoring +/- and disabled states untouched. */
+body .btn { border-radius: 12px; gap: 8px; text-transform: none; letter-spacing: .2px; }
+body .btn > i { flex-shrink: 0; margin: 0; font-size: 1em; }
+body .btn-g { background: linear-gradient(135deg, #e0c76a, #c9a84c); box-shadow: 0 4px 14px rgba(201,168,76,.13); }
+body .btn-ol { border-color: var(--border); background: rgba(201,168,76,.03); }
+body :is(.sun-mode-btn, .lang-btn) { min-height: 36px; border-radius: 10px; padding: 7px 10px; gap: 6px; }
+body :is(.btn, .sun-mode-btn, .lang-btn):focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+@media (hover: hover) {
+    body .btn-g:not(:disabled):hover { background: linear-gradient(135deg, #e8d381, #d4b75c); box-shadow: 0 5px 16px rgba(201,168,76,.2); }
+    body .btn-ol:not(:disabled):hover { background: rgba(201,168,76,.1); border-color: var(--gold); }
 }

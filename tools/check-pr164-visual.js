@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Compare key visual properties against the immutable PR164 stylesheet, without Firebase.
+// Compare retained PR164 components, excluding the explicitly redesigned statistics page and buttons.
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -9,7 +9,7 @@ const binary = require('@sparticuz/chromium');
 const root = path.join(__dirname, '..');
 const sample = '<div id="visual-sample"><section class="hero"><div class="hero-content"><h1 class="hero-title">Пестово</h1><p class="hero-sub">Карточка</p></div></section><div class="card"><h2>Карточка</h2><button class="btn btn-g">Сохранить</button><input class="form-input" value="12.4"></div><div class="page-head"><h1 class="page-title">Заголовок</h1></div><div class="score-entry"><div class="score-disp">5</div><button class="score-minus">−</button><div class="hole-val">4</div></div></div>';
 function measure() {
-    const properties = { '.hero': ['minHeight', 'paddingTop', 'paddingBottom', 'backgroundImage'], '.hero-title': ['fontSize', 'fontFamily', 'color'], '.hero-sub': ['fontSize', 'color'], '.card': ['backgroundColor', 'borderRadius', 'borderTopColor', 'boxShadow'], '.btn-g': ['backgroundImage', 'borderRadius', 'color'], '.form-input': ['backgroundColor', 'borderRadius', 'color'], '.page-title': ['fontFamily', 'fontSize', 'fontWeight', 'color'], '.score-disp': ['fontFamily', 'fontSize', 'color'], '.score-minus': ['backgroundColor', 'borderRadius'], '.hole-val': ['fontSize', 'color'] };
+    const properties = { '.hero': ['minHeight', 'paddingTop', 'paddingBottom', 'backgroundImage'], '.hero-title': ['fontSize', 'fontFamily', 'color'], '.hero-sub': ['fontSize', 'color'], '.card': ['backgroundColor', 'borderRadius', 'borderTopColor', 'boxShadow'], '.form-input': ['backgroundColor', 'borderRadius', 'color'], '.page-title': ['fontFamily', 'fontSize', 'fontWeight', 'color'], '.score-disp': ['fontFamily', 'fontSize', 'color'], '.score-minus': ['backgroundColor', 'borderRadius'], '.hole-val': ['fontSize', 'color'] };
     return Object.fromEntries(Object.entries(properties).map(([selector, props]) => {
         const style = getComputedStyle(document.querySelector('#visual-sample ' + selector));
         return [selector, Object.fromEntries(props.map(prop => [prop, style[prop]]))];
@@ -33,7 +33,7 @@ function measure() {
             await page.waitForLoadState('load');
             await page.evaluate(light => document.body.classList.toggle('sun-mode', light), light);
             const expected = await page.evaluate(measure);
-            for (const name of fs.readdirSync(root).filter(f => f.endsWith('.html') && fs.readFileSync(path.join(root, f), 'utf8').includes('css/pr164.css'))) {
+            for (const name of fs.readdirSync(root).filter(f => f.endsWith('.html') && f !== 'stats.html' && fs.readFileSync(path.join(root, f), 'utf8').includes('css/pr164.css'))) {
                 let html = fs.readFileSync(path.join(root, name), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace('<head>', '<head>' + base).replace('</body>', sample + '</body>');
                 await page.setContent(html, { waitUntil: 'load' });
                 await page.evaluate(light => document.body.classList.toggle('sun-mode', light), light);

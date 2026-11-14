@@ -19,7 +19,7 @@ const root = path.join(__dirname, '..');
                 await page.route('**/*', route => route.abort());
                 const html = fs.readFileSync(path.join(root, name), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '');
                 await page.setContent(html);
-                for (const file of ['style.css', 'theme-v2.css', 'product-ux.css', 'design-presets.css', 'clarity.css', 'pr164.css', 'pr164-adapter.css']) {
+                for (const file of ['style.css', 'theme-v2.css', 'product-ux.css', 'design-presets.css', 'clarity.css', 'pr164.css', 'pr164-adapter.css', ...(name === 'stats.html' ? ['stats-page.css'] : [])]) {
                     await page.addStyleTag({ path: path.join(root, 'css', file) });
                 }
                 // Reveal score-entry fixtures; no score-writing modules are loaded.
@@ -33,7 +33,7 @@ const root = path.join(__dirname, '..');
                 }
                 if (['players.html', 'leaderboard.html', 'stats.html', 'handicap.html'].includes(name)) {
                     const gap = await page.evaluate(() => document.querySelector('main').getBoundingClientRect().top - document.querySelector('.page-head').getBoundingClientRect().bottom + parseFloat(getComputedStyle(document.querySelector('main')).paddingTop));
-                    assert(gap >= 60 && gap <= 80, name + ': PR164 heading-to-content clearance (' + gap + ' at ' + width + ')');
+                    assert((name === 'stats.html' ? gap >= 20 && gap <= 30 : gap >= 60 && gap <= 80), name + ': PR164 heading-to-content clearance (' + gap + ' at ' + width + ')');
                     assert.strictEqual(await page.locator('.pv-skip-link').getAttribute('href'), '#pv-main');
                 }
                 if (width === 1280 && name === 'index.html') {

@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
     <script defer src="js/clarity.js?v=a99465f1"></script>
     <link rel="stylesheet" href="css/clarity.css?v=7ac50d96">
+    <link rel="stylesheet" href="css/design-history.css?v=88bc27c1">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -119,6 +120,7 @@
                 <button class="admin-tab" data-act="switchTab" data-arg="scorecards" data-i18n="tab_scorecards">Карточки на сайте</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="scoreentry" data-i18n="tab_scoreentry_screen">Экран игрока</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="designhistory">История PR · 1–100</button>
             <details class="clarity-admin-more"><summary>Дополнительно</summary><button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards">Карточки на вводе</button>
 <button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards">Турнирный ввод</button>
 <button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид</button></details></div>
@@ -1058,6 +1060,39 @@
             </div>
         </div>
 
+
+        <section id="tab-designhistory" class="admin-section hidden" aria-labelledby="dh-title">
+            <div class="card dh-intro">
+                <p class="dh-eyebrow">Архив оформления · PR 1–100</p>
+                <h2 id="dh-title">История дизайна</h2>
+                <p>Главная страница и экран ввода счёта каждого PR. Нажмите на снимок, чтобы увеличить его и листать соседние PR.</p>
+                <p class="dh-notice"><strong>Реконструкция, не архив продакшена.</strong> Страницы сняты из коммитов PR с одинаковыми демонстрационными данными, в мобильном окне 430 × 1100 px. Реальные игроки и результаты не используются.</p>
+                <details class="clarity-disclosure">
+                    <summary>Как читать этот архив</summary>
+                    <p>Для слитых PR показано состояние после слияния; для закрытых без слияния — последняя версия ветки PR. Номер PR — не обязательно порядок релизов: ориентируйтесь также на дату и коммит.</p>
+                    <p>Во всех PR сравниваются страницы index.html и scorer.html. Настройки оформления из исторической базы не восстановлены: используется исходное оформление из кода. Внешние шрифты и иконки заменены локальными аналогами; некоторые значки могут отличаться. Внешние сервисы отключены. Это снимки первого экрана, а не страниц целиком. Если исторический JavaScript не запускается, показана статическая HTML-разметка с отдельной пометкой в карточке.</p>
+                    <p>Если PR не менял внешний вид, снимки могут совпадать. Галерея ничего не применяет к текущему сайту и не меняет данные. Изображения содержат только демонстрационные данные и доступны как статические ресурсы сайта.</p>
+                </details>
+            </div>
+            <div class="card dh-controls">
+                <div class="form-group"><label for="dh-search">Номер PR, название или коммит</label><input id="dh-search" class="form-input" type="search" placeholder="Например: 42 или дизайн" autocomplete="off"></div>
+                <div class="form-group"><label for="dh-screen">Снимки</label><select id="dh-screen" class="form-input"><option value="both">Оба экрана</option><option value="home">Только главная</option><option value="scoring">Только ввод счёта</option></select></div>
+                <div class="form-group"><label for="dh-status">Статус PR</label><select id="dh-status" class="form-input"><option value="all">Все PR</option><option value="merged">Только слитые</option><option value="closed">Закрытые без слияния</option></select></div>
+                <div class="form-group"><label for="dh-order">Порядок</label><select id="dh-order" class="form-input"><option value="asc">От №1 к №100</option><option value="desc">От №100 к №1</option></select></div>
+                <button id="dh-reset" type="button" class="btn btn-ol">Сбросить</button>
+            </div>
+            <p id="dh-summary" class="dh-summary" role="status" aria-live="polite"></p>
+            <div id="dh-grid" class="dh-grid"><p>Загружаем архив…</p></div>
+            <nav id="dh-pager" class="dh-pager" aria-label="Страницы истории PR"></nav>
+            <dialog id="dh-dialog" class="dh-dialog" aria-labelledby="dh-dialog-title" aria-describedby="dh-dialog-sub">
+                <div class="dh-dialog-head"><div><h2 id="dh-dialog-title"></h2><p id="dh-dialog-sub"></p></div><button id="dh-dialog-close" type="button" class="btn btn-ol" autofocus>Закрыть</button></div>
+                <div class="dh-dialog-actions"><button id="dh-dialog-prev" type="button" class="btn btn-ol">← PR</button><button id="dh-dialog-screen" type="button" class="btn btn-ol">Другой экран</button><button id="dh-dialog-next" type="button" class="btn btn-ol">PR →</button></div>
+                <p id="dh-dialog-note" class="dh-meta">Реконструкция · демонстрационные данные · 430 × 1100 px</p>
+                <img id="dh-dialog-image" width="430" height="1100" alt="">
+                <div class="dh-dialog-actions"><a id="dh-original" class="btn btn-ol" target="_blank" rel="noopener noreferrer">Открыть оригинал</a><a id="dh-dialog-source" class="btn btn-ol" target="_blank" rel="noopener noreferrer">PR на GitHub ↗</a></div>
+            </dialog>
+        </section>
+
         <div id="tab-design" class="admin-section hidden">
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-palette"></i> <span data-i18n="design_admin_title">Шаблоны оформления сайта</span></h2>
@@ -1109,7 +1144,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.133.0</span></p></details></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.134.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
@@ -1118,8 +1153,8 @@
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
-<script defer src="js/admin-lazy.js?v=f7dee202"></script>
-<script defer src="js/admin.js?v=c796ee9c"></script>
+<script defer src="js/admin-lazy.js?v=1db11384"></script>
+<script defer src="js/admin.js?v=cc17f1a4"></script>
 <script defer src="js/admin-channels.js?v=e1c74f92"></script>
 <script defer src="js/admin-alerts.js?v=47469903"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
@@ -1152,5 +1187,7 @@
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
 <script type="text/plain" data-admin-lazy="design" data-admin-src="js/design-admin.js?v=92d8e512"></script>
 <script type="text/plain" data-admin-lazy="broadcasts" data-admin-src="js/admin-broadcasts.js?v=f76a4469"></script>
+<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/design-history-data.js?v=4718cf24"></script>
+<script type="text/plain" data-admin-lazy="designhistory" data-admin-src="js/admin-design-history.js?v=e9ccea35"></script>
 </body>
 </html>

@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const { JSDOM } = require('jsdom');
+const root = path.join(__dirname, '..');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const dom = new JSDOM(read('admin.html'), { runScripts: 'outside-only', url: 'https://club.example/admin.html' });
+const w = dom.window;
+w.HTMLElement.prototype.scrollIntoView = function () {};
+w.eval(read('js/design-history-data.js'));
+w.eval(read('js/admin-design-history.js'));
+const data = w.pestovoDesignHistoryData;
+assert.strictEqual(data.prs.length, 100);
+assert.deepStrictEqual(Array.from(data.prs, p => p.number), Array.from({ length: 100 }, (_, i) => i + 1));
+for (const pr of data.prs) {
+    assert(/^[a-f0-9]{40}$/.test(pr.commit), 'real commit SHA');
+    assert.strictEqual(pr.source, pr.merged ? 'merge' : 'head');
+    assert(pr.captured, 'PR ' + pr.number + ' captured');
+    for (const kind of ['home', 'scoring']) {
+        const expected = 'img/design-history/pr-' + pr.number + '-' + kind + '.jpg';
+        assert.strictEqual(pr[kind], expected);
+        const image = fs.readFileSync(path.join(root, expected));
+        assert(image.length > 1000, expected + ' not empty');
+        assert.strictEqual(image.subarray(0, 3).toString('hex'), 'ffd8ff', expected + ' JPEG signature');
+    }
+}
+assert.strictEqual(data.prs.filter(p => !p.merged).length, 3);
+assert(!/['"]img\/design-history(?:\/|['"])/.test(read('sw.js')), 'historical screenshots are not precached on player devices');
+assert(w.document.querySelector('[data-act="switchTab"][data-arg="designhistory"]'));
+const scripts = [...w.document.querySelectorAll('[data-admin-lazy="designhistory"]')];
+assert(scripts[0].dataset.adminSrc.startsWith('js/design-history-data.js'));
+assert(scripts[1].dataset.adminSrc.startsWith('js/admin-design-history.js'));
+w.eval(read('js/admin-lazy.js'));
+assert.strictEqual(w.pestovoAdminLazyGroups.designhistory[0], 'designhistory');
+const d = w.document;
+const dialog = d.getElementById('dh-dialog');
+dialog.showModal = () => dialog.setAttribute('open', '');
+dialog.close = () => { dialog.removeAttribute('open'); dialog.dispatchEvent(new w.Event('close')); };
+// Exercise the real admin tab transition, not just the gallery in isolation.
+const adminSource = read('js/admin.js');
+w.eval(adminSource.slice(adminSource.indexOf('function switchTabApply('), adminSource.indexOf('\nfunction switchTab(', adminSource.indexOf('function switchTabApply('))));
+const tabButton = w.document.querySelector('[data-arg="designhistory"]');
+w.switchTabApply('designhistory', tabButton);
+assert(!w.document.getElementById('tab-designhistory').classList.contains('hidden'));
+assert(tabButton.classList.contains('active'));
+assert(!tabButton.closest('[data-admin-group="look"]').classList.contains('hidden'));
+w.pestovoRenderDesignHistory();
+const cards = () => [...d.querySelectorAll('.dh-card')];
+const change = (id, value, type = 'change') => {
+    const control = d.getElementById(id); control.value = value; control.dispatchEvent(new w.Event(type));
+};
+assert.strictEqual(cards().length, 12, 'pagination bounds DOM size');
+assert.strictEqual(d.querySelectorAll('.dh-shot').length, 24);
+assert(d.querySelector('.dh-image-button img').getAttribute('loading') === 'lazy');
+assert(d.getElementById('dh-summary').textContent.includes('100 из 100'));
+d.querySelector('#dh-pager button:last-child').click();
+assert.strictEqual(cards()[0].querySelector('a').textContent, 'PR #13');
+change('dh-order', 'desc');
+assert.strictEqual(cards()[0].querySelector('a').textContent, 'PR #100');
+change('dh-search', '#1', 'input');
+assert.strictEqual(cards().length, 1, 'exact PR search, not substring');
+change('dh-search', '', 'input');
+change('dh-status', 'closed');
+assert.deepStrictEqual(cards().map(c => c.querySelector('a').textContent), ['PR #16', 'PR #12', 'PR #6']);
+change('dh-screen', 'scoring');
+assert.strictEqual(d.querySelectorAll('.dh-shot').length, 3);
+const trigger = d.querySelector('.dh-image-button');
+trigger.click();
+assert(dialog.open);
+assert(d.getElementById('dh-dialog-title').textContent.includes('PR #16'));
+assert(d.getElementById('dh-dialog-image').src.endsWith('pr-16-scoring.jpg'));
+d.getElementById('dh-dialog-next').click();
+assert(d.getElementById('dh-dialog-title').textContent.includes('PR #12'));
+d.getElementById('dh-dialog-screen').click();
+assert(d.getElementById('dh-dialog-image').src.endsWith('pr-12-home.jpg'));
+d.getElementById('dh-dialog-close').click();
+assert(!dialog.open);
+assert.strictEqual(d.activeElement, trigger, 'modal returns focus');
+change('dh-search', 'no-match-zzzz', 'input');
+assert.strictEqual(cards().length, 0);
+assert(d.querySelector('.dh-empty'));
+d.getElementById('dh-reset').click();
+assert.strictEqual(cards().length, 12);
+assert.strictEqual(d.activeElement, d.getElementById('dh-search'));
+// GitHub titles are text, never HTML.
+data.prs[0].title = '<img src=x onerror=alert(1)>';
+d.getElementById('dh-reset').click();
+assert.strictEqual(cards()[0].querySelector('h3').textContent, '<img src=x onerror=alert(1)>');
+assert.strictEqual(cards()[0].querySelectorAll('h3 img').length, 0);
+w.close();
+console.log('PASS: 100 historical PRs, 200 JPEGs, lazy admin integration, filters, paging, dialog, focus and safe titles');

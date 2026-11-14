@@ -1,0 +1,46 @@
+/* Read-only admin archive. Scoped to avoid changing current player screens. */
+#tab-designhistory { scroll-margin-top: calc(var(--nav-h, 70px) + 20px); }
+.dh-intro > p { max-width: 85ch; line-height: 1.65; margin-block: 12px; }
+.dh-eyebrow { font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; }
+.dh-intro .dh-notice { padding: 14px; background: var(--input); border-inline-start: 3px solid var(--gold); border-radius: 8px; }
+.dh-intro details p { line-height: 1.6; margin-block: 12px; }
+.dh-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+.dh-controls .form-group { flex: 1 1 155px; min-width: 0; margin: 0; }
+.dh-controls .form-group:first-child { flex: 2 1 240px; }
+.dh-controls label { display: block; margin-bottom: 8px; }
+.dh-controls .form-input { width: 100%; min-height: 46px; font-size: 16px; }
+#tab-designhistory .btn { min-height: 44px; }
+.dh-summary { color: var(--muted); margin: 18px 0; line-height: 1.6; }
+.dh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; scroll-margin-top: calc(var(--nav-h, 70px) + 20px); }
+.dh-card { border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: var(--card); min-width: 0; }
+.dh-card-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.dh-pr-link { color: var(--gold); font-size: 18px; font-weight: 800; }
+.dh-state, .dh-meta { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.dh-card h3 { font-family: var(--fb, sans-serif); font-size: 15px; line-height: 1.5; margin: 12px 0 16px; overflow-wrap: anywhere; }
+.dh-shots { display: flex; gap: 12px; align-items: start; }
+.dh-shot { margin: 0; flex: 1; min-width: 0; text-align: center; }
+.dh-image-button { display: block; width: 100%; border: 1px solid var(--border); padding: 0; border-radius: 10px; overflow: hidden; cursor: zoom-in; background: var(--input); color: var(--text); }
+.dh-image-button img { display: block; width: 100%; height: auto; aspect-ratio: 430 / 1100; object-fit: contain; }
+.dh-image-error { display: grid; place-content: center; min-height: 180px; padding: 12px; line-height: 1.5; }
+.dh-shot figcaption { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.dh-meta { margin-top: 12px; overflow-wrap: anywhere; }
+.dh-pager { display: flex; justify-content: center; align-items: center; gap: 16px; margin-block: 24px; }
+.dh-empty { padding: 24px; grid-column: 1 / -1; line-height: 1.6; }
+.dh-dialog { margin: auto; width: min(760px, calc(100% - 24px)); max-height: calc(100dvh - 32px); padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--text); overflow-y: auto; overscroll-behavior: contain; }
+.dh-dialog::backdrop { background: rgba(0, 0, 0, .8); }
+.dh-dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.dh-dialog-head h2 { font-size: 20px; line-height: 1.4; }
+.dh-dialog-head p { margin-top: 8px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.dh-dialog-head button { flex-shrink: 0; }
+.dh-dialog-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
+#dh-dialog-image { display: block; width: min(100%, 430px); height: auto; margin: 16px auto; border-radius: 8px; }
+@media (max-width: 480px) {
+    .dh-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .dh-grid { gap: 14px; }
+    .dh-card { padding: 12px; }
+    .dh-dialog { padding: 12px; }
+    .dh-dialog-head { flex-wrap: wrap; }
+    .dh-dialog-head button { margin-inline-start: auto; }
+}
+.dh-controls .form-input::placeholder { color: var(--muted); opacity: 1; }
+body.sun-mode .dh-controls .form-group label { background: transparent !important; }

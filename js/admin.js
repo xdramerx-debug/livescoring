@@ -468,6 +468,7 @@ function switchTabApply(t, b) {
     if (t === 'players') {
         if (typeof loadPrivacySettings === 'function') loadPrivacySettings(); // js/admin-display.js
     }
+    if (t === 'designhistory' && typeof pestovoRenderDesignHistory === 'function') pestovoRenderDesignHistory();
     if (t === 'design') {
         // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)
         if (typeof dspAdminLoad === 'function') dspAdminLoad();

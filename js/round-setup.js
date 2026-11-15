@@ -96,6 +96,7 @@ function setupPlayerCardHtml(idx, opts) {
             '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
             '<span class="spc-title"><i class="fas fa-user"></i> ' + t('player') + ' #' + idx + (you ? ' <em class="spc-you">(' + t('you') + ')</em>' : '') + '</span>' +
             '<span class="spc-meta" id="spc-meta-' + idx + '"></span>' +
+            '<span class="spc-hcp-slot spc-hcp-slot-head"></span>' +
             (!opts.first
                 ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
                 : '') +
@@ -113,7 +114,7 @@ function setupPlayerCardHtml(idx, opts) {
             '</div>' +
             '<div class="form-group" style="flex:1 1 140px;"><label>' + t('last_name') + '</label><input type="text" id="pl-last-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Doe' : 'Фамилия') + '"></div>' +
         '</div>' +
-        refreshBtn +
+        '<div class="spc-hcp-slot spc-hcp-slot-body">' + refreshBtn + '</div>' +
         '<div class="form-row">' +
             '<div class="form-group" style="flex:1 1 80px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + idx + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
             '<div class="form-group" style="flex:1 1 80px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
@@ -211,6 +212,8 @@ function renderSetupPlayers(preserve) {
         html += setupPlayerCardHtml(idx, { open: open, first: pos === 0, you: pos === 0 && isYou, name: ((s.name || '') + ' ' + (s.last || '')).trim() });
     });
     el.innerHTML = html;
+    setupWatchCardState();
+    setupPlaceAllRefreshBtns();
 
     // Поиск/автозаполнение зарегистрированных игроков по имени
     setupPlayerIndices().forEach(function(idx) {
@@ -311,6 +314,33 @@ function removeSetupPlayer(idx) {
 
 // ──────────────── МЕТА: АВАТАР И ЦВЕТ ТИ ────────────────
 
+// Кнопка «Обновить гандикап из АГР» живёт в одном месте, но её положение
+// зависит от состояния карточки: свёрнута — под именем в шапке, раскрыта —
+// под полями имени и фамилии.
+function setupPlaceRefreshBtn(idx) {
+    var btn = document.getElementById('pl-hcp-refresh-' + idx);
+    var card = document.querySelector('#player-slots [data-pidx="' + idx + '"]');
+    if (!btn || !card) return;
+    var slot = card.querySelector(card.classList.contains('open') ? '.spc-hcp-slot-body' : '.spc-hcp-slot-head');
+    if (slot && btn.parentNode !== slot) slot.appendChild(btn);
+}
+function setupPlaceAllRefreshBtns() {
+    var cards = document.querySelectorAll('#player-slots [data-pidx]');
+    for (var i = 0; i < cards.length; i++) setupPlaceRefreshBtn(cards[i].getAttribute('data-pidx'));
+}
+var setupSlotsObserver = null;
+function setupWatchCardState() {
+    var el = document.getElementById('player-slots');
+    if (!el || setupSlotsObserver || typeof MutationObserver !== 'function') return;
+    setupSlotsObserver = new MutationObserver(function (records) {
+        records.forEach(function (rec) {
+            var card = rec.target && rec.target.closest ? rec.target.closest('[data-pidx]') : null;
+            if (card) setupPlaceRefreshBtn(card.getAttribute('data-pidx'));
+        });
+    });
+    setupSlotsObserver.observe(el, { subtree: true, attributes: true, attributeFilter: ['class'] });
+}
+
 function markSetupPlayerMeta(idx) {
     var el = document.getElementById('player-slots');
     if (!el) return;
@@ -318,14 +348,14 @@ function markSetupPlayerMeta(idx) {
     if (!card) return;
     var nEl = document.getElementById('pl-name-' + idx);
     var tEl = document.getElementById('pl-tee-' + idx);
-    var name = nEl ? nEl.value : '';
+    var name = setupGetFullName(idx);
     var tee = tEl ? tEl.value : 'bl';
 
     var av = document.getElementById('spc-avatar-' + idx);
     if (av) av.textContent = spcAvatarText(name, idx);
 
     var title = card.querySelector('.spc-title');
-    if (title && name.trim()) title.textContent = name.trim();
+    if (title && name) title.textContent = name;
     var meta = document.getElementById('spc-meta-' + idx);
     if (meta) {
         var hEl = document.getElementById('pl-hcp-' + idx);
@@ -384,6 +414,7 @@ function setupParseHcpInput(value) {
 function syncSetupHcpRefreshButton(idx) {
     var button = document.getElementById('pl-hcp-refresh-' + idx);
     if (!button) return;
+    setupPlaceRefreshBtn(idx);
     var running = !!setupHcpRefreshRunning[idx];
     // Строка с ФИО самого игрока по-прежнему привязывается к его аккаунту
     // (uid заполняется сразу) — от этого зависит запись гандикапа в профиль.
@@ -431,6 +462,14 @@ function setupHcpNameForLog(idx, row) {
 
 // Заполняет поле гандикапа найденным значением. Свою карточку дополнительно
 // сохраняем в профиль (users/<uid>), чужую — только в форму раунда.
+// Отчество строки RUSGOLF: поле middleName, а если его нет — третье слово ФИО
+// (в АГР порядок «Фамилия Имя Отчество»).
+function setupRowMiddleName(row) {
+    if (!row) return '';
+    if (row.middleName) return String(row.middleName).trim();
+    var parts = String(row.fio || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    return parts.slice(2).join(' ');
+}
 function applySetupRusgolfRow(idx, row) {
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var hcp = row ? Number(row.hcp) : NaN;
@@ -442,9 +481,11 @@ function applySetupRusgolfRow(idx, row) {
     if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
     if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
 
-    // Отчество из RUSGOLF заполняем скрыто (поля в форме нет).
+    // Отчество из RUSGOLF заполняем скрыто (поля в форме нет). Записываем
+    // всегда: пустое значение стирает отчество предыдущего игрока этой карточки.
+    var middleName = setupRowMiddleName(row);
     var midHidden = document.getElementById('pl-mid-' + idx);
-    if (midHidden && row && row.middleName) midHidden.value = row.middleName;
+    if (midHidden) midHidden.value = middleName;
 
     var own = setupIsOwnRow(idx);
     var user = typeof currentUser !== 'undefined' && currentUser ? currentUser : null;
@@ -475,7 +516,7 @@ function applySetupRusgolfRow(idx, row) {
     var fields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
     if (row.number) fields.rusgolfNumber = row.number;
     if (row.hcpDate) fields.rusgolfHcpDate = row.hcpDate;
-    if (row.middleName) fields.middleName = row.middleName;
+    if (middleName) fields.middleName = middleName;
     return db.ref('users/' + myUid).update(fields).then(function () {
         // Публичный профиль — best effort: старые записи без usersPublic не блокируют обновление.
         return db.ref('usersPublic/' + myUid).once('value').then(function (snapshot) {

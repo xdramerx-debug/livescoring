@@ -94,9 +94,10 @@ function setupPlayerCardHtml(idx, opts) {
     var head =
         '<div class="setup-player-head" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
             '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
-            '<span class="spc-title"><i class="fas fa-user"></i> ' + t('player') + ' #' + idx + (you ? ' <em class="spc-you">(' + t('you') + ')</em>' : '') + '</span>' +
-            '<span class="spc-meta" id="spc-meta-' + idx + '"></span>' +
-            '<span class="spc-hcp-slot spc-hcp-slot-head"></span>' +
+            '<span class="spc-main">' +
+                '<span class="spc-title"><i class="fas fa-user"></i> ' + t('player') + ' #' + idx + (you ? ' <em class="spc-you">(' + t('you') + ')</em>' : '') + '</span>' +
+                '<span class="spc-line"><span class="spc-hcp-slot spc-hcp-slot-head"></span><span class="spc-meta" id="spc-meta-' + idx + '"></span></span>' +
+            '</span>' +
             (!opts.first
                 ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
                 : '') +
@@ -376,7 +377,20 @@ var setupHcpRefreshRunning = {};
 // Найденные в RUSGOLF строки по карточкам формы — для окна выбора игрока.
 var setupHcpCandidates = {};
 // Общий дедлайн поиска в RUSGOLF: кнопка не может «висеть» дольше этого срока.
-var SETUP_HCP_LOOKUP_DEADLINE_MS = 20000;
+var SETUP_HCP_LOOKUP_DEADLINE_MS = 30000;
+// Прокси поиска АГР задаёт администратор (settings/rusgolf/proxy). Страница
+// раунда тоже должна её использовать: иначе поиск идёт только через публичные
+// прокси и часто недоступен.
+function setupLoadRgProxy() {
+    try {
+        if (typeof db === 'undefined' || !db || typeof db.ref !== 'function') return;
+        db.ref('settings/rusgolf/proxy').once('value').then(function (sn) {
+            var v = sn && typeof sn.val === 'function' ? sn.val() : null;
+            if (!v) return;
+            try { localStorage.setItem('pestovo_rg_proxy', String(v)); } catch (e) { console.warn('[silent]', e); }
+        }).catch(function (e) { console.warn('[silent]', e); });
+    } catch (e) { console.warn('[silent]', e); }
+}
 function setupHcpNameValue(idx) {
     return setupGetFullName(idx);
 }
@@ -881,6 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } catch (e) { console.warn('[silent]', e); }
 
+    setupLoadRgProxy();
     try {
         var p = new URLSearchParams(window.location.search);
         if (!p.get('round')) initUnifiedSetup();

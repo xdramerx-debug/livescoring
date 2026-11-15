@@ -10,17 +10,17 @@ const { JSDOM } = require('jsdom');
 const ROOT = path.join(__dirname, '..');
 const html = '<!doctype html><html><body><div id="player-slots">' +
     '<div class="setup-player-card" data-pidx="1"><span id="spc-avatar-1"></span><span id="spc-meta-1"></span>' +
-    '<input id="pl-name-1" value="Иван Иванов"><input id="pl-uid-1" value="user-1">' +
+    '<input id="pl-name-1" value="Иван"><input id="pl-last-1" value="Иванов"><input type="hidden" id="pl-mid-1" value=""><input id="pl-uid-1" value="user-1">' +
     '<select id="pl-gender-1"><option value="men" selected>Men</option><option value="women">Women</option></select>' +
     '<select id="pl-tee-1"><option value="bl" selected>Blue</option></select>' +
     '<input id="pl-hcp-1" value="15.0"><input id="pl-field-1" value="16">' +
-    '<button type="button" id="pl-hcp-refresh-1" class="setup-hcp-refresh">Refresh</button></div>' +
+    '<span class="spc-hcp-slot spc-hcp-slot-head"></span><div class="spc-hcp-slot spc-hcp-slot-body"><button type="button" id="pl-hcp-refresh-1" class="setup-hcp-refresh">Refresh</button></div></div>' +
     '<div class="setup-player-card" data-pidx="2"><span id="spc-avatar-2"></span><span id="spc-meta-2"></span>' +
-    '<input id="pl-name-2" value="Пётр Петров"><input id="pl-uid-2" value="">' +
+    '<input id="pl-name-2" value="Пётр"><input id="pl-last-2" value="Петров"><input type="hidden" id="pl-mid-2" value=""><input id="pl-uid-2" value="">' +
     '<select id="pl-gender-2"><option value="men" selected>Men</option><option value="women">Women</option></select>' +
     '<select id="pl-tee-2"><option value="bl" selected>Blue</option></select>' +
     '<input id="pl-hcp-2" value=""><input id="pl-field-2" value="">' +
-    '<button type="button" id="pl-hcp-refresh-2" class="setup-hcp-refresh hidden">Refresh</button></div>' +
+    '<span class="spc-hcp-slot spc-hcp-slot-head"></span><div class="spc-hcp-slot spc-hcp-slot-body"><button type="button" id="pl-hcp-refresh-2" class="setup-hcp-refresh hidden">Refresh</button></div></div>' +
     '</div></body></html>';
 const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://test.local/setup-round.html' });
 const win = dom.window;
@@ -64,6 +64,20 @@ function check(condition, message) {
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 (async function run() {
+    // Кнопка АГР переезжает: свёрнута — в шапку, раскрыта — под поля имени.
+    win.eval('setupWatchCardState(); setupPlaceAllRefreshBtns()');
+    const card1 = win.document.querySelector('[data-pidx="1"]');
+    const btn1 = win.document.getElementById('pl-hcp-refresh-1');
+    card1.classList.remove('open');
+    await wait(5);
+    check(btn1.parentNode.classList.contains('spc-hcp-slot-head'), 'свёрнутая карточка: кнопка АГР в шапке');
+    card1.classList.add('open');
+    await wait(5);
+    check(btn1.parentNode.classList.contains('spc-hcp-slot-body'), 'раскрытая карточка: кнопка АГР под полями имени и фамилии');
+    card1.classList.remove('open');
+    await wait(5);
+    check(btn1.parentNode.classList.contains('spc-hcp-slot-head'), 'после сворачивания кнопка возвращается в шапку');
+
     win.eval('markSetupPlayerMeta(1)');
     win.eval('markSetupPlayerMeta(2)');
     check(win.document.getElementById('pl-hcp-refresh-1').classList.contains('hidden') === false,
@@ -73,7 +87,9 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
     win.eval('refreshSetupPlayerHandicap(1)');
     await wait(20);
-    check(win.__queries[0] === 'Иван Иванов', 'поиск в RUSGOLF идёт по введённым имени и фамилии');
+    check(win.__queries[0] === 'Иван Иванов', 'поиск в RUSGOLF идёт по полям «Имя» и «Фамилия»');
+    check(win.document.getElementById('pl-mid-1').value === 'Иванович', 'отчество из RUSGOLF записывается скрыто');
+    check(win.__updates.some(item => item.path === 'users/user-1' && item.value.middleName === 'Иванович'), 'отчество своей карточки сохраняется в профиль');
     check(win.document.getElementById('pl-hcp-1').value === '8.3', 'точное совпадение подставляет гандикап (регистр/порядок ФИО не важны)');
     check(win.__updates.some(item => item.path === 'users/user-1' && item.value.handicap === 8.3 && item.value.hcpSource === 'rusgolf'), 'гандикап своей карточки сохраняется в профиль');
     check(win.__updates.some(item => item.path === 'usersPublic/user-1' && item.value.handicap === 8.3), 'публичный профиль получает обновление');
@@ -83,9 +99,14 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
     // Смена ФИО прячет кнопку (нужны имя и фамилия) и снова показывает после ввода.
     win.document.getElementById('pl-name-2').value = 'Пётр';
+    win.document.getElementById('pl-last-2').value = '';
     win.eval('markSetupPlayerMeta(2)');
     check(win.document.getElementById('pl-hcp-refresh-2').classList.contains('hidden'), 'одно слово — кнопка скрыта');
-    win.document.getElementById('pl-name-2').value = 'Пётр Петров';
+    win.document.getElementById('pl-last-2').value = 'Петров';
+    win.eval('markSetupPlayerMeta(2)');
+    check(!win.document.getElementById('pl-hcp-refresh-2').classList.contains('hidden'), 'введена фамилия — кнопка снова видна');
+    win.document.getElementById('pl-name-2').value = 'Пётр';
+    win.document.getElementById('pl-last-2').value = 'Петров';
     win.eval('markSetupPlayerMeta(2)');
     check(!win.document.getElementById('pl-hcp-refresh-2').classList.contains('hidden'), 'после ввода имени и фамилии кнопка снова видна');
 
@@ -159,6 +180,7 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
     // Без имени и фамилии поиск не запускается.
     win.document.getElementById('pl-name-2').value = 'Пётр';
+    win.document.getElementById('pl-last-2').value = '';
     const beforeQueries = win.__queries.length;
     win.eval('refreshSetupPlayerHandicap(2)');
     await wait(5);

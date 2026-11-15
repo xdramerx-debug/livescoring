@@ -462,6 +462,14 @@ function setupHcpNameForLog(idx, row) {
 
 // Заполняет поле гандикапа найденным значением. Свою карточку дополнительно
 // сохраняем в профиль (users/<uid>), чужую — только в форму раунда.
+// Отчество строки RUSGOLF: поле middleName, а если его нет — третье слово ФИО
+// (в АГР порядок «Фамилия Имя Отчество»).
+function setupRowMiddleName(row) {
+    if (!row) return '';
+    if (row.middleName) return String(row.middleName).trim();
+    var parts = String(row.fio || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    return parts.slice(2).join(' ');
+}
 function applySetupRusgolfRow(idx, row) {
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var hcp = row ? Number(row.hcp) : NaN;
@@ -473,9 +481,11 @@ function applySetupRusgolfRow(idx, row) {
     if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
     if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
 
-    // Отчество из RUSGOLF заполняем скрыто (поля в форме нет).
+    // Отчество из RUSGOLF заполняем скрыто (поля в форме нет). Записываем
+    // всегда: пустое значение стирает отчество предыдущего игрока этой карточки.
+    var middleName = setupRowMiddleName(row);
     var midHidden = document.getElementById('pl-mid-' + idx);
-    if (midHidden && row && row.middleName) midHidden.value = row.middleName;
+    if (midHidden) midHidden.value = middleName;
 
     var own = setupIsOwnRow(idx);
     var user = typeof currentUser !== 'undefined' && currentUser ? currentUser : null;
@@ -506,7 +516,7 @@ function applySetupRusgolfRow(idx, row) {
     var fields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
     if (row.number) fields.rusgolfNumber = row.number;
     if (row.hcpDate) fields.rusgolfHcpDate = row.hcpDate;
-    if (row.middleName) fields.middleName = row.middleName;
+    if (middleName) fields.middleName = middleName;
     return db.ref('users/' + myUid).update(fields).then(function () {
         // Публичный профиль — best effort: старые записи без usersPublic не блокируют обновление.
         return db.ref('usersPublic/' + myUid).once('value').then(function (snapshot) {

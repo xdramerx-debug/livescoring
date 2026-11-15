@@ -32,6 +32,25 @@ function setupPlayerIndices() {
     return setupPlayerOrder.slice();
 }
 
+// Имя и фамилия — два поля («Имя» = pl-name-N, «Фамилия» = pl-last-N).
+// Полное ФИО собирается из них: им пользуются поиск в RUSGOLF, валидация и
+// создание раунда.
+function setupGetFullName(idx) {
+    var f = document.getElementById('pl-name-' + idx);
+    var l = document.getElementById('pl-last-' + idx);
+    return ((f ? f.value : '') + ' ' + (l ? l.value : '')).replace(/\s+/g, ' ').trim();
+}
+// Раскладывает строку «Имя Фамилия» по двум полям (первое слово — имя).
+function setupSetFullName(idx, full) {
+    var parts = String(full || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    var f = document.getElementById('pl-name-' + idx);
+    var l = document.getElementById('pl-last-' + idx);
+    if (f) f.value = parts[0] || '';
+    if (l) l.value = parts.slice(1).join(' ');
+}
+window.setupGetFullName = setupGetFullName;
+window.setupSetFullName = setupSetFullName;
+
 // Данные всех игроков формы (для единого создания раунда).
 function getSetupPlayers() {
     var out = [];
@@ -40,7 +59,7 @@ function getSetupPlayers() {
         out.push({
             idx: idx,
             uid: g('pl-uid-' + idx),
-            name: g('pl-name-' + idx),
+            name: setupGetFullName(idx),
             middleName: g('pl-mid-' + idx),
             gender: g('pl-gender-' + idx) || 'men',
             tee: g('pl-tee-' + idx) || 'bl',
@@ -80,21 +99,26 @@ function setupPlayerCardHtml(idx, opts) {
             (!opts.first
                 ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
                 : '') +
-            '<button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh setup-hcp-refresh-head hidden" data-act="refreshSetupPlayerHandicap" data-stop="1" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i><span class="setup-hcp-refresh-text">' + (isEn ? 'Update handicap from RGA' : 'Обновить гандикап из АГР') + '</span></button>' +
             '<i class="fas fa-chevron-down" aria-hidden="true"></i>' +
         '</div>';
 
+    var refreshBtn =
+        '<button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh setup-hcp-refresh-body hidden" data-act="refreshSetupPlayerHandicap" data-stop="1" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i><span class="setup-hcp-refresh-text">' + (isEn ? 'Update handicap from RGA' : 'Обновить гандикап из АГР') + '</span></button>';
     var body =
-        '<div class="form-row form-row-3">' +
-            '<div class="form-group" style="flex:1.4 1 130px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label>' +
-                '<input type="text" id="pl-name-' + idx + '" class="form-input" placeholder="' + (isEn ? 'John Doe' : 'Имя Фамилия') + '">' +
+        '<div class="form-row">' +
+            '<div class="form-group" style="flex:1 1 140px;position:relative;"><label>' + t('first_name') + '</label>' +
+                '<input type="text" id="pl-name-' + idx + '" class="form-input" autocomplete="off" placeholder="' + (isEn ? 'John' : 'Имя') + '">' +
                 '<input type="hidden" id="pl-uid-' + idx + '" value="">' +
+                '<input type="hidden" id="pl-mid-' + idx + '" value="">' +
             '</div>' +
-            '<div class="form-group" style="flex:1 1 90px;"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Jr.' : 'Отчество') + '"></div>' +
-            '<div class="form-group" style="flex:1 1 80px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + idx + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
+            '<div class="form-group" style="flex:1 1 140px;"><label>' + t('last_name') + '</label><input type="text" id="pl-last-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Doe' : 'Фамилия') + '"></div>' +
         '</div>' +
-        '<div class="form-row form-row-3">' +
+        refreshBtn +
+        '<div class="form-row">' +
+            '<div class="form-group" style="flex:1 1 80px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + idx + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
             '<div class="form-group" style="flex:1 1 80px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
+        '</div>' +
+        '<div class="form-row">' +
             '<div class="form-group" style="flex:1 1 90px;"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"></div>' +
             '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>' +
         '</div>';
@@ -117,7 +141,9 @@ function setupPlayerOnSelect(idx) {
         var parts = (typeof resolvePlayerNameParts === 'function')
             ? resolvePlayerNameParts(matchedUser)
             : matchedUser;
-        if (nEl) nEl.value = ((parts.firstName || '') + ' ' + (parts.lastName || '')).trim();
+        if (nEl) nEl.value = parts.firstName || '';
+        var lEl = document.getElementById('pl-last-' + idx);
+        if (lEl) lEl.value = parts.lastName || '';
         if (uEl) uEl.value = matchedUser.uid;
         if (midEl) midEl.value = parts.middleName || '';
         if (gEl) gEl.value = matchedUser.gender;
@@ -167,6 +193,7 @@ function renderSetupPlayers(preserve) {
                 hasCard: !!card,
                 uid: g('pl-uid-' + idx),
                 name: g('pl-name-' + idx),
+                last: g('pl-last-' + idx),
                 mid: g('pl-mid-' + idx),
                 gender: g('pl-gender-' + idx),
                 tee: g('pl-tee-' + idx),
@@ -181,7 +208,7 @@ function renderSetupPlayers(preserve) {
     setupPlayerIndices().forEach(function(idx, pos) {
         var s = saved[idx] || {};
         var open = (s.open !== null && s.open !== undefined) ? s.open : (pos === 0);
-        html += setupPlayerCardHtml(idx, { open: open, first: pos === 0, you: pos === 0 && isYou, name: s.name });
+        html += setupPlayerCardHtml(idx, { open: open, first: pos === 0, you: pos === 0 && isYou, name: ((s.name || '') + ' ' + (s.last || '')).trim() });
     });
     el.innerHTML = html;
 
@@ -205,6 +232,7 @@ function renderSetupPlayers(preserve) {
             var g = function(id) { return document.getElementById(id); };
             if (g('pl-uid-' + idx)) g('pl-uid-' + idx).value = s.uid || '';
             if (g('pl-name-' + idx)) g('pl-name-' + idx).value = s.name || '';
+            if (g('pl-last-' + idx)) g('pl-last-' + idx).value = s.last || '';
             if (g('pl-mid-' + idx)) g('pl-mid-' + idx).value = s.mid || '';
             if (s.gender && g('pl-gender-' + idx)) g('pl-gender-' + idx).value = s.gender;
             if (s.tee && g('pl-tee-' + idx)) g('pl-tee-' + idx).value = s.tee;
@@ -320,8 +348,7 @@ var setupHcpCandidates = {};
 // Общий дедлайн поиска в RUSGOLF: кнопка не может «висеть» дольше этого срока.
 var SETUP_HCP_LOOKUP_DEADLINE_MS = 20000;
 function setupHcpNameValue(idx) {
-    var nameEl = document.getElementById('pl-name-' + idx);
-    return String(nameEl && nameEl.value || '').trim();
+    return setupGetFullName(idx);
 }
 // Строка принадлежит текущему пользователю: выбран из подсказок (uid совпадает)
 // либо введено его собственное ФИО вручную — тогда uid проставляется сразу.
@@ -415,6 +442,10 @@ function applySetupRusgolfRow(idx, row) {
     if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
     if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
 
+    // Отчество из RUSGOLF заполняем скрыто (поля в форме нет).
+    var midHidden = document.getElementById('pl-mid-' + idx);
+    if (midHidden && row && row.middleName) midHidden.value = row.middleName;
+
     var own = setupIsOwnRow(idx);
     var user = typeof currentUser !== 'undefined' && currentUser ? currentUser : null;
     var myUid = user ? String(user.uid || '') : '';
@@ -444,6 +475,7 @@ function applySetupRusgolfRow(idx, row) {
     var fields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
     if (row.number) fields.rusgolfNumber = row.number;
     if (row.hcpDate) fields.rusgolfHcpDate = row.hcpDate;
+    if (row.middleName) fields.middleName = row.middleName;
     return db.ref('users/' + myUid).update(fields).then(function () {
         // Публичный профиль — best effort: старые записи без usersPublic не блокируют обновление.
         return db.ref('usersPublic/' + myUid).once('value').then(function (snapshot) {
@@ -520,12 +552,11 @@ function pickSetupHcpCandidate(idx, index) {
 function refreshSetupPlayerHandicap(idx) {
     idx = parseInt(idx, 10);
     if (setupHcpRefreshRunning[idx]) return;
-    var nameEl = document.getElementById('pl-name-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
     var button = document.getElementById('pl-hcp-refresh-' + idx);
 
     // Поиск по имени и фамилии — как в админ-панели (вкладка RUSGOLF).
-    var query = String(nameEl && nameEl.value || '').trim();
+    var query = setupGetFullName(idx);
     if (query.split(/\s+/).filter(Boolean).length < 2) {
         if (typeof toast === 'function') toast(currentLang === 'en' ? 'Enter first and last name.' : 'Укажите имя и фамилию.', 'warn');
         return;
@@ -631,11 +662,13 @@ function applyUnifiedUserDefaults() {
     var g = function(id) { return document.getElementById(id); };
 
     var p1Name = g('pl-name-' + first);
-    if (p1Name && !p1Name.value) {
+    var p1Last = g('pl-last-' + first);
+    if (p1Name && !p1Name.value && !(p1Last && p1Last.value)) {
         if (currentUserData.firstName || currentUserData.lastName) {
-            p1Name.value = ((currentUserData.firstName || '') + ' ' + (currentUserData.lastName || '')).trim();
+            p1Name.value = currentUserData.firstName || '';
+            if (p1Last) p1Last.value = currentUserData.lastName || '';
         } else {
-            p1Name.value = currentUserData.name || '';
+            setupSetFullName(first, currentUserData.name || '');
         }
     }
     if (g('pl-uid-' + first)) g('pl-uid-' + first).value = currentUser.uid;
@@ -786,7 +819,7 @@ function initUnifiedSetup() {
 document.addEventListener('input', function (event) {
     var el = event.target;
     if (!el || !el.id) return;
-    if (el.id.indexOf('pl-name-') !== 0 && el.id.indexOf('pl-hcp-') !== 0) return;
+    if (el.id.indexOf('pl-name-') !== 0 && el.id.indexOf('pl-last-') !== 0 && el.id.indexOf('pl-hcp-') !== 0) return;
     if (!el.classList.contains('is-invalid')) return;
     var group = el.closest ? el.closest('.form-group') : null;
     if (group) {

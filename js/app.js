@@ -164,8 +164,8 @@ function renderCourseHolesStrip(activeEntries) {
     // Статистика по девяткам для подсказки «С какой лунки лучше стартовать»:
     // сколько игроков сейчас в поле на каждой девятке и их суммарный гандикап.
     var nine = {
-        front: { players: 0, hcpSum: 0 },
-        back: { players: 0, hcpSum: 0 }
+        front: { players: 0, hcpSum: 0, exactSum: 0 },
+        back: { players: 0, hcpSum: 0, exactSum: 0 }
     };
 
     var totalPlayers = 0;
@@ -212,6 +212,11 @@ function renderCourseHolesStrip(activeEntries) {
                     ? (parseFloat(p.fieldHcp) || 0)
                     : (parseFloat(p.exactHcp) || 0);
                 side.hcpSum += hcpVal;
+                // Точный гандикап считаем отдельно: в подсказке показываем оба среднего.
+                var exactVal = (p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== '')
+                    ? (parseFloat(p.exactHcp) || 0)
+                    : hcpVal;
+                side.exactSum += exactVal;
             }
         });
     });
@@ -276,6 +281,8 @@ function buildStartHintHTML(nine, isEn) {
     var front = nine.front, back = nine.back;
     var fAvg = front.players ? front.hcpSum / front.players : 0;
     var bAvg = back.players ? back.hcpSum / back.players : 0;
+    var fExact = front.players ? front.exactSum / front.players : 0;
+    var bExact = back.players ? back.exactSum / back.players : 0;
 
     // Совокупная «загруженность» девятки: каждый игрок в поле и высокий средний
     // гандикап (чем выше гандикап, тем медленнее темп игры) увеличивают риск
@@ -339,7 +346,8 @@ function buildStartHintHTML(nine, isEn) {
     var playersLbl = function (n) {
         return isEn ? (n === 1 ? 'player in the field' : 'players in the field') : pluralN(n, 'игрок в поле', 'игрока в поле', 'игроков в поле');
     };
-    var avgLbl = isEn ? 'avg handicap' : 'средний HCP';
+    var avgFieldLbl = isEn ? 'avg field HCP' : 'средний полевой HCP';
+    var avgExactLbl = isEn ? 'avg exact HCP' : 'средний точный HCP';
     var frontTitle = isEn ? 'First nine' : 'Первая девятка';
     var backTitle = isEn ? 'Second nine' : 'Вторая девятка';
     var holesSpan = function (a, b) { return isEn ? ' (holes ' + a + '–' + b + ')' : ' (лунки ' + a + '–' + b + ')'; };
@@ -363,14 +371,16 @@ function buildStartHintHTML(nine, isEn) {
         '<div class="chs-hint-nine-t">' + (frontBetter ? '<i class="fas fa-circle-check"></i> ' : '') + frontTitle + holesSpan(1, 9) + '</div>' +
         '<div class="chs-hint-nine-stats">' +
         '<div class="chs-hint-stat"><b>' + front.players + '</b><span>' + playersLbl(front.players) + '</span></div>' +
-        '<div class="chs-hint-stat"><b>' + fmtAvg(fAvg) + '</b><span>' + avgLbl + '</span></div>' +
+        '<div class="chs-hint-stat"><b>' + fmtAvg(fAvg) + '</b><span>' + avgFieldLbl + '</span></div>' +
+        '<div class="chs-hint-stat"><b>' + fmtAvg(fExact) + '</b><span>' + avgExactLbl + '</span></div>' +
         '</div>' +
         '</div>' +
         '<div class="chs-hint-nine' + (backBetter ? ' is-better' : '') + '">' +
         '<div class="chs-hint-nine-t">' + (backBetter ? '<i class="fas fa-circle-check"></i> ' : '') + backTitle + holesSpan(10, 18) + '</div>' +
         '<div class="chs-hint-nine-stats">' +
         '<div class="chs-hint-stat"><b>' + back.players + '</b><span>' + playersLbl(back.players) + '</span></div>' +
-        '<div class="chs-hint-stat"><b>' + fmtAvg(bAvg) + '</b><span>' + avgLbl + '</span></div>' +
+        '<div class="chs-hint-stat"><b>' + fmtAvg(bAvg) + '</b><span>' + avgFieldLbl + '</span></div>' +
+        '<div class="chs-hint-stat"><b>' + fmtAvg(bExact) + '</b><span>' + avgExactLbl + '</span></div>' +
         '</div>' +
         '</div>' +
         '</div>' +

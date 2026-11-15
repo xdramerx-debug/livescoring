@@ -215,8 +215,8 @@
         for (var i = 0; i < cards.length; i++) idxs.push(cards[i].getAttribute('data-pidx'));
         var filled = 0;
         idxs.forEach(function (idx) {
-            var input = document.getElementById('pl-name-' + idx);
-            if (input && String(input.value || '').trim()) filled++;
+            var full = typeof window.setupGetFullName === 'function' ? window.setupGetFullName(idx) : '';
+            if (String(full || '').trim()) filled++;
         });
         return { filled: filled, total: idxs.length };
     }
@@ -467,9 +467,10 @@
         var slots = document.getElementById('player-slots');
         if (!slots) return;
         var names = [];
-        var inputs = slots.querySelectorAll('input[id^="pl-name-"]');
-        for (var i = 0; i < inputs.length; i++) {
-            var value = String(inputs[i].value || '').trim();
+        var cards = slots.querySelectorAll('[data-pidx]');
+        for (var i = 0; i < cards.length; i++) {
+            var value = typeof window.setupGetFullName === 'function'
+                ? String(window.setupGetFullName(cards[i].getAttribute('data-pidx')) || '').trim() : '';
             if (value) names.push(value);
         }
         if (!names.length) return;
@@ -487,14 +488,17 @@
     function fillPlayerName(name) {
         var slots = document.getElementById('player-slots');
         if (!slots) return;
-        var inputs = slots.querySelectorAll('input[id^="pl-name-"]');
-        var target = null;
-        for (var i = 0; i < inputs.length; i++) {
-            if (!String(inputs[i].value || '').trim()) { target = inputs[i]; break; }
+        var cards = slots.querySelectorAll('[data-pidx]');
+        var idx = null;
+        for (var i = 0; i < cards.length; i++) {
+            var cardIdx = cards[i].getAttribute('data-pidx');
+            if (!String(window.setupGetFullName(cardIdx) || '').trim()) { idx = cardIdx; break; }
         }
-        if (!target && inputs.length) target = inputs[inputs.length - 1];
+        if (idx === null && cards.length) idx = cards[cards.length - 1].getAttribute('data-pidx');
+        if (idx === null) return;
+        window.setupSetFullName(idx, name);
+        var target = document.getElementById('pl-name-' + idx);
         if (!target) return;
-        target.value = name;
         target.dispatchEvent(new Event('input', { bubbles: true }));
         target.dispatchEvent(new Event('change', { bubbles: true }));
         buzz(8);

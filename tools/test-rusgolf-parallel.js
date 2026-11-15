@@ -57,6 +57,27 @@ function fakeFetch(behaviour) {
     await client.fetchViaProxy('Иванов Иван', 0, { timeoutMs: 8000 });
     check(seen.some(u => u.startsWith('https://proxy.test/')), 'пользовательский прокси из настроек запрашивается');
 
+    // 4) Серверная функция rusgolfSearch отдаёт таблицу — прокси не вызываются.
+    win.localStorage.removeItem('pestovo_rg_proxy');
+    let proxyCalls = 0;
+    win.fetch = () => { proxyCalls++; return Promise.reject(new Error('should not be called')); };
+    win.pestovoFunctions = () => Promise.resolve({
+        httpsCallable: (name) => (payload) => {
+            assert.strictEqual(name, 'rusgolfSearch');
+            assert.strictEqual(payload.query, 'Иванов Иван');
+            return Promise.resolve({ data: { html: TABLE } });
+        }
+    });
+    const r4 = await client.fetchViaProxy('Иванов Иван', 0, { timeoutMs: 8000 });
+    check(r4.rows.length === 1 && r4.proxy === 'server', 'результат из серверной функции rusgolfSearch');
+    check(proxyCalls === 0, 'при успехе сервера публичные прокси не вызываются');
+
+    // 5) Функция недоступна — поиск уходит на прокси.
+    win.pestovoFunctions = () => Promise.reject(new Error('functions down'));
+    win.fetch = fakeFetch(() => 'ok');
+    const r5 = await client.fetchViaProxy('Иванов Иван', 0, { timeoutMs: 8000 });
+    check(r5.rows.length === 1 && r5.proxy !== 'server', 'при сбое функции работает резерв через прокси');
+
     if (failures) { console.error('FAILED ' + failures); process.exit(1); }
     console.log('Passed all checks');
     process.exit(0);

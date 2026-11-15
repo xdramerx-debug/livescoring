@@ -71,16 +71,6 @@ function getSetupPlayers() {
 
 // ─────────────────────────── МАРКАП ───────────────────────────
 
-function spcAvatarText(name, idx) {
-    try {
-        if (typeof playerInitials === 'function') {
-            var s = playerInitials(name);
-            if (s && s !== '?') return s;
-        }
-    } catch (e) { /* игнорируем */ }
-    return String(idx);
-}
-
 // Карточка игрока (варианты 1, 2, 4, 5).
 function setupPlayerCardHtml(idx, opts) {
     opts = opts || {};
@@ -93,7 +83,6 @@ function setupPlayerCardHtml(idx, opts) {
     var cls = 'setup-player-card spc' + (rich ? ' spc-rich' : '') + (open ? ' open' : '');
     var head =
         '<div class="setup-player-head" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
-            '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
             '<span class="spc-main">' +
                 '<span class="spc-title"><i class="fas fa-user"></i> ' + t('player') + ' #' + idx + (you ? ' <em class="spc-you">(' + t('you') + ')</em>' : '') + '</span>' +
                 '<span class="spc-line"><span class="spc-hcp-slot spc-hcp-slot-head"></span><span class="spc-meta" id="spc-meta-' + idx + '"></span></span>' +
@@ -351,9 +340,6 @@ function markSetupPlayerMeta(idx) {
     var tEl = document.getElementById('pl-tee-' + idx);
     var name = setupGetFullName(idx);
     var tee = tEl ? tEl.value : 'bl';
-
-    var av = document.getElementById('spc-avatar-' + idx);
-    if (av) av.textContent = spcAvatarText(name, idx);
 
     var title = card.querySelector('.spc-title');
     if (title && name) title.textContent = name;

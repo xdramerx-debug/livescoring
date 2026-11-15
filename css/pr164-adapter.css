@@ -185,3 +185,19 @@ body.sun-mode input[type="date"], body.sun-mode input[type="time"] { color-schem
 body.sun-mode .sev-head-badge { color: #142017; background: #f3ebd2; }
 body.sun-mode :is(.tn-public-chip, .tn-detail-description, .tn-course-ref, .tn-nomination ol, .tn-active-description) { color: #253b2b; }
 body.sun-mode .tn-public-chip { border-color: #899b8d; background: #f4f8f5; }
+
+/* Home «Сейчас на поле»: три фильтра в одну строку на мобильных. */
+@media (max-width: 600px) {
+    body .pv-chips.pv-chips--home {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;
+        margin: 14px 0 16px;
+    }
+    body .pv-chips.pv-chips--home .pv-chip {
+        min-width: 0; padding: 8px 6px; gap: 5px; font-size: 12px;
+    }
+    body .pv-chips.pv-chips--home .pv-chip > i { display: none; }
+    body .pv-chips.pv-chips--home .pv-chip > span:not(.pv-chip-count) {
+        min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    body .pv-chips.pv-chips--home .pv-chip-count { min-width: 20px; height: 20px; padding: 0 5px; font-size: 10.5px; }
+}

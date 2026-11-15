@@ -250,47 +250,54 @@
     }
 
     // opts.timeoutMs — таймаут одного прокси (по умолчанию 25 с, как раньше).
+    // Все прокси запрашиваются параллельно, побеждает первый валидный ответ.
+    // Раньше прокси шли по очереди: каждый мог висеть до таймаута, и поиск
+    // не укладывался в лимит ожидания на странице раунда.
     function fetchViaProxy(query, attempt, opts) {
-        attempt = attempt || 0;
         opts = opts || {};
         var perProxyMs = opts.timeoutMs > 0 ? opts.timeoutMs : 25000;
         var target = SEARCH_BASE + encodeURIComponent(String(query || '').trim());
         var proxies = buildProxyList();
         var fetchFn = root.fetch;
         if (typeof fetchFn !== 'function') return Promise.reject(new Error('Fetch is unavailable'));
+        if (!proxies.length) return Promise.reject(new Error('No Rusgolf proxies configured'));
         return new Promise(function (resolve, reject) {
-            var index = 0;
-            function tryNext() {
-                if (index >= proxies.length) {
-                    reject(new Error(root.currentLang === 'en'
-                        ? 'All Rusgolf search proxies are unavailable.'
-                        : 'Все прокси поиска АГР недоступны.'));
-                    return;
-                }
-                var proxy = proxies[index++];
+            var done = false;
+            var failed = 0;
+            var controllers = [];
+            var timers = [];
+            function finish() {
+                controllers.forEach(function (c) { if (c) { try { c.abort(); } catch (e) { /* уже завершён */ } } });
+                timers.forEach(function (t) { clearTimeout(t); });
+            }
+            proxies.forEach(function (proxy) {
                 var controller = typeof root.AbortController === 'function' ? new root.AbortController() : null;
-                var timer = setTimeout(function () { if (controller) controller.abort(); }, perProxyMs);
+                controllers.push(controller);
+                timers.push(setTimeout(function () { if (controller) controller.abort(); }, perProxyMs));
                 fetchFn(proxy.build(target), { signal: controller ? controller.signal : undefined })
                     .then(function (response) {
                         if (!response.ok) throw new Error('HTTP ' + response.status);
                         return response.text();
                     })
                     .then(function (text) {
-                        clearTimeout(timer);
                         var parsed = parseResults(text);
                         if (!parsed.valid) throw new Error('unparseable response');
+                        if (done) return;
+                        done = true;
+                        finish();
                         resolve({ rows: parsed.rows, proxy: proxy.name });
                     })
-                    .catch(function (error) {
-                        clearTimeout(timer);
-                        if (error && error.message === 'HTTP 429' && attempt < 2) {
-                            setTimeout(function () { fetchViaProxy(query, attempt + 1, opts).then(resolve).catch(reject); }, 8000);
-                            return;
+                    .catch(function () {
+                        failed++;
+                        if (!done && failed >= proxies.length) {
+                            done = true;
+                            finish();
+                            reject(new Error(root.currentLang === 'en'
+                                ? 'All Rusgolf search proxies are unavailable.'
+                                : 'Все прокси поиска АГР недоступны.'));
                         }
-                        tryNext();
                     });
-            }
-            tryNext();
+            });
         });
     }
 

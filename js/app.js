@@ -260,7 +260,7 @@ function renderCourseHolesStrip(activeEntries) {
 
 // Состояние вкладки-подсказки сохраняется между перерисовками ленты:
 // блок «Сейчас на поле» обновляется в реальном времени.
-var startHintOpen = false;
+var startHintOpen = true;
 
 function toggleStartHint() {
     startHintOpen = !startHintOpen;
@@ -1021,9 +1021,10 @@ function renderHomeLiveRounds(data) {
         }
 
         if (entries.length === 0) {
+            // При активном фильтре пустой результат просто не выводим:
+            // блок «ничего не найдено» не показываем.
             el.innerHTML = homeLiveFilter !== 'all'
-                ? '<div class="empty"><i class="fas fa-filter"></i><p>' + t('pv_filter_empty') + '</p>' +
-                  '<button type="button" class="btn btn-ol btn-sm" style="margin-top:12px;" data-act="setHomeLiveFilter" data-arg="all"><i class="fas fa-list"></i> ' + t('pv_filter_reset') + '</button></div>'
+                ? ''
                 : '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
             if (tnEl) {
                 // Турнир стартует, а счётов ещё нет — не прячем его.

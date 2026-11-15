@@ -1177,6 +1177,12 @@ function initNav(){
     applyNavHeight();
     setTimeout(applyNavHeight, 50);
     setTimeout(applyNavHeight, 400);
+    // Шапка может вырасти позже (погода подгрузилась, перенос строк):
+    // без скролла и ресайза --nav-h оставался бы меньше реальной высоты.
+    var navBox = document.getElementById('main-nav');
+    if (navBox && typeof ResizeObserver === 'function') {
+        try { new ResizeObserver(applyNavHeight).observe(navBox); } catch (e) { console.warn('[silent]', e); }
+    }
 }
 
 // ==========================================

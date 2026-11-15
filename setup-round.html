@@ -94,6 +94,9 @@
            сверху остаются шапка и блок «Настройки раунда». */
         @media (max-width: 768px) {
             #page-head { display: none !important; }
+            /* Без заголовка форма начинается сразу под шапкой: даём воздух,
+               чтобы первая карточка не упиралась в край навбара. */
+            #pv-main { padding-top: calc(var(--nav-h, 70px) + 20px) !important; }
         }
 
         /* Кнопка «Обновить гандикап из АГР» — под полями имени и фамилии. */
@@ -534,7 +537,7 @@
 <script defer src="js/rusgolf-client.js?v=f37608e7"></script>
 <script defer src="js/name-variants.js?v=2b58f796"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=15c1d142"></script>
+<script defer src="js/utils.js?v=a958d033"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script defer src="js/score-kiosk.js?v=fda399fb"></script>

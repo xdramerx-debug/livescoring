@@ -253,7 +253,25 @@
     // Все прокси запрашиваются параллельно, побеждает первый валидный ответ.
     // Раньше прокси шли по очереди: каждый мог висеть до таймаута, и поиск
     // не укладывался в лимит ожидания на странице раунда.
+    // Сначала серверная функция rusgolfSearch (без CORS и внешних прокси).
+    // Если она недоступна или не отдала таблицу — обычный поиск через прокси.
     function fetchViaProxy(query, attempt, opts) {
+        var fnFactory = typeof root.pestovoFunctions === 'function' ? root.pestovoFunctions : null;
+        if (!fnFactory) return fetchViaPublicProxies(query, attempt, opts);
+        var q = String(query || '').trim();
+        if (!q) return fetchViaPublicProxies(query, attempt, opts);
+        return Promise.resolve()
+            .then(function () { return fnFactory(); })
+            .then(function (fns) { return fns.httpsCallable('rusgolfSearch')({ query: q }); })
+            .then(function (res) {
+                var parsed = parseResults(res && res.data && res.data.html);
+                if (!parsed.valid) throw new Error('unparseable server response');
+                return { rows: parsed.rows, proxy: 'server' };
+            })
+            .catch(function () { return fetchViaPublicProxies(query, attempt, opts); });
+    }
+
+    function fetchViaPublicProxies(query, attempt, opts) {
         opts = opts || {};
         var perProxyMs = opts.timeoutMs > 0 ? opts.timeoutMs : 25000;
         var target = SEARCH_BASE + encodeURIComponent(String(query || '').trim());

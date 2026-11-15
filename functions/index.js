@@ -846,3 +846,38 @@ exports.testOfficialCallDelivery = functions.runWith({}).https.onCall(async func
         at: Date.now()
     };
 });
+
+// ── Поиск в базе АГР (hcp.rusgolf.ru) на стороне сервера ─────────────────
+// Браузерные CORS-прокси нестабильны (часто недоступны из России), поэтому
+// страница раунда и админка сначала пробуют эту функцию: она сама запрашивает
+// сайт АГР и отдаёт HTML, который разбирает существующий парсер в
+// js/rusgolf-client.js. Доступ только у вошедших пользователей (анонимный вход
+// тоже подходит), запрос короткий, ответ ограничен по размеру.
+const RUSGOLF_SEARCH_BASE = 'https://hcp.rusgolf.ru/public/player/ru/?search=';
+const RUSGOLF_MAX_QUERY = 100;
+const RUSGOLF_MAX_HTML = 2000000;
+exports.rusgolfSearch = functions.runWith({ timeoutSeconds: 20, memory: '256MB' }).https.onCall(async function (data, context) {
+    if (!(context && context.auth && context.auth.uid)) {
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    }
+    const query = String((data && data.query) || '').trim().replace(/\s+/g, ' ');
+    if (!query || query.length > RUSGOLF_MAX_QUERY) {
+        throw new functions.https.HttpsError('invalid-argument', 'Query is empty or too long.');
+    }
+    let response;
+    try {
+        response = await fetch(RUSGOLF_SEARCH_BASE + encodeURIComponent(query), {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PestovoLiveScoring/1.0)', 'Accept': 'text/html' },
+            signal: AbortSignal.timeout(12000)
+        });
+    } catch (e) {
+        if (functions.logger) functions.logger.warn('rusgolfSearch: fetch failed', String(e && e.message || e));
+        throw new functions.https.HttpsError('unavailable', 'RUSGOLF is unavailable.');
+    }
+    if (!response.ok) {
+        if (functions.logger) functions.logger.warn('rusgolfSearch: HTTP ' + response.status);
+        throw new functions.https.HttpsError('unavailable', 'RUSGOLF is unavailable.');
+    }
+    const html = (await response.text()).slice(0, RUSGOLF_MAX_HTML);
+    return { html: html };
+});

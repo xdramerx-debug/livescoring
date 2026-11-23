@@ -201,3 +201,174 @@ body.sun-mode .tn-public-chip { border-color: #899b8d; background: #f4f8f5; }
     }
     body .pv-chips.pv-chips--home .pv-chip-count { min-width: 20px; height: 20px; padding: 0 5px; font-size: 10.5px; }
 }
+
+/* ── План прохождения: вехи, норматив раунда и дедлайны по лункам ──────────
+   Разметку строит buildTimingTable() в js/utils.js (классы .tpv*).
+   План: старт → середина → финиш соединены золотым пунктиром; норматив —
+   плашка под вехами; лунки — карточки с номером-медальоном, паром,
+   нормативом лунки и полосой её длительности. */
+body .tpv {
+    display: block; margin: 6px 0 0; padding: 14px 14px 12px;
+    border: 1px solid rgba(201, 168, 76, .24); border-radius: 12px;
+    background: linear-gradient(160deg, rgba(201, 168, 76, .08), rgba(255, 255, 255, .02) 55%);
+    box-sizing: border-box;
+}
+
+/* Вехи плана. Пунктирная линия проходит на уровне иконок. */
+body .tpv-track { display: flex; align-items: flex-start; }
+body .tpv-mile {
+    flex: 0 1 auto; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+body .tpv-mile-ico {
+    display: grid; place-items: center; width: 30px; height: 30px; margin-bottom: 4px;
+    border: 1px solid rgba(201, 168, 76, .4); border-radius: 50%;
+    background: rgba(201, 168, 76, .12); color: var(--gold);
+    font-size: 13px;
+}
+body .tpv-mile-lbl {
+    font-size: 10px; font-weight: 600; letter-spacing: .9px; line-height: 1.2;
+    text-transform: uppercase; color: var(--muted); white-space: nowrap;
+}
+body .tpv-mile-val {
+    font-size: 19px; font-weight: 800; line-height: 1.15; color: var(--white);
+    font-variant-numeric: tabular-nums;
+}
+body .tpv-seg {
+    flex: 1 1 auto; min-width: 18px; height: 2px; margin: 15px 8px 0; border-radius: 2px;
+    background: repeating-linear-gradient(90deg, rgba(201, 168, 76, .55) 0 7px, rgba(201, 168, 76, 0) 7px 13px);
+}
+body .tpv-mile--finish .tpv-mile-ico {
+    border-color: rgba(201, 168, 76, .85); color: #142017;
+    background: linear-gradient(135deg, #e0c76a, #c9a84c);
+    box-shadow: 0 3px 12px rgba(201, 168, 76, .35);
+}
+body .tpv-mile--finish .tpv-mile-val { color: var(--gold-l); }
+
+/* Норматив раунда — плашка под вехами. */
+body .tpv-total {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 4px 8px; margin: 12px 0 10px; padding: 7px 16px; border-radius: 999px;
+    border: 1px solid rgba(201, 168, 76, .32); background: rgba(201, 168, 76, .1);
+}
+body .tpv-total i { color: var(--gold); font-size: 13px; }
+body .tpv-total-lbl { font-size: 12px; color: var(--muted); letter-spacing: .3px; }
+body .tpv-total-val {
+    font-size: 15px; font-weight: 800; color: var(--white);
+    font-variant-numeric: tabular-nums; letter-spacing: .2px;
+}
+
+/* Раскрытие «Детализация по лункам». */
+body .tpv-details > summary {
+    display: flex; align-items: center; gap: 8px;
+    list-style: none; cursor: pointer; user-select: none;
+    min-height: 42px; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .045);
+    color: var(--gold); font-family: var(--fb); font-size: 12.5px; font-weight: 700;
+    letter-spacing: .2px; -webkit-tap-highlight-color: transparent;
+}
+body .tpv-details > summary::-webkit-details-marker { display: none; }
+body .tpv-details > summary > i:first-child { color: var(--gold); font-size: 12px; }
+body .tpv-details-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body .tpv-details-chev {
+    margin-left: auto; flex: 0 0 auto; font-size: 11px; color: var(--muted);
+    transition: transform .2s ease;
+}
+body .tpv-details[open] > summary .tpv-details-chev { transform: rotate(180deg); }
+body .tpv-details > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+@media (hover: hover) {
+    body .tpv-details > summary:hover {
+        border-color: rgba(201, 168, 76, .45); background: rgba(201, 168, 76, .08);
+    }
+}
+
+/* Сетка лунок: 2 колонки на телефоне, больше — на широких экранах. */
+body .tpv-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px; margin-top: 10px;
+}
+@media (min-width: 560px) { body .tpv-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 880px) { body .tpv-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Плитка лунки: медальон с номером | дедлайн | пар и норматив | полоса. */
+body .tpv-hole {
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; column-gap: 8px;
+    align-items: center; padding: 8px 10px 11px; border-radius: 10px; box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, .08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02));
+}
+body .tpv-hole-n {
+    grid-column: 1; display: grid; place-items: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid rgba(201, 168, 76, .45); background: rgba(201, 168, 76, .13);
+    color: var(--gold-l); font-size: 12px; font-weight: 800; line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+body .tpv-hole-time {
+    grid-column: 3; justify-self: end;
+    font-size: 13.5px; font-weight: 800; color: var(--gold-l);
+    font-variant-numeric: tabular-nums; letter-spacing: .2px;
+}
+body .tpv-hole-meta {
+    grid-column: 1 / -1; grid-row: 2; display: flex; align-items: baseline; gap: 5px;
+    margin-top: 3px; font-size: 10.5px; line-height: 1.2; white-space: nowrap;
+}
+body .tpv-hole-par { font-weight: 800; letter-spacing: .3px; color: var(--text); }
+body .tpv-par-3 .tpv-hole-par { color: var(--blue); }
+body .tpv-par-5 .tpv-hole-par { color: var(--yellow); }
+body .tpv-hole-dur { color: var(--muted); }
+body .tpv-hole-meta .tpv-hole-dur::before {
+    content: "·"; margin-right: 5px; color: rgba(158, 181, 165, .7);
+}
+body .tpv-hole-bar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: rgba(255, 255, 255, .05);
+}
+body .tpv-hole-bar > span {
+    display: block; height: 100%; border-radius: 0 2px 2px 0;
+    background: linear-gradient(90deg, rgba(201, 168, 76, .85), rgba(201, 168, 76, .3));
+}
+
+/* Узкие экраны: компактнее вехи и плитки, без горизонтального скролла. */
+@media (max-width: 400px) {
+    body .tpv { padding: 12px 10px 10px; }
+    body .tpv-mile-ico { width: 26px; height: 26px; margin-bottom: 3px; font-size: 11.5px; }
+    body .tpv-mile-lbl { font-size: 9px; letter-spacing: .6px; }
+    body .tpv-mile-val { font-size: 17px; }
+    body .tpv-seg { min-width: 12px; margin: 13px 5px 0; }
+    body .tpv-total { padding: 6px 12px; }
+    body .tpv-hole { column-gap: 6px; padding: 7px 8px 10px; }
+    body .tpv-hole-n { width: 24px; height: 24px; font-size: 11px; }
+    body .tpv-hole-time { font-size: 12.5px; }
+    body .tpv-grid { gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body .tpv-details-chev { transition: none; }
+}
+
+/* Светлая тема («бумажная»): белые карточки, зелёные акценты вместо золотых стёкол. */
+body.sun-mode .tpv { background: #ffffff; border: 2px solid #000000; }
+body.sun-mode .tpv-mile-ico { border: 1px solid #000000; background: #e8f5e9; color: #0b2912; }
+body.sun-mode .tpv-mile--finish .tpv-mile-ico {
+    border-color: #0b2912; color: #ffffff; background: #1b5e20; box-shadow: none;
+}
+body.sun-mode .tpv-mile--finish .tpv-mile-val { color: #1b5e20; }
+body.sun-mode .tpv-seg {
+    background: repeating-linear-gradient(90deg, #7c8a80 0 7px, rgba(124, 138, 128, 0) 7px 13px);
+}
+body.sun-mode .tpv-total { background: #e8f5e9; border: 2px solid #1b5e20; }
+body.sun-mode .tpv-total i { color: #1b5e20; }
+body.sun-mode .tpv-total-lbl { color: #0b2912; }
+body.sun-mode .tpv-total-val { color: #0b2912; }
+body.sun-mode .tpv-details > summary { background: #f4f8f5; border: 1px solid #000000; color: #0b2912; }
+body.sun-mode .tpv-details > summary > i:first-child { color: #1b5e20; }
+body.sun-mode .tpv-details-chev { color: #253b2b; }
+body.sun-mode .tpv-hole { background: #f4f8f5; border: 1px solid #000000; }
+body.sun-mode .tpv-hole-n { border: 1px solid #000000; background: #e8f5e9; color: #0b2912; }
+body.sun-mode .tpv-hole-time { color: #0b2912; }
+body.sun-mode .tpv-par-3 .tpv-hole-par { color: #1565c0; }
+body.sun-mode .tpv-par-5 .tpv-hole-par { color: #754400; }
+body.sun-mode .tpv-hole-meta .tpv-hole-dur::before { color: #56665b; }
+body.sun-mode .tpv-hole-bar { background: #dfe8e1; }
+body.sun-mode .tpv-hole-bar > span { background: linear-gradient(90deg, #1b5e20, #66bb6a); }

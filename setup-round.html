@@ -138,6 +138,16 @@
         #unif-sec-3 details.pace-plan[open] > summary::after { transform: rotate(180deg); }
         #unif-sec-3 details.pace-plan[open] > summary { border-bottom: 1px dashed rgba(201, 168, 76, 0.3); }
         #unif-sec-3 details.pace-plan > :not(summary) { margin: 0 14px 12px; }
+        /* «Тайминги» внутри плана — компактный надзаголовок над карточкой
+           таймингов (#grp-timing-preview), а не равный шапке блока заголовок. */
+        #unif-sec-3 details.pace-plan .setup-section-title {
+            margin: 12px 0 6px;
+            font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+            text-transform: uppercase; color: var(--muted);
+        }
+        #unif-sec-3 details.pace-plan .setup-section-title i {
+            font-size: 11px; color: var(--gold);
+        }
         @media (prefers-reduced-motion: reduce) {
             #unif-sec-3 details.pace-plan > summary::after { transition: none; }
         }
@@ -237,7 +247,7 @@
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=5a58a49a">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=56478a92">
 </head>
 <body class="round-setup-page score-compact pv-ux pv-setup pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
@@ -578,7 +588,7 @@
 <script defer src="js/rusgolf-client.js?v=82133bb8"></script>
 <script defer src="js/name-variants.js?v=2b58f796"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=a958d033"></script>
+<script defer src="js/utils.js?v=372c3adf"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script defer src="js/score-kiosk.js?v=fda399fb"></script>

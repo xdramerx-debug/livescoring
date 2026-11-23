@@ -2082,27 +2082,55 @@ function buildTimingTable(st, sh, holeRange) {
 
     var startStr = fmtTime(startTs);
     var finishStr = fmtTime(dlFinish);
+    var isEn = currentLang === 'en';
 
-    var html = '<div class="timing-summary-card">';
-    html += '<div class="timing-pills-row">';
-    html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Start' : 'Старт') + '</span><span class="tp-val">' + startStr + '</span></div>';
+    // План прохождения: вехи (старт → середина → финиш) соединены пунктиром,
+    // норматив раунда — центральная плашка, дедлайны по лункам — карточки с
+    // номером, паром, нормативом лунки и полосой её длительности.
+    // Оформление — css/pr164-adapter.css (классы .tpv*).
+    var html = '<div class="tpv">';
+
+    html += '<div class="tpv-track">';
+    html += '  <div class="tpv-mile"><span class="tpv-mile-ico"><i class="fas fa-flag" aria-hidden="true"></i></span>' +
+            '<span class="tpv-mile-lbl">' + (isEn ? 'Start' : 'Старт') + '</span>' +
+            '<span class="tpv-mile-val">' + startStr + '</span></div>';
     if (count === 18) {
         var dl9 = holeDeadline(startTs, startHole, order[8]);
-        html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Turn (9h)' : '9 лунок') + '</span><span class="tp-val">' + fmtTime(dl9) + '</span></div>';
+        html += '<div class="tpv-seg" aria-hidden="true"></div>';
+        html += '  <div class="tpv-mile"><span class="tpv-mile-ico"><i class="fas fa-hourglass-half" aria-hidden="true"></i></span>' +
+                '<span class="tpv-mile-lbl">' + (isEn ? '9 holes' : '9 лунок') + '</span>' +
+                '<span class="tpv-mile-val">' + fmtTime(dl9) + '</span></div>';
     }
-    html += '  <div class="timing-pill tp-finish"><span class="tp-lbl">' + (currentLang === 'en' ? (count === 18 ? 'Finish (18h)' : 'Finish') : 'Финиш') + '</span><span class="tp-val">' + finishStr + '</span></div>';
+    html += '<div class="tpv-seg" aria-hidden="true"></div>';
+    html += '  <div class="tpv-mile tpv-mile--finish"><span class="tpv-mile-ico"><i class="fas fa-flag-checkered" aria-hidden="true"></i></span>' +
+            '<span class="tpv-mile-lbl">' + (isEn ? 'Finish' : 'Финиш') + '</span>' +
+            '<span class="tpv-mile-val">' + finishStr + '</span></div>';
     html += '</div>';
-    html += '<div class="timing-total-badge"><i class="fas fa-clock"></i> ' + (currentLang === 'en' ? 'Pace of Play: ' : 'Норматив раунда: ') + '<b>' + durationStr + '</b></div>';
 
-    html += '<details class="timing-details"><summary><i class="fas fa-list-ol"></i> ' + (currentLang === 'en' ? 'Hole-by-Hole Deadlines' : 'Детализация по лункам') + '</summary>';
-    html += '<div class="timing-grid">';
+    html += '<div class="tpv-total"><i class="fas fa-stopwatch" aria-hidden="true"></i>' +
+            '<span class="tpv-total-lbl">' + (isEn ? 'Pace of play' : 'Норматив раунда') + '</span>' +
+            '<b class="tpv-total-val">' + durationStr + '</b></div>';
 
+    html += '<details class="tpv-details"><summary><i class="fas fa-list-ol" aria-hidden="true"></i>' +
+            '<span class="tpv-details-lbl">' + (isEn ? 'Hole-by-hole deadlines' : 'Детализация по лункам') + '</span>' +
+            '<i class="fas fa-chevron-down tpv-details-chev" aria-hidden="true"></i></summary>';
+    html += '<div class="tpv-grid">';
+
+    // Самая длинная лунка плана = 100% полосы длительности в плитке.
+    var maxMin = 1;
+    order.forEach(function(h) {
+        maxMin = Math.max(maxMin, holeTiming(h));
+    });
     order.forEach(function(h) {
         var dl = holeDeadline(startTs, startHole, h);
         var tMin = holeTiming(h);
-        html += '<div class="timing-grid-item">';
-        html += '  <span class="tg-hole">' + (currentLang === 'en' ? 'Hole ' : 'Л.') + h + ' <small>(P' + holePar(h) + '·' + tMin + 'm)</small></span>';
-        html += '  <span class="tg-time">' + fmtTime(dl) + '</span>';
+        var par = holePar(h);
+        html += '<div class="tpv-hole tpv-par-' + par + '" title="' + (isEn ? 'Hole ' : 'Лунка ') + h + '">';
+        html += '  <span class="tpv-hole-n">' + h + '</span>';
+        html += '  <span class="tpv-hole-time">' + fmtTime(dl) + '</span>';
+        html += '  <span class="tpv-hole-meta"><span class="tpv-hole-par">P' + par + '</span>' +
+                '<span class="tpv-hole-dur">' + tMin + (isEn ? ' min' : ' мин') + '</span></span>';
+        html += '  <span class="tpv-hole-bar" aria-hidden="true"><span style="width:' + Math.round(tMin / maxMin * 100) + '%"></span></span>';
         html += '</div>';
     });
     html += '</div></details>';

@@ -781,3 +781,168 @@ body.sun-mode .hero-title {
     text-shadow: 0 2px 26px rgba(201, 168, 76, .28) !important;
 }
 body.sun-mode .hero-desc { color: #253b2b !important; }
+
+/* ── Страница результатов: карточки раундов ──────────────────────────────
+   Шапка карточки — две чистые строки вместо россыпи ячеек: дата и статус
+   в первой строке, тихий мета-поток «игроки · формат · время» во второй.
+   На ПК (≥720px) всё собирается в одну строку. Стили ограничены .lb-row:
+   карточки главной (recent-row, live-round-row) и турниров не трогаем. */
+body .lb-row {
+    border: 1px solid rgba(201, 168, 76, .16);
+    border-radius: 14px;
+    background: linear-gradient(170deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .012) 42%), rgba(19, 34, 24, .85);
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+body .lb-row:hover { border-color: rgba(201, 168, 76, .38); box-shadow: 0 10px 26px rgba(0, 0, 0, .22); }
+body .lb-row.is-open { border-color: rgba(201, 168, 76, .45); box-shadow: 0 12px 30px rgba(0, 0, 0, .26); }
+body .lb-row.lb-row-live { border-left: 3px solid rgba(46, 204, 113, .55); }
+
+/* Шапка: строка 1 — дата и статус, строка 2 — мета-поток. */
+body .live-who-list .lb-row .lwl-toggle {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 8px 12px; padding: 14px 16px 12px;
+}
+body .live-who-list .lb-row .lwl-name {
+    order: 1; flex: 1 1 auto; min-width: 0;
+    font-size: 15px; font-weight: 800; color: var(--white); letter-spacing: .1px;
+}
+body .live-who-list .lb-row .lwl-name > i { color: var(--gold); font-size: 13px; opacity: 1; }
+body .live-who-list .lb-row .lwl-score { order: 2; flex: 0 0 auto; display: inline-flex; align-items: center; }
+body .live-who-list .lb-row .lwl-chev {
+    order: 3; flex: 0 0 auto;
+    width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: rgba(201, 168, 76, .12); color: var(--gold); font-size: 11px;
+}
+body .live-who-list .lb-row .lwl-meta-line {
+    order: 4; flex: 1 1 100%; min-width: 0;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
+    padding-left: 25px; color: var(--muted);
+}
+body .live-who-list .lb-row .lwl-hole {
+    display: inline-flex; align-items: center; gap: 5px;
+    min-height: 0; padding: 0; border: 0; border-radius: 0;
+    background: transparent; color: var(--muted);
+    font-size: 12.5px; font-weight: 600;
+}
+body .live-who-list .lb-row .lwl-hole i { color: var(--gold); font-size: 10px; margin-right: 0; }
+body .live-who-list .lb-row .lwl-start {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    min-width: 0; color: var(--muted); font-size: 12px;
+}
+body .live-who-list .lb-row .lwl-start .pv-badge {
+    font-size: 10px; padding: 2px 7px;
+}
+
+/* Компактный статус без тяжёлой пластины. */
+body .lb-row .tn-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* Детали раскрытой карточки. */
+body .live-who-list .lb-row .lwl-details {
+    padding: 2px 16px 16px;
+    border-top: 1px solid rgba(255, 255, 255, .06);
+}
+body .live-who-list .lb-row .lwl-meta { padding-top: 12px; gap: 8px 14px; }
+body .live-who-list .lb-row .lwl-extra {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+}
+body .live-who-list .lb-row .lwl-extra i { color: var(--gold); font-size: 10px; }
+
+/* Таблица игроков: одна аккуратная плашка вместо голой сетки. */
+body .live-who-list .lb-row .rlb {
+    margin-top: 12px;
+    border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 12px; overflow: hidden;
+    background: rgba(255, 255, 255, .02);
+}
+body .live-who-list .lb-row .rlb-head {
+    padding: 8px 10px 7px;
+    border-bottom: 1px solid rgba(201, 168, 76, .25);
+}
+body .live-who-list .lb-row .rlb-head span { font-size: 9.5px; letter-spacing: .6px; }
+body .live-who-list .lb-row .rlb-row {
+    padding: 9px 10px; gap: 2px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+body .live-who-list .lb-row .rlb-row:last-child { border-bottom: none; }
+body .live-who-list .lb-row .rlb-row:hover { background: rgba(201, 168, 76, .06); }
+body .live-who-list .lb-row .rlb-head:hover { background: none; }
+body .live-who-list .lb-row .rlb-pos { font-size: 12.5px; color: var(--muted); }
+body .live-who-list .lb-row .rlb-name { color: var(--white); font-size: 13.5px; font-weight: 700; }
+body .live-who-list .lb-row .rlb-thru { font-size: 11px; color: var(--muted); }
+body .live-who-list .lb-row .rlb-par { font-size: 15px; }
+body .live-who-list .lb-row .rlb-num { font-size: 13.5px; }
+body .live-who-list .lb-row .rlb-sub { padding: 3px 10px 9px; font-size: 11px; }
+
+/* Кнопки-действия под таблицей. */
+body .lb-row .lwl-actions { gap: 8px; margin-top: 14px; }
+body .lb-row .lwl-actions .btn {
+    flex: 1 1 auto; min-height: 42px; padding: 9px 14px;
+    border-radius: 11px; font-size: 12.5px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+}
+@media (max-width: 719px) {
+    body .lb-row .lwl-actions .btn { flex: 1 1 calc(50% - 8px); }
+    body .lb-row .lwl-actions .btn.btn-g { flex-basis: 100%; }
+}
+
+/* Панель счётной карточки внутри карточки раунда. */
+body .lb-row .card-scorecard-panel { margin-top: 14px; padding-top: 14px; }
+body .lb-row .club-sc { margin-top: 0; }
+
+/* ПК: шапка собирается в одну строку — дата, мета-поток, статус, шеврон. */
+@media (min-width: 720px) {
+    body .live-who-list .lb-row .lwl-toggle { flex-wrap: nowrap; gap: 12px; padding: 15px 18px 13px; }
+    body .live-who-list .lb-row .lwl-name { flex: 0 0 auto; }
+    body .live-who-list .lb-row .lwl-meta-line { order: 2; flex: 1 1 auto; padding-left: 0; flex-wrap: nowrap; }
+    body .live-who-list .lb-row .lwl-hole::before {
+        content: '·'; margin-right: 10px; opacity: .5;
+    }
+    body .live-who-list .lb-row .lwl-score { order: 3; margin-left: auto; }
+    body .live-who-list .lb-row .lwl-chev { order: 4; }
+    body .live-who-list .lb-row .lwl-details { padding: 2px 18px 18px; }
+}
+
+/* Светлая тема: белые карточки, спокойные тени. */
+body.sun-mode .lb-row {
+    background: #ffffff; border: 2px solid #000000;
+}
+body.sun-mode .lb-row:hover, body.sun-mode .lb-row.is-open {
+    border-color: #000000; box-shadow: 0 8px 18px rgba(0, 0, 0, .12);
+}
+body.sun-mode .lb-row.lb-row-live { border-left: 3px solid #1b5e20; }
+body.sun-mode .live-who-list .lb-row .lwl-chev { background: rgba(27, 94, 32, .1); color: #0b2912; }
+body.sun-mode .live-who-list .lb-row .lwl-name { color: #0b2912; }
+body.sun-mode .live-who-list .lb-row .lwl-name > i,
+body.sun-mode .live-who-list .lb-row .lwl-hole i,
+body.sun-mode .live-who-list .lb-row .lwl-extra i { color: #7a5f18; }
+body.sun-mode .live-who-list .lb-row .lwl-details { border-top: 1px solid rgba(0, 0, 0, .12); }
+body.sun-mode .live-who-list .lb-row .rlb { background: #f4f8f5; border: 1px solid #899b8d; }
+body.sun-mode .live-who-list .lb-row .rlb-head { border-bottom: 1px solid #899b8d; }
+body.sun-mode .live-who-list .lb-row .rlb-row { border-bottom: 1px solid rgba(0, 0, 0, .08); }
+body.sun-mode .live-who-list .lb-row .rlb-row:hover { background: rgba(27, 94, 32, .07); }
+body.sun-mode .live-who-list .lb-row .rlb-name { color: #0b2912; }
+
+/* Уточнения: мета-поток «игроки · формат · время» сливается строкой,
+   кнопки действий на телефоне не переносят подписи. */
+body .live-who-list .lb-row .lwl-hole { flex: 0 0 auto; }
+body .live-who-list .lb-row .lwl-start::before {
+    content: '·'; margin-right: 10px; opacity: .5;
+}
+@media (min-width: 720px) {
+    body .live-who-list .lb-row .lwl-start::before { margin-right: 10px; }
+}
+@media (max-width: 719px) {
+    body .lb-row .lwl-actions .btn {
+        padding: 8px 10px; font-size: 11.5px; gap: 6px;
+    }
+}
+body.sun-mode .lb-row .tn-status {
+    background: #f4f8f5; border: 1px solid #000000; color: #000000;
+}
+body.sun-mode .lb-row .tn-status.tn-a { color: #1b5e20; border-color: #1b5e20; background: #e8f5e9; }

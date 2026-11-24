@@ -594,7 +594,7 @@ function renderRound(id, r) {
         var holeInfo = (isFin || p.holesPlayed >= (p.holeCount || 18)) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
         var teeCode = pestovoNormalizeTeeCode(p.tee);
-        var pTeeBadge = '<span class="tee-pill tee-' + teeCode + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + escapeHtml(pestovoTeeLabel(teeCode)) + '</span>';
+        var pTeeBadge = '<span class="tee-pill tee-' + teeCode + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + escapeHtml(pestovoTeeLabel(teeCode)) + '</span>';
         // Бейдж лучшего результата: игл важнее берди, поэтому он вытесняет
         // берди, а не выводится рядом (иначе строка превращается в свалку).
         // Текст дублируется в title и aria-label: цвет — не единственный носитель.
@@ -664,7 +664,8 @@ function renderRound(id, r) {
     }
 
     var ts = r.startTime || r.createdAt;
-    var soloWord = isEn ? ' · Solo' : ' · Одиночный';
+    var soloWord = isEn ? 'Solo' : 'Одиночный';
+    var formatTxt = (typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play');
     // Имена игроков показываем в развёрнутой таблице, чтобы не дублировать
     // их в свёрнутой строке раунда.
     var namesStr = list.length ? t('players_label') + ': ' + list.length : '—';
@@ -672,7 +673,7 @@ function renderRound(id, r) {
 
     var details = '<div class="lwl-details">' +
         '<div class="lwl-meta">' +
-        '<span class="lwl-extra">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + ' · ' + fmtTime(ts) + '</span>' +
+        (r.mode === 'solo' ? '<span class="lwl-extra"><i class="fas fa-user"></i> ' + soloWord + '</span>' : '') +
         '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>' +
         '<div class="rlb lb-rlb" role="table" aria-label="' + escapeHtml(t('players_label')) + '">' + head + rows + '</div>' +
@@ -680,14 +681,19 @@ function renderRound(id, r) {
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden"></div>' +
         '</div>';
 
+    // Шапка карточки: строка 1 — дата и статус, строка 2 — тихий мета-поток
+    // «игроки · формат · время» с бейджами берди/иглов. Без коробочек-ячеек.
+    var metaLine = '<div class="lwl-meta-line">' +
+        '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
+        '<span class="lwl-start">' + formatTxt + ' · ' + fmtTime(ts) + roundBadge + '</span>' +
+        '</div>';
     return '<div class="lwl-row lb-row' + (open ? ' is-open' : '') + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
         'data-act="toggleLbRound" data-arg="' + escapeHtml(id) + '" data-kd-act="lbRowKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
-        '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + badge + '</span>' +
-        '<span class="lwl-start">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + roundBadge + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+        metaLine +
         '</div>' +
         details +
         '</div>';

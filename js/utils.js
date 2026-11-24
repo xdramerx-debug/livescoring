@@ -3483,11 +3483,22 @@ function isCompletedScorecard(round) {
     return !!(round && (round.status === 'completed' || (!round.status && round.completedAt)));
 }
 
-function scorecardPlayerSummaryHTML(name, tee, hcp, stats, holeCount, number) {
+// Сводка игрока над счётной карточкой завершённого раунда. `badges` — готовые
+// чипы (ТИ · точн. НСР · пол. НСР, buildPlayerBadges): когда они есть, дублировать
+// ТИ и HCP второй строкой не нужно. Метрики: Gross, к пару, сыграно, Stableford.
+function scorecardPlayerSummaryHTML(name, tee, hcp, stats, holeCount, number, badges) {
     var en = currentLang === 'en';
     var title = (number ? number + '. ' : '') + name;
-    return '<div class="sc-player-summary"><div class="sc-player-identity"><strong>' + escapeHtml(title) + '</strong> ' + fmtTeePill(tee) + '<small>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</small></div>' +
-        (stats ? '<dl class="sc-result-metrics"><div><dt>Gross</dt><dd>' + (stats.holesPlayed ? stats.gross : '—') + '</dd></div><div><dt>' + (en ? 'To par' : 'К пару') + '</dt><dd class="' + scoreClass(stats.toPar) + '">' + escapeHtml(fmtScore(stats.toPar)) + '</dd></div><div><dt>' + (en ? 'Played' : 'Сыграно') + '</dt><dd>' + stats.holesPlayed + '/' + holeCount + '</dd></div></dl>' : '') + '</div>';
+    var identity = badges
+        ? badges
+        : fmtTeePill(tee) + '<small>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</small>';
+    return '<div class="sc-player-summary"><div class="sc-player-identity"><strong>' + escapeHtml(title) + '</strong> ' + identity + '</div>' +
+        (stats ? '<dl class="sc-result-metrics">' +
+            '<div><dt>Gross</dt><dd>' + (stats.holesPlayed ? stats.gross : '—') + '</dd></div>' +
+            '<div><dt>' + (en ? 'To par' : 'К пару') + '</dt><dd class="' + scoreClass(stats.toPar) + '">' + escapeHtml(fmtScore(stats.toPar)) + '</dd></div>' +
+            '<div><dt>' + (en ? 'Played' : 'Сыграно') + '</dt><dd>' + stats.holesPlayed + '/' + holeCount + '</dd></div>' +
+            '<div><dt>Stableford</dt><dd>' + (stats.holesPlayed ? (stats.stablefordField || 0) : '—') + '</dd></div>' +
+            '</dl>' : '') + '</div>';
 }
 
 function scorecardDetailsStartHTML() {

@@ -162,13 +162,15 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
     Object.defineProperty(w.navigator, 'onLine', { value: true, configurable: true });
 
     w.bindScorecardDisplaySettings();
-    const details = doc.querySelector('#round-panel details');
-    details.open = true;
+    // Компактная карточка главной (fillCardScorecardPanel) без свёртки
+    // «Результаты по лункам» — инвариант realtime-обновления: карточка
+    // не пересоздаётся в DOM, обновляется только data-sc-view.
+    const savedCard = doc.querySelector('#round-panel .club-sc');
+    assert.strictEqual(doc.querySelector('#round-panel details'), null, 'Compact card has no nested fold');
     server = { view: '3', completedView: '1', previous: { view: '4', completedView: '5' } };
     callbacks[w.SCORECARD_DISPLAY_PATH]({ val: () => server });
     assert.strictEqual(doc.querySelector('#round-panel .club-sc').dataset.scView, '1');
-    assert.strictEqual(doc.querySelector('#round-panel details'), details, 'Realtime update preserves DOM');
-    assert(details.open, 'Realtime update preserves expanded details');
+    assert.strictEqual(doc.querySelector('#round-panel .club-sc'), savedCard, 'Realtime update preserves DOM');
     w.toggleCardScorecard('round-panel', 'completed-1');
     w.toggleCardScorecard('round-panel', 'completed-1');
     assert.strictEqual(doc.querySelector('#round-panel .club-sc').dataset.scView, '1');

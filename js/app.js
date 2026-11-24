@@ -1249,8 +1249,6 @@ function recentKey(ev, id) {
 function buildRecentRowHTML(id, r) {
     var rawPlayers = r.players || {};
     var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
-    var order = getRoundOrder(r);
-    var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
     // Статус завершённого раунда: «автоматически» либо имя игрока, завершившего раунд
     var completedBadge = (typeof buildRoundCompletedBadgeHTML === 'function')
         ? buildRoundCompletedBadgeHTML(r)
@@ -1258,22 +1256,8 @@ function buildRecentRowHTML(id, r) {
     var dateStr = fmtDate(r.completedAt || r.createdAt);
 
     var playerNames = [];
-    var pHtml = '';
     Object.entries(players).forEach(function(pe) {
-        var pid = pe[0], p = pe[1], scores = p.scores || {};
-        var playerBadges = buildPlayerBadges(p, r);
-        var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
-        playerNames.push(privacyDisplayName(p, pid));
-
-        // Имена игроков уже перечислены в свёрнутой строке раунда выше,
-        // поэтому в развёрнутых деталях не дублируем их — оставляем ТИ, HCP и результат.
-        pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-            '<div style="flex:1;">' +
-            '<div class="round-p-n">' + playerBadges + '</div>' +
-            '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
-            '<div style="text-align:right;">' +
-            '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
-            '</div></div>';
+        playerNames.push(privacyDisplayName(pe[1], pe[0]));
     });
 
     var panelId = 'recent-sc-' + id;
@@ -1281,17 +1265,19 @@ function buildRecentRowHTML(id, r) {
     var open = getRecentOpen(id);
     var namesStr = playerNames.length ? playerNames.join(', ') : '—';
 
-    // ВАЖНО: блок «ТИ: ...» уровня раунда здесь НЕ выводится — ТИ уже
-    // показан у каждого игрока (бейдж buildPlayerBadges: ТИ · точн. HCP · пол. HCP).
-    // Раньше дублирующая строка «ТИ: Синий» выводилась дважды подряд.
+    // Развёрнутая карточка без лишних свёрток: сводка игрока (бейджи ТИ · НСР и
+    // метрики) и счётная карточка по лункам выводятся сразу. Промежуточные
+    // уровни «Свернуть карточку» и «Результаты по лункам» убраны — сворачивается
+    // только сама строка раунда. Действие одно: «Поделиться (PNG)» под карточкой.
+    var scorecardHtml = (typeof generateGroupHoleTableHTML === 'function')
+        ? generateGroupHoleTableHTML(r, { compact: true })
+        : '';
     var details =
         '<div class="lwl-details">' +
-        '<div class="lwl-recent-players">' + pHtml + '</div>' +
-        '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" data-act="toggleCardScorecard" data-arg="' + escapeHtml(panelId) + '" data-arg2="' + escapeHtml(id) + '"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
-        '</div>' +
-        '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+        '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel lwl-recent-sc">' + scorecardHtml + '</div>' +
+        (r.status === 'completed'
+            ? '<div class="lwl-actions lwl-actions--recent"><button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button></div>'
+            : '') +
         '</div>';
 
     return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + escapeHtml(id) + '" data-panel-id="' + escapeHtml(panelId) + '">' +

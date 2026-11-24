@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() { 
     var routeParams = new URLSearchParams(window.location.search || '');
     lbFocusRoundId = routeParams.get('round') || '';
-    // Карточки на «Все раунды» всегда развёрнуты (без сворачивания),
-    // ?scorecard=1 остаётся совместимым: панель счётной карточки видна сразу.
+    // Карточки по умолчанию свёрнуты в шапку-сводку; тап по шапке
+    // разворачивает/сворачивает детали. Ссылка ?round=<id> открывает
+    // фокусную карточку развёрнутой (?scorecard=1 совместим — панель
+    // счётной карточки видна сразу).
     if (lbFocusRoundId) lbFocusScrollPending = true;
     initNav();
     if (typeof applyLbTvMode === 'function') applyLbTvMode(); 
@@ -657,13 +659,29 @@ function renderRound(id, r) {
         (r.mode === 'solo' ? '<span class="lwl-extra"><i class="fas fa-user"></i> ' + soloWord + '</span>' : '') +
         '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>';
-    // Шапка — не кнопка: карточка всегда развёрнута, сворачивать её нельзя.
-    return '<div class="lwl-row lb-row' + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
-        '<div class="lwl-toggle">' +
+    // Шапка — кнопка-сводка: по умолчанию карточка свёрнута (дата · имя ·
+    // формат · время · ТИ и бейджи), тап разворачивает детали.
+    var isOpen = !!lbOpenRoundIds[id] || (lbFocusRoundId && String(id) === String(lbFocusRoundId));
+    return '<div class="lwl-row lb-row' + (isLive ? ' lb-row-live' : '') + (isOpen ? ' lb-open' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
+        '<button type="button" class="lwl-toggle" data-act="toggleLbRound" data-self="1" data-arg="' + escapeHtml(id) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
         '<span class="lwl-score">' + badge + '</span>' +
         metaLine +
-        '</div>' +
+        '<span class="lwl-chev" aria-hidden="true"><i class="fas fa-chevron-down"></i></span>' +
+        '</button>' +
         details +
         '</div>';
+}
+
+// Свёрнутые карточки: состояние живёт вне разметки, чтобы фильтры и
+// realtime-перерисовки не сворачивали уже открытую карточку.
+var lbOpenRoundIds = {};
+
+function toggleLbRound(btn, id) {
+    var row = btn && btn.closest ? btn.closest('.lwl-row') : null;
+    if (!row || !id) return;
+    var open = !row.classList.contains('lb-open');
+    row.classList.toggle('lb-open', open);
+    lbOpenRoundIds[id] = open;
+    if (btn.setAttribute) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }

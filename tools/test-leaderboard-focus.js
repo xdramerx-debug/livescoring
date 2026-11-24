@@ -82,11 +82,24 @@ const panel = win.document.getElementById('lb-sc-' + ROUND_ID);
 check(!!row, 'нужный раунд добавлен в список, даже если его скрывал фильтр');
 check(win.document.querySelectorAll('.lb-row').length === 1, 'в режиме фокуса показан только завершённый раунд, а не общий список');
 check(row && row.getAttribute('data-round-id') === ROUND_ID, 'ID фокусной карточки совпадает с ID в ссылке');
-check(row && !row.querySelector('.lwl-chev') && !row.querySelector('[data-act="toggleLbRound"]'),
-    'карточка без сворачивания: нет шеврона и тапа-тоггла');
-check(row && row.querySelector('.lwl-details'), 'детали карточки видны сразу — карточка всегда развёрнута');
-check(!!panel && !panel.classList.contains('hidden'), 'панель счётной карточки видна сразу (без кнопки раскрытия)');
+check(row && row.querySelector('.lwl-chev') && row.querySelector('[data-act="toggleLbRound"]'),
+    'карточка сворачиваемая: шапка-сводка с шевроном и тапом-тогглом');
+check(row && row.classList.contains('lb-open'),
+    'фокусная карточка по ссылке ?round= сразу развёрнута');
+check(row && row.querySelector('.lwl-toggle').getAttribute('aria-expanded') === 'true',
+    'aria-expanded шапки отражает развёрнутое состояние');
+check(row && row.querySelector('.lwl-details'), 'детали карточки есть в разметке (показывает класс lb-open)');
+check(!!panel && !panel.classList.contains('hidden'), 'панель счётной карточки развёрнутой карточки видна сразу');
 check(panel && panel.textContent.indexOf('Saved scores') !== -1, 'в счётной карточке отображаются сохранённые результаты');
+
+// Тап по шапке сворачивает карточку, повторный — разворачивает обратно.
+var toggleBtn = row && row.querySelector('.lwl-toggle');
+win.toggleLbRound(toggleBtn, ROUND_ID);
+check(row && !row.classList.contains('lb-open') && toggleBtn.getAttribute('aria-expanded') === 'false',
+    'тап по шапке сворачивает карточку');
+win.toggleLbRound(toggleBtn, ROUND_ID);
+check(row && row.classList.contains('lb-open') && toggleBtn.getAttribute('aria-expanded') === 'true',
+    'повторный тап разворачивает карточку обратно');
 
 // Бейдж лучшего результата: цвет не единственный носитель смысла —
 // у бейджа есть title/aria-label словом и число.

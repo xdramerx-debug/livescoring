@@ -418,19 +418,20 @@ var lbRenderSignature = '';
 // двойная рамка — игл/дабл. Только визуальный ключ к цифрам в кольцах.
 function lbMarksLegendHTML() {
     var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    // Третий элемент — образец цифры в метке (как в счётной карточке).
     var items = [
-        ['r-eag', 'res_eagle'],
-        ['r-bir', 'res_birdie'],
-        ['r-par', 'res_par'],
-        ['r-bog', 'res_bogey'],
-        ['r-dbl', 'res_double']
+        ['r-eag', 'res_eagle', '3'],
+        ['r-bir', 'res_birdie', '3'],
+        ['r-par', 'res_par', '4'],
+        ['r-bog', 'res_bogey', '5'],
+        ['r-dbl', 'res_double', '6']
     ];
     var html = '<div class="sc-marks-legend" role="note"><span class="sc-marks-title">' +
         (isEn ? 'Score marks' : 'Метки результата') + '</span>';
     items.forEach(function(it) {
         var label = it[1];
         try { if (typeof t === 'function') label = t(it[1]); } catch (e) { console.warn("[silent]", e); }
-        html += '<span class="smk-item"><b class="sc-digit smk ' + it[0] + '" aria-hidden="true"></b>' + escapeHtml(label) + '</span>';
+        html += '<span class="smk-item"><b class="sc-digit smk ' + it[0] + '" aria-hidden="true">' + it[2] + '</b>' + escapeHtml(label) + '</span>';
     });
     return html + '</div>';
 }
@@ -641,21 +642,20 @@ function renderRound(id, r) {
         : nameList.join(', ') || '—';
 
     var details = '<div class="lwl-details">' +
-        '<div class="lwl-meta">' +
-        (r.mode === 'solo' ? '<span class="lwl-extra"><i class="fas fa-user"></i> ' + soloWord + '</span>' : '') +
-        '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
-        '</div>' +
         (isSoloList ? '<div class="rlb lb-rlb lb-rlb-solo">' + rows + '</div>'
             : '<div class="rlb lb-rlb" role="table" aria-label="' + escapeHtml(t('players_label')) + '">' + head + rows + '</div>') +
         actions +
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel">' + lbScorecardPanelHTML(id, r) + '</div>' +
         '</div>';
 
-    // Шапка карточки: строка 1 — дата и статус, строка 2 — тихий мета-поток
-    // «игроки · формат · время» с бейджами берди/иглов. Без коробочек-ячеек.
+    // «Свёрнутая сводка» шапки: дата · короткое имя · формат · время · ТИ
+    // и бейджи берди/иглов — одной полосой. Вся остальная информация ниже,
+    // в развёрнутой части карточки.
     var metaLine = '<div class="lwl-meta-line">' +
         '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-start">' + formatTxt + ' · ' + fmtTime(ts) + roundBadge + '</span>' +
+        (r.mode === 'solo' ? '<span class="lwl-extra"><i class="fas fa-user"></i> ' + soloWord + '</span>' : '') +
+        '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>';
     // Шапка — не кнопка: карточка всегда развёрнута, сворачивать её нельзя.
     return '<div class="lwl-row lb-row' + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +

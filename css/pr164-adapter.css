@@ -492,30 +492,25 @@ body.sun-mode .club-sc-total b { color: #0b2912; }
 body.sun-mode .sc-hole-details > summary { border-top-color: #899b8d; }
 
 /* ── Цветные метки результата лунки ─────────────────────────────────────
-   Форма по правилу клуба: игл — треугольник, берди — кружок, пар —
-   квадрат, боги — жёлтый квадрат, дабл и выше — красный квадрат.
-   Форма + цвет + слово в title/aria-label. Классы r-eag…r-dbl ставит
-   holeResClass (js/format.js). */
+   По правилу клуба: игл — золотой кружок с золотой цифрой, берди —
+   зелёный кружок с зелёной цифрой, пар — серый квадрат с серой цифрой,
+   всё выше пара (боги, дабл+) — красные цифры. Форма + цвет + слово в
+   title/aria-label. Классы r-eag…r-dbl ставит holeResClass (js/format.js). */
 body .sc-digit {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 24px; height: 24px; padding: 0 3px;
     border: 2px solid transparent; border-radius: 5px;
     font-weight: 800; line-height: 1; box-sizing: border-box; vertical-align: middle;
 }
-body .sc-digit.r-par { border-color: rgba(136, 164, 144, .55); color: var(--white) !important; background: rgba(255, 255, 255, .05) !important; }
+body .sc-digit.r-eag { border-radius: 50%; border-color: #d9a521; color: #f0c24b !important; background: rgba(217, 165, 33, .13) !important; }
+body .sc-digit.r-par { border-color: rgba(136, 164, 144, .55); color: #9fb1a6 !important; background: rgba(255, 255, 255, .05) !important; }
 body .sc-digit.r-bir { border-radius: 50%; border-color: #2ecc71; color: #2ecc71 !important; background: rgba(46, 204, 113, .12) !important; }
-/* Игл и лучше — золотой треугольник: контур и лёгкая заливка в SVG-фоне.
-   Цифра садится пониже и чуть мельче — вписывается в треугольник. */
-body .sc-digit.r-eag {
-    border: none; border-radius: 0;
-    min-width: 27px; height: 24px;
-    align-items: flex-end; padding-bottom: 2px;
-    font-size: .72em;
-    color: #f5b942 !important; box-shadow: none;
-    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyOCAyOCc+PHBvbHlnb24gcG9pbnRzPScxNCwzLjIgMjUuNCwyNC40IDIuNiwyNC40JyBmaWxsPScjZjM5YzEyJyBmaWxsLW9wYWNpdHk9JzAuMTInIHN0cm9rZT0nI2YzOWMxMicgc3Ryb2tlLXdpZHRoPScyLjInIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48L3N2Zz4=") center / 100% 100% no-repeat !important;
+/* Выше пара (боги, дабл и хуже) — просто красные цифры, без рамки. */
+body .sc-digit.r-bog,
+body .sc-digit.r-dbl {
+    border: none; box-shadow: none;
+    color: #ff7a68 !important; background: transparent !important;
 }
-body .sc-digit.r-bog { border-color: #d9b52c; color: #e8c94e !important; background: rgba(217, 181, 44, .13) !important; }
-body .sc-digit.r-dbl { border-color: #e05a4a; color: #ff8171 !important; background: rgba(224, 90, 74, .16) !important; box-shadow: 0 0 0 2px rgba(224, 90, 74, .3); }
 /* Крупные раскладки карточки (3/5): кольцо растёт вместе с цифрой. */
 body .club-sc[data-sc-view="3"] .sc-digit { min-width: 32px; height: 32px; }
 body .club-sc[data-sc-view="5"] .sc-digit { min-width: 42px; height: 42px; }
@@ -527,7 +522,7 @@ body .club-sc[data-sc-view="5"] .sc-digit { min-width: 42px; height: 42px; }
 body .club-sc .club-sc-cell.r-eag { background: rgba(243, 156, 18, .1) !important; color: inherit !important; }
 body .club-sc .club-sc-cell.r-bir { background: rgba(46, 204, 113, .08) !important; color: inherit !important; }
 body .club-sc .club-sc-cell.r-par { background: rgba(255, 255, 255, .04) !important; color: inherit !important; }
-body .club-sc .club-sc-cell.r-bog { background: rgba(217, 181, 44, .09) !important; color: inherit !important; }
+body .club-sc .club-sc-cell.r-bog { background: rgba(224, 90, 74, .08) !important; color: inherit !important; }
 body .club-sc .club-sc-cell.r-dbl { background: rgba(224, 90, 74, .1) !important; color: inherit !important; }
 body .club-sc .gsg-score.r-eag, body .club-sc .gsg-score.r-bir, body .club-sc .gsg-score.r-par,
 body .club-sc .gsg-score.r-bog, body .club-sc .gsg-score.r-dbl {
@@ -542,21 +537,21 @@ body .sc-marks-title {
     font-weight: 800; letter-spacing: .5px; text-transform: uppercase; font-size: 10px; color: var(--gold);
 }
 body .smk-item { display: inline-flex; align-items: center; gap: 5px; }
-body .sc-digit.smk { min-width: 14px; height: 14px; padding: 0; font-size: 0; }
+body .sc-digit.smk { min-width: 20px; height: 20px; padding: 0 2px; font-size: 11px; }
 
 /* Светлая тема: те же метки на бумаге. */
-body.sun-mode .sc-digit.r-par { border-color: #899b8d; color: #253b2b !important; background: #f7faf8 !important; }
+body.sun-mode .sc-digit.r-eag { border-color: #b8860b; color: #8a6d1f !important; background: #fff3d9 !important; }
+body.sun-mode .sc-digit.r-par { border-color: #899b8d; color: #6b7f72 !important; background: #f7faf8 !important; }
 body.sun-mode .sc-digit.r-bir { border-color: #1e7e34; color: #1e7e34 !important; background: #e9f7ee !important; }
-body.sun-mode .sc-digit.r-eag {
-    border: none; color: #8a6d1f !important; box-shadow: none;
-    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyOCAyOCc+PHBvbHlnb24gcG9pbnRzPScxNCwzLjIgMjUuNCwyNC40IDIuNiwyNC40JyBmaWxsPScjYjg4NjBiJyBmaWxsLW9wYWNpdHk9JzAuMTQnIHN0cm9rZT0nI2I4ODYwYicgc3Ryb2tlLXdpZHRoPScyLjInIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48L3N2Zz4=") center / 100% 100% no-repeat !important;
+body.sun-mode .sc-digit.r-bog,
+body.sun-mode .sc-digit.r-dbl {
+    border: none; box-shadow: none;
+    color: #c0392b !important; background: transparent !important;
 }
-body.sun-mode .sc-digit.r-bog { border-color: #a67c00; color: #8a6d1f !important; background: #fff5cc !important; }
-body.sun-mode .sc-digit.r-dbl { border-color: #b02a1f; color: #b02a1f !important; background: #fdecea !important; box-shadow: 0 0 0 2px rgba(176, 42, 31, .25); }
 body.sun-mode .club-sc .club-sc-cell.r-eag { background: #fff3d9 !important; }
 body.sun-mode .club-sc .club-sc-cell.r-bir { background: #e9f7ee !important; }
 body.sun-mode .club-sc .club-sc-cell.r-par { background: #f4f8f5 !important; }
-body.sun-mode .club-sc .club-sc-cell.r-bog { background: #fff5cc !important; }
+body.sun-mode .club-sc .club-sc-cell.r-bog { background: #fdecea !important; }
 body.sun-mode .club-sc .club-sc-cell.r-dbl { background: #fdecea !important; }
 body.sun-mode .club-sc .gsg-score.r-eag, body.sun-mode .club-sc .gsg-score.r-bir, body.sun-mode .club-sc .gsg-score.r-par,
 body.sun-mode .club-sc .gsg-score.r-bog, body.sun-mode .club-sc .gsg-score.r-dbl {
@@ -878,8 +873,10 @@ body .lb-row.lb-row-live { border-left: 3px solid rgba(46, 204, 113, .55); }
 /* Шапка: строка 1 — дата и статус, строка 2 — мета-поток. */
 body .live-who-list .lb-row .lwl-toggle {
     display: flex; flex-wrap: wrap; align-items: center;
-    gap: 8px 12px; padding: 14px 16px 12px;
+    gap: 5px 10px; padding: 9px 14px 8px;
     cursor: default;
+    background: rgba(255, 255, 255, .03);
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
 body .live-who-list .lb-row .lwl-name {
     order: 1; flex: 1 1 auto; min-width: 0;
@@ -918,8 +915,7 @@ body .lb-row .tn-status {
 /* Детали карточки: всегда развёрнуты — сворачивания на «Все раунды» нет. */
 body .live-who-list .lb-row .lwl-details {
     display: block;
-    padding: 2px 16px 16px;
-    border-top: 1px solid rgba(255, 255, 255, .06);
+    padding: 6px 16px 16px;
 }
 body .live-who-list .lb-row .lwl-meta { padding-top: 12px; gap: 8px 14px; }
 body .live-who-list .lb-row .lwl-extra {

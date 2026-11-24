@@ -3704,134 +3704,15 @@ function buildHcpProfileSyncHtml(u) {
 // ==========================================
 // УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО ПРОФИЛЯ И СЧЁТНОЙ КАРТОЧКИ
 // ==========================================
+// Профиль игрока живёт на отдельной странице (player.html?id=…): постоянная
+// ссылка, вся информация об играх. Имя openPlayerProfileModal сохранено — его
+// зовут data-act-кнопки по всему приложению (строки «Все раунды», «Игроки»,
+// nav-профиль, live-списки) и тесты.
 function openPlayerProfileModal(playerId, roundId) {
-    var modalEl = document.getElementById('pmodal');
-    if (!modalEl) {
-        modalEl = document.createElement('div');
-        modalEl.id = 'pmodal';
-        modalEl.className = 'modal hidden';
-        modalEl.innerHTML =
-            '<div class="modal-bg" data-act="closePModal"></div>' +
-            '<div class="modal-body">' +
-            '<div class="modal-top-bar">' +
-            '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closePModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-            '<button type="button" class="modal-close-btn" data-act="closePModal">&times;</button>' +
-            '</div>' +
-            '<div id="pmodal-body"><div class="loading"><div class="spinner"></div></div></div>' +
-            '</div>';
-        if (document.body) document.body.appendChild(modalEl);
-    }
-
-    var bodyEl = document.getElementById('pmodal-body');
-    if (bodyEl) bodyEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-    modalEl.classList.remove('hidden');
-
-    if (typeof db === 'undefined') return;
-
-    var userPromise = db.ref('usersPublic/' + playerId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; });
-    var roundPromise = roundId ? db.ref('rounds/' + roundId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; }) : Promise.resolve(null);
-
-    Promise.all([userPromise, roundPromise]).then(function(res) {
-        var u = res[0];
-        var rd = res[1];
-
-        if (!u && rd && rd.players && rd.players[playerId]) {
-            var p = rd.players[playerId];
-            var displayName = playerDisplayName(p, playerId);
-            u = {
-                name: displayName !== '—' ? displayName : t('guest'),
-                // Для турнира в раунде может стоять обрезанный HCP — в карточке
-                // профиля показываем настоящий (exactHcpRaw), если он записан.
-                handicap: (p.exactHcpRaw != null && p.exactHcpRaw !== '') ? p.exactHcpRaw : (p.exactHcp || null),
-                gender: p.gender || 'men',
-                isGuest: true,
-                roundsPlayed: 1
-            };
-        }
-
-        if (!u) {
-            if (bodyEl) bodyEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px;">' + (currentLang === 'en' ? 'Player profile not found' : 'Профиль игрока не найден') + '</p>';
-            return;
-        }
-
-        var isMe = (currentUser && currentUser.uid === playerId);
-        var gIcon = u.gender === 'women' ? '👩' : '👨';
-        // Бейдж «Гость» убран везде по требованию клуба — гости никак не помечаются.
-        var guestBadge = '';
-
-        var roundsWord = currentLang === 'en' ? 'rounds' : 'раундов';
-        var teePillMarkup = u.defaultTee ? fmtTeePill(u.defaultTee) : '';
-
-        // Статус синхронизации гандикапа: зелёная галочка + дата обновления
-        var hcpSync = (typeof buildHcpProfileSyncHtml === 'function') ? buildHcpProfileSyncHtml(u) : { meta: null, banner: '' };
-        var plainHcpSpan = '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
-
-        var html = '<div class="profile-head" style="margin-bottom:16px;">';
-        var profileAvatarHtml = fmtUserAvatar(u, 80);
-        if (hcpSync.meta !== null && getHcpBadgeVariant() === '3') {
-            // Вариант 3: зелёная галочка-«верификация» на углу аватара
-            var hcpInfo3 = getHcpSyncInfo(u);
-            profileAvatarHtml = hcpAvatarWrapHtml(profileAvatarHtml, hcpInfo3);
-        }
-        html += profileAvatarHtml;
-        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, playerId)) + guestBadge + '</div>';
-        html += '<div class="profile-meta">';
-        html += hcpSync.meta !== null ? hcpSync.meta : plainHcpSpan;
-        if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
-        html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' ' + roundsWord + '</span>';
-        var hTag = currentLang === 'en' ? 'h' : 'л';
-        if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18' + hTag + '): ' + u.bestGross + '</span>';
-        html += '</div>';
-        if (hcpSync.banner) html += hcpSync.banner;
-
-        if (isMe) {
-            html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" data-act="renderProfileEditForm" data-arg="' + escapeHtml(playerId) + '"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
-        }
-
-        html += '</div></div>';
-
-        if (rd && rd.players && rd.players[playerId]) {
-            var roundPlayer = rd.players[playerId];
-            var roundPlayerTee = (roundPlayer && roundPlayer.tee) || (rd && rd.tee) || 'wh';
-            html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
-            html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
-                    '<i class="fas fa-table"></i> ' + (currentLang === 'en' ? 'Round Scorecard' : 'Счётная карточка раунда') + ' (' + pestovoRoundFormatBadge(rd, 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(roundPlayerTee) + ')' +
-                    '</h3>';
-            
-            if (typeof generatePestovoScorecardHTML === 'function') {
-                html += generatePestovoScorecardHTML(roundPlayer, rd, { compact: true });
-            }
-            html += '</div>';
-        }
-
-        db.ref('users/' + playerId + '/history').once('value').then(function(hSn) {
-            var history = hSn.val() || {};
-            // Дубли раундов (один roundId несколько раз — следствие старого
-            // группового финиша) схлопываем в один раунд ещё при чтении.
-            var allRounds = pestovoPickHistoryUnique(Object.entries(history));
-            allRounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
-
-            if (allRounds.length > 0) {
-                var profileStatistics = renderTrophyCabinet(u, allRounds) + renderScoringDistributionBar(allRounds);
-
-                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + ' (' + allRounds.length + ')</h3>';
-                // Вкладки «Клубные раунды» / «Турнирные раунды» и фильтры
-                // рисуются отдельным рендером (pestovoInitProfileHistory).
-                html += '<div id="pr-history-root" data-player-id="' + escapeHtml(playerId) + '"></div>';
-                html += '<details class="clarity-disclosure"><summary>' + (currentLang === 'en' ? 'Achievements and statistics' : 'Достижения и статистика') + '</summary>' + profileStatistics + '</details>';
-            }
-
-            if (bodyEl) bodyEl.innerHTML = html;
-            if (allRounds.length > 0) {
-                pestovoInitProfileHistory(playerId, u, allRounds);
-            }
-            // На всякий случай чистим дубли этого игрока прямо в базе
-            // (идемпотентно, без блокировки отрисовки).
-            try { pestovoDedupeUserHistory(playerId); } catch (e) { console.warn("[silent]", e); }
-        }).catch(function() {
-            if (bodyEl) bodyEl.innerHTML = html;
-        });
-    });
+    if (!playerId) return;
+    var url = 'player.html?id=' + encodeURIComponent(playerId);
+    if (roundId) url += '&round=' + encodeURIComponent(roundId);
+    window.location.href = url;
 }
 
 // ==========================================
@@ -4153,7 +4034,7 @@ function closePModal() {
 // ФОРМА РЕДАКТИРОВАНИЯ И КАСТОМИЗАЦИИ ПРОФИЛЯ
 // ==========================================
 function renderProfileEditForm(playerId) {
-    var bodyEl = document.getElementById('pmodal-body');
+    var bodyEl = document.getElementById('pp-body') || document.getElementById('pmodal-body');
     if (!bodyEl || typeof db === 'undefined') return;
 
     db.ref('users/' + playerId).once('value').then(function(sn) {

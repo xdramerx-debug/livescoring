@@ -16,7 +16,7 @@ for (const name of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
     assert(html.indexOf('css/pr164-adapter.css') > html.indexOf('css/pr164.css'));
     assert(!html.includes('clarity-nav-more'), name + ': direct legacy navigation');
 }
-assert.strictEqual(pages, 14);
+assert.strictEqual(pages, 15);
 for (const name of ['theme-v2', 'product-ux', 'clarity']) assert(read('css/' + name + '.css').includes('@layer post164-compat'), name + ': new controls are subordinate to the historical design');
 const home = read('index.html');
 assert(home.indexOf('<section class="hero">') < home.indexOf('id="my-active-rounds-container"'));
@@ -25,4 +25,4 @@ assert.strictEqual((home.match(/<div class="hero-btns">([\s\S]*?)<\/div>/)[1].ma
 assert(read('js/clarity.js').includes("var method = 'stepper'"), 'legacy input default with explicit pad preference retained');
 assert(read('css/pr164-adapter.css').includes('.pv-bottomnav { display: none !important; }'));
 assert(read('admin.html').includes('История PR · 1–187'), 'new archive is preserved');
-console.log('PASS: exact PR164 stylesheet, all 14 shared-theme routes, legacy navigation/hero/input and retained PR archive');
+console.log('PASS: exact PR164 stylesheet, all 15 shared-theme routes, legacy navigation/hero/input and retained PR archive');

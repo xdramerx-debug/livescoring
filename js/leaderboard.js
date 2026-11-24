@@ -628,8 +628,17 @@ function renderRound(id, r) {
     var ts = r.startTime || r.createdAt;
     var soloWord = isEn ? 'Solo' : 'Одиночный';
     var formatTxt = (typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play');
-    // Сколько игроков в раунде — в мета-потоке шапки; имена видны в таблице.
-    var namesStr = list.length ? t('players_label') + ': ' + list.length : '—';
+    // Свёрнутая сводка шапки: короткие имена («Владимир В.») — полная
+    // информация об игроках ниже, в развёрнутой части карточки.
+    var nameList = list.map(function(p) {
+        var raw = String((p && p.name) || '').replace(/\s+/g, ' ').trim();
+        if (!raw) return '—';
+        var parts = raw.split(' ');
+        return parts.length > 1 ? parts[0] + ' ' + parts[parts.length - 1].charAt(0).toUpperCase() + '.' : parts[0];
+    });
+    var namesStr = nameList.length > 2
+        ? nameList.slice(0, 2).join(', ') + ' +' + (nameList.length - 2)
+        : nameList.join(', ') || '—';
 
     var details = '<div class="lwl-details">' +
         '<div class="lwl-meta">' +

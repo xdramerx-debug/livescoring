@@ -490,3 +490,190 @@ body.sun-mode .club-sc-subtotal b { color: #0b2912; }
 body.sun-mode .club-sc-total { border-top-color: #899b8d; }
 body.sun-mode .club-sc-total b { color: #0b2912; }
 body.sun-mode .sc-hole-details > summary { border-top-color: #899b8d; }
+
+/* ── «Поле клуба»: матрица msc-* (карточка поля + «Лунки» в статистике) ──
+   Спокойные полосы строк вместо решётки одинаковых плиток: шапка —
+   золотые чипы номеров, колонки OUT/IN/ВСЕГО — зона итогов, строка пар —
+   золотая полоса, индекс — тихий. Точки ТИ делают ряды читаемыми.
+   !important и двойные классы — против мобильных правил style.css/pr164.css. */
+body .pestovo-modern-scorecard {
+    background: linear-gradient(160deg, rgba(201, 168, 76, .07), rgba(255, 255, 255, .02) 55%), rgba(255, 255, 255, .015);
+    border: 1px solid rgba(201, 168, 76, .2);
+    border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
+}
+body .msc-course-panel {
+    padding: 12px 14px 13px; box-sizing: border-box;
+    max-width: 100%; overflow-x: hidden;
+}
+body .msc-tile {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 1px !important;
+    font-size: 10px !important;
+    font-variant-numeric: tabular-nums;
+    min-height: 23px;
+}
+
+/* Полосы строк: ТИ чередуются, пар — золотая, индекс — без фона. */
+body .msc-lbl-bk, body .msc-val-bk, body .msc-lbl-wh, body .msc-val-wh {
+    background: rgba(255, 255, 255, .035);
+}
+body .msc-lbl-bl, body .msc-val-bl, body .msc-lbl-rd, body .msc-val-rd {
+    background: rgba(255, 255, 255, .012);
+}
+body .msc-lbl-par, body .msc-val-par {
+    background: rgba(201, 168, 76, .09);
+}
+
+/* Зона итогов: колонки OUT/IN и ВСЕГО теплее колонок лунок. */
+body .msc-tot-bk, body .msc-tot-bl, body .msc-tot-wh, body .msc-tot-rd,
+body .msc-tot-par, body .msc-tot-idx, body .msc-hdr-tot {
+    background: rgba(201, 168, 76, .08);
+    border-left: 1px solid rgba(201, 168, 76, .22);
+    font-weight: 800;
+}
+body .msc-tot-final {
+    background: rgba(201, 168, 76, .18);
+    color: var(--gold-l);
+    font-weight: 900;
+}
+
+/* Шапка: номера лунок — золотые чипы; ВСЕГО — цельная золотая плашка. */
+body .msc-tile.msc-hdr-lbl {
+    background: transparent; border-color: transparent;
+    justify-content: flex-start;
+    padding-left: 6px;
+    font-size: 9.5px !important; font-weight: 700; letter-spacing: .7px;
+    text-transform: uppercase; color: var(--muted);
+}
+body .msc-tile.msc-hdr-num {
+    background: rgba(201, 168, 76, .12);
+    border: 1px solid rgba(201, 168, 76, .3);
+    border-radius: 7px;
+    color: var(--gold-l);
+    font-size: 11px !important; font-weight: 800;
+}
+body .msc-tile.msc-hdr-tot {
+    background: rgba(201, 168, 76, .08);
+    border-radius: 7px;
+    border: 1px solid rgba(201, 168, 76, .3);
+    color: var(--gold-l);
+    font-size: 10.5px !important; font-weight: 800;
+    letter-spacing: .5px; text-transform: uppercase;
+}
+body .msc-tile.msc-hdr-final {
+    background: linear-gradient(160deg, #d9b95e, #c9a84c);
+    border-color: rgba(201, 168, 76, .55);
+    color: #142017;
+    box-shadow: 0 2px 6px rgba(201, 168, 76, .18);
+    font-size: 11px !important;
+}
+
+/* Метки ТИ: цветная точка + имя, слева. */
+body .msc-tee-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; flex: 0 0 auto; margin-right: 4px;
+}
+body .msc-dot-bk { background: linear-gradient(160deg, #4a5560, #232a30); border: 1px solid rgba(255, 255, 255, .25); }
+body .msc-dot-bl { background: #3498db; }
+body .msc-dot-wh { background: #f5f7fa; border: 1px solid rgba(255, 255, 255, .35); }
+body .msc-dot-rd { background: #e74c3c; }
+body .msc-tile.msc-lbl-bk, body .msc-tile.msc-lbl-bl, body .msc-tile.msc-lbl-wh,
+body .msc-tile.msc-lbl-rd, body .msc-tile.msc-lbl-par, body .msc-tile.msc-lbl-idx {
+    justify-content: flex-start;
+    padding-left: 4px; padding-right: 2px;
+    font-size: 9px !important; font-weight: 700;
+}
+body .msc-lbl-bk { color: #d8dee6; }
+body .msc-lbl-bl { color: #5dade2; }
+body .msc-lbl-wh { color: #f2f4f6; }
+body .msc-lbl-rd { color: #e74c3c; }
+body .msc-lbl-par { color: var(--gold-l); font-weight: 800; letter-spacing: .3px; }
+body .msc-lbl-idx { color: var(--muted); font-weight: 600; }
+
+/* Значения: белые цифры ТИ, золотой пар, зелёный индекс. */
+body .msc-val-bk, body .msc-val-bl, body .msc-val-wh, body .msc-val-rd {
+    color: var(--white); font-weight: 600;
+}
+body .msc-val-par { color: var(--gold-l); font-weight: 800; }
+body .msc-val-idx { color: #7fce93; font-weight: 600; }
+
+/* Светлая тема — «бумажная» карточка: рамки ячеек из pr164 (2px чёрные)
+   сохраняем, добавляем полосы строк и акценты (борьба с !important pr164). */
+body.sun-mode .msc-lbl-bk, body.sun-mode .msc-val-bk,
+body.sun-mode .msc-lbl-wh, body.sun-mode .msc-val-wh {
+    background: #f2f6f3 !important;
+}
+body.sun-mode .msc-lbl-par, body.sun-mode .msc-val-par {
+    background: #f7f0dc !important;
+}
+body.sun-mode .msc-tot-bk, body.sun-mode .msc-tot-bl, body.sun-mode .msc-tot-wh,
+body.sun-mode .msc-tot-rd, body.sun-mode .msc-tot-par, body.sun-mode .msc-tot-idx,
+body.sun-mode .msc-hdr-tot {
+    background: #f7f0dc !important;
+}
+body.sun-mode .msc-tot-final {
+    background: #e9dcbb !important;
+    color: #5c4708 !important;
+    font-weight: 900;
+}
+body.sun-mode .msc-hdr-num {
+    background: #f5ecd6 !important;
+    color: #7a5f18 !important;
+}
+body.sun-mode .msc-hdr-final {
+    background: #1b5e20 !important;
+    border-color: #0b2912 !important;
+    color: #ffffff !important;
+    box-shadow: none;
+}
+body.sun-mode .msc-lbl-bk { color: #23303a !important; }
+body.sun-mode .msc-lbl-bl { color: #2471a3 !important; }
+body.sun-mode .msc-lbl-wh { color: #55606b !important; }
+body.sun-mode .msc-lbl-rd { color: #b02a1f !important; }
+body.sun-mode .msc-lbl-par { color: #7a5f18 !important; }
+body.sun-mode .msc-lbl-idx { color: #55606b !important; }
+body.sun-mode .msc-val-par { color: #7a5f18 !important; }
+body.sun-mode .msc-val-idx { color: #2c7a4b !important; }
+body.sun-mode .msc-dot-bk { background: #232a30; border-color: rgba(255, 255, 255, .5); }
+body.sun-mode .msc-dot-bl { background: #2471a3; }
+body.sun-mode .msc-dot-wh { background: #ffffff; border-color: #899b8d; }
+body.sun-mode .msc-dot-rd { background: #b02a1f; }
+
+/* ── Адаптив матрицы msc. В конце секции: базовые правила выше (включая
+   font-size !important) не должны перебивать мобильные кегли и скрытие
+   точек. Замеры ширины текста: «Красный» 9px ≈ 47px, 3-значный счёт
+   9.5px ≈ 18px, 4-значный итог bold ≈ 24px, «OUT» 10.5px ≈ 26px. ── */
+@media (min-width: 700px) {
+    body .msc-tile { font-size: 12px !important; padding: 6px 3px !important; min-height: 30px; }
+    body .msc-grid-9, body .msc-grid-10 { gap: 4px !important; }
+    body .msc-tile.msc-lbl-bk, body .msc-tile.msc-lbl-bl, body .msc-tile.msc-lbl-wh,
+    body .msc-tile.msc-lbl-rd, body .msc-tile.msc-lbl-par, body .msc-tile.msc-lbl-idx {
+        padding-left: 6px;
+        font-size: 11px !important;
+    }
+}
+@media (max-width: 699px) {
+    /* Точки ТИ — достояние широких экранов: на телефоне их место занимает имя.
+       Метки ТИ с именем важнее точек: колонка метки шире старого шаблона
+       1.6fr (где «Чёрный»/«Красный» обрезались). */
+    body .msc-tee-dot { display: none !important; }
+    body .msc-grid-9 { grid-template-columns: 52px repeat(9, minmax(0, 1fr)) 27px !important; gap: 1px !important; }
+    body .msc-grid-10 { grid-template-columns: 52px repeat(9, minmax(0, 1fr)) 27px 32px !important; gap: 1px !important; }
+    body .msc-tile { font-size: 9.5px !important; padding: 3px 0 !important; }
+    body .msc-tile.msc-hdr-tot { font-size: 10px !important; letter-spacing: .3px; }
+}
+@media (max-width: 381px) {
+    body .msc-grid-9 { grid-template-columns: 50px repeat(9, minmax(0, 1fr)) 28px !important; }
+    body .msc-grid-10 { grid-template-columns: 50px repeat(9, minmax(0, 1fr)) 28px 31px !important; }
+    body .msc-tile { font-size: 9px !important; }
+}
+@media (max-width: 358px) {
+    /* Матрица не вкладывается в читаемом кегле — горизонтальная прокрутка
+       карточки (решение theme-v2), цифры не мельчаем. */
+    body .pestovo-modern-scorecard { overflow-x: auto !important; }
+    body .msc-grid-9 { min-width: 300px !important; }
+    body .msc-grid-10 { min-width: 340px !important; }
+}

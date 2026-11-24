@@ -82,10 +82,11 @@ const panel = win.document.getElementById('lb-sc-' + ROUND_ID);
 check(!!row, 'нужный раунд добавлен в список, даже если его скрывал фильтр');
 check(win.document.querySelectorAll('.lb-row').length === 1, 'в режиме фокуса показан только завершённый раунд, а не общий список');
 check(row && row.getAttribute('data-round-id') === ROUND_ID, 'ID фокусной карточки совпадает с ID в ссылке');
-check(row && row.classList.contains('is-open'), 'фокусная карточка раунда раскрыта автоматически');
-check(row && row.querySelector('.lwl-toggle').getAttribute('aria-expanded') === 'true', 'состояние раскрытия доступно скринридерам');
-check(!!panel && !panel.classList.contains('hidden'), 'счётная карточка раскрыта автоматически по scorecard=1');
-check(panel && panel.textContent.indexOf('Saved scores') !== -1, 'в открытой счётной карточке отображаются сохранённые результаты');
+check(row && !row.querySelector('.lwl-chev') && !row.querySelector('[data-act="toggleLbRound"]'),
+    'карточка без сворачивания: нет шеврона и тапа-тоггла');
+check(row && row.querySelector('.lwl-details'), 'детали карточки видны сразу — карточка всегда развёрнута');
+check(!!panel && !panel.classList.contains('hidden'), 'панель счётной карточки видна сразу (без кнопки раскрытия)');
+check(panel && panel.textContent.indexOf('Saved scores') !== -1, 'в счётной карточке отображаются сохранённые результаты');
 
 // Бейдж лучшего результата: цвет не единственный носитель смысла —
 // у бейджа есть title/aria-label словом и число.
@@ -97,9 +98,9 @@ check(badge && /Birdie/.test(badge.getAttribute('title') || ''),
 check(badge && /Birdie/.test(badge.getAttribute('aria-label') || ''),
     'бейдж озвучивается словами, а не только цветом');
 
-// В свёрнутой строке раунда видно, что в нём были берди — без раскрытия.
+// В шапке карточки видно, что в раунде были берди.
 const headBadge = row && row.querySelector('.lwl-toggle .pv-badge--birdie');
-check(!!headBadge, 'бейдж берди виден в свёрнутой строке раунда');
+check(!!headBadge, 'бейдж берди виден в шапке карточки раунда');
 check(headBadge && headBadge.textContent.indexOf('1') !== -1 && /Берди/.test(headBadge.getAttribute('title') || ''),
     'сводный бейдж раунда считает берди и подписан словами');
 

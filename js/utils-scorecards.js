@@ -3,6 +3,26 @@
 // не разжёвывал ~25 КБ разметки карточек. Грузится сразу после utils.js.
 // Функции остаются глобальными — вызывающий код не менялся.
 // Shared screen-only scorecard. Printing and social PNG use their own renderers.
+
+// Цветная метка результата лунки: цифра в кольце (под пар) или квадрате
+// (над пар). Форма — не единственный носитель смысла: цвет продублирован
+// словом в title/aria-label («Birdie», «Bogey»…). Классы r-eag…r-dbl берутся
+// из holeResClass (js/format.js), оформление — css/pr164-adapter.css.
+function scDigitHTML(score, par) {
+    var s = parseInt(score, 10) || 0;
+    if (s < 1) return '—';
+    var cls = '';
+    try { cls = holeResClass(s, par) || 'r-par'; } catch (e) { console.warn("[silent]", e); }
+    var key = 'res_par';
+    if (cls === 'r-eag') key = 'res_eagle';
+    else if (cls === 'r-bir') key = 'res_birdie';
+    else if (cls === 'r-bog') key = 'res_bogey';
+    else if (cls === 'r-dbl') key = 'res_double';
+    var label = key;
+    try { if (typeof t === 'function') label = t(key); } catch (e) { console.warn("[silent]", e); }
+    var esc = (typeof escapeHtml === 'function') ? escapeHtml : function(v) { return String(v == null ? '' : v); };
+    return '<b class="sc-digit ' + cls + '" title="' + esc(label) + '" aria-label="' + esc(s + ' ' + label) + '">' + s + '</b>';
+}
 function renderClubScorecard(player, round, opts) {
     opts = opts || {};
     var p = player || {}, r = round || {};
@@ -58,7 +78,8 @@ function renderClubScorecard(player, round, opts) {
             html += '<div class="club-sc-hole' + cls + '" data-sc-player="' + escapeHtml(pid) + '" data-sc-hole="' + h + '"' + (h === current ? ' data-sc-current="1"' : '') + '>';
             values.forEach(function(value, index) {
                 var cellClass = ['number', 'par', 'score', 'marker'][index];
-                html += '<div class="club-sc-cell club-sc-' + cellClass + (index === 2 && s > 0 ? ' ' + holeResClass(s, par) : '') + '"><span class="club-sc-cell-label">' + labels[index] + '</span><span class="club-sc-value">' + value + (index === 2 ? marks : '') + '</span></div>';
+                var cellValue = (index === 2) ? scDigitHTML(s, par) : value;
+                html += '<div class="club-sc-cell club-sc-' + cellClass + (index === 2 && s > 0 ? ' ' + holeResClass(s, par) : '') + '"><span class="club-sc-cell-label">' + labels[index] + '</span><span class="club-sc-value">' + cellValue + (index === 2 ? marks : '') + '</span></div>';
             });
             html += '</div>';
         });
@@ -201,7 +222,7 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
                         }
                     }
                 }
-                var scoreHtml = '<span class="gsg-score ' + scoreCls + '"><span class="gsg-val">' + (s > 0 ? s : '—') + hcpBadge + '</span></span>' + mkHtml;
+                var scoreHtml = '<span class="gsg-score ' + scoreCls + '"><span class="gsg-val">' + scDigitHTML(s, par) + hcpBadge + '</span></span>' + mkHtml;
                 var cellAttrs = ' data-sc-player="' + esc(inf.pid) + '" data-sc-hole="' + h + '"' + (isCur ? ' data-sc-current="1"' : '');
                 html += '<td class="' + tdCls + '"' + cellAttrs + '>' + scoreHtml + '</td>';
                 if (!gridCells[h]) gridCells[h] = [];

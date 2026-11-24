@@ -1,11 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() { 
     var routeParams = new URLSearchParams(window.location.search || '');
     lbFocusRoundId = routeParams.get('round') || '';
-    if (lbFocusRoundId) {
-        setLbOpen(lbFocusRoundId, true);
-        if (routeParams.get('scorecard') === '1') lbPanelOpen['lb-sc-' + lbFocusRoundId] = true;
-        lbFocusScrollPending = true;
-    }
+    // Карточки на «Все раунды» всегда развёрнуты (без сворачивания),
+    // ?scorecard=1 остаётся совместимым: панель счётной карточки видна сразу.
+    if (lbFocusRoundId) lbFocusScrollPending = true;
     initNav();
     if (typeof applyLbTvMode === 'function') applyLbTvMode(); 
     // Фильтр по датам: «Дата с / Дата по» + быстрые пресеты периода.
@@ -380,7 +378,6 @@ function lbHandleData(data) {
             else lbGrowWindow();
         });
     }
-    try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
     try { syncLbChips(); } catch (e) { console.warn("[silent]", e); }
     if (lbFocusScrollPending && lbFocusRoundId) {
         var focusRows = el.querySelectorAll('.lb-row[data-round-id]');
@@ -401,13 +398,10 @@ function lbHandleData(data) {
 }
 
 // ==========================================
-// Список раундов в свёрнутом виде (как «Последние результаты» на главной):
-// одна строка (дата · игроки · статус · формат), по тапу разворачивается
-// таблица с результатами, кнопки и счётная карточка.
+// Список раундов: каждая карточка сразу развёрнута — таблица результатов,
+// действия и счётная карточка видны сразу, без сворачивания/разворачивания.
 // ==========================================
-var lbRoundOpen = {};
 var lbRoundsById = {};
-var lbPanelOpen = {};
 var lbFocusRoundId = '';
 var lbFocusScrollPending = false;
 
@@ -420,90 +414,43 @@ var LB_PAGE_SIZE = 50;
 var lbRenderLimit = LB_PAGE_SIZE;
 var lbRenderSignature = '';
 
-function lbStoreKey(id) { return 'pestovo_lb_open_' + id; }
-
-function getLbOpen(id) {
-    if (Object.prototype.hasOwnProperty.call(lbRoundOpen, id)) return lbRoundOpen[id];
-    var saved = null;
-    try { saved = localStorage.getItem(lbStoreKey(id)); } catch (e) { console.warn("[silent]", e); }
-    lbRoundOpen[id] = (saved === '1');
-    return lbRoundOpen[id];
+// Легенда цветных меток результата: круг — под пар, квадрат — над пар,
+// двойная рамка — игл/дабл. Только визуальный ключ к цифрам в кольцах.
+function lbMarksLegendHTML() {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var items = [
+        ['r-eag', 'res_eagle'],
+        ['r-bir', 'res_birdie'],
+        ['r-par', 'res_par'],
+        ['r-bog', 'res_bogey'],
+        ['r-dbl', 'res_double']
+    ];
+    var html = '<div class="sc-marks-legend" role="note"><span class="sc-marks-title">' +
+        (isEn ? 'Score marks' : 'Метки результата') + '</span>';
+    items.forEach(function(it) {
+        var label = it[1];
+        try { if (typeof t === 'function') label = t(it[1]); } catch (e) { console.warn("[silent]", e); }
+        html += '<span class="smk-item"><b class="sc-digit smk ' + it[0] + '" aria-hidden="true"></b>' + escapeHtml(label) + '</span>';
+    });
+    return html + '</div>';
 }
 
-function setLbOpen(id, open) {
-    lbRoundOpen[id] = !!open;
-    try { localStorage.setItem(lbStoreKey(id), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
+// Содержимое панели счётной карточки: легенда меток + таблица лунок.
+// Панель заполняется сразу при отрисовке карточки — сворачивания нет.
+function lbScorecardPanelHTML(id, r) {
+    if (typeof generateGroupHoleTableHTML !== 'function') return '';
+    try {
+        r.roundId = id;
+        return lbMarksLegendHTML() + generateGroupHoleTableHTML(r, { compact: true });
+    } catch (e) { console.warn("[silent]", e); return ''; }
 }
 
-function toggleLbRound(id) {
-    var rows = document.querySelectorAll('.lb-row[data-round-id]');
-    var row = null;
-    for (var i = 0; i < rows.length; i++) {
-        if (rows[i].getAttribute('data-round-id') === String(id)) { row = rows[i]; break; }
-    }
-    var open = row ? !row.classList.contains('is-open') : !getLbOpen(id);
-    setLbOpen(id, open);
-    if (row) {
-        row.classList.toggle('is-open', open);
-        var chev = row.querySelector('.lwl-chev');
-        if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
-        var tg = row.querySelector('.lwl-toggle');
-        if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
-    }
-    if (typeof vib === 'function') vib(15);
-}
-
-function lbRowKey(ev, id) {
-    if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
-        ev.preventDefault();
-        toggleLbRound(id);
-    }
-}
-
-// Панель счётной карточки внутри раскрытого раунда
+// Точечное обновление панели по id (после смены настроек карточки).
 function fillLbScorecardPanel(panelId, roundId) {
     var panel = document.getElementById(panelId);
     var r = lbRoundsById[roundId];
-    if (!panel || !r || typeof generateGroupHoleTableHTML !== 'function') return;
-    r.roundId = roundId;
-    panel.innerHTML = generateGroupHoleTableHTML(r, { compact: true });
-}
-
-function toggleLbScorecard(panelId, roundId) {
-    var panel = document.getElementById(panelId);
-    var icon = document.getElementById(panelId + '-icon');
-    var txt = document.getElementById(panelId + '-txt');
-    if (!panel) return;
-    var isHidden = panel.classList.contains('hidden');
-    if (isHidden) {
-        panel.classList.remove('hidden');
-        lbPanelOpen[panelId] = true;
-        if (icon) icon.className = 'fas fa-chevron-up';
-        if (txt) txt.textContent = t('collapse_scorecard');
-        fillLbScorecardPanel(panelId, roundId);
-    } else {
-        panel.classList.add('hidden');
-        lbPanelOpen[panelId] = false;
-        if (icon) icon.className = 'fas fa-chevron-down';
-        if (txt) txt.textContent = t('expand_scorecard');
-    }
-}
-
-function restoreLbPanels() {
-    var rows = document.querySelectorAll('.lb-row');
-    for (var i = 0; i < rows.length; i++) {
-        var roundId = rows[i].getAttribute('data-round-id');
-        var panelId = 'lb-sc-' + roundId;
-        if (!lbPanelOpen[panelId]) continue;
-        var panel = document.getElementById(panelId);
-        if (!panel) continue;
-        panel.classList.remove('hidden');
-        var icon = document.getElementById(panelId + '-icon');
-        var txt = document.getElementById(panelId + '-txt');
-        if (icon) icon.className = 'fas fa-chevron-up';
-        if (txt) txt.textContent = t('collapse_scorecard');
-        fillLbScorecardPanel(panelId, roundId);
-    }
+    if (!panel || !r) return;
+    panel.innerHTML = lbScorecardPanelHTML(roundId, r);
 }
 
 function renderRound(id, r) {
@@ -642,13 +589,15 @@ function renderRound(id, r) {
                 : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>'));
 
     var panelId = 'lb-sc-' + id;
-    var actions = '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" data-act="toggleLbScorecard" data-arg="' + escapeHtml(panelId) + '" data-arg2="' + escapeHtml(id) + '"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        (r.status === 'completed'
-            ? '<button class="btn btn-og btn-sm" data-act="downloadScorecard" data-arg="' + escapeHtml(id) + '"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
-              '<button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
-            : '') +
-        '</div>';
+    // Действия — только реальные операции: карточка и её счётная часть
+    // всегда развёрнуты, сворачивать/разворачивать больше нечего.
+    var actions = '';
+    if (r.status === 'completed') {
+        actions = '<div class="lwl-actions">' +
+            '<button class="btn btn-og btn-sm" data-act="downloadScorecard" data-arg="' + escapeHtml(id) + '"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
+            '<button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
+            '</div>';
+    }
 
     // Заголовок — это кнопки сортировки: aria-sort сообщает текущее
     // направление, а не только стрелка в CSS.
@@ -679,10 +628,8 @@ function renderRound(id, r) {
     var ts = r.startTime || r.createdAt;
     var soloWord = isEn ? 'Solo' : 'Одиночный';
     var formatTxt = (typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play');
-    // Имена игроков показываем в развёрнутой таблице, чтобы не дублировать
-    // их в свёрнутой строке раунда.
+    // Сколько игроков в раунде — в мета-потоке шапки; имена видны в таблице.
     var namesStr = list.length ? t('players_label') + ': ' + list.length : '—';
-    var open = getLbOpen(id);
 
     var details = '<div class="lwl-details">' +
         '<div class="lwl-meta">' +
@@ -692,7 +639,7 @@ function renderRound(id, r) {
         (isSoloList ? '<div class="rlb lb-rlb lb-rlb-solo">' + rows + '</div>'
             : '<div class="rlb lb-rlb" role="table" aria-label="' + escapeHtml(t('players_label')) + '">' + head + rows + '</div>') +
         actions +
-        '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden"></div>' +
+        '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel">' + lbScorecardPanelHTML(id, r) + '</div>' +
         '</div>';
 
     // Шапка карточки: строка 1 — дата и статус, строка 2 — тихий мета-поток
@@ -701,12 +648,11 @@ function renderRound(id, r) {
         '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-start">' + formatTxt + ' · ' + fmtTime(ts) + roundBadge + '</span>' +
         '</div>';
-    return '<div class="lwl-row lb-row' + (open ? ' is-open' : '') + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
-        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
-        'data-act="toggleLbRound" data-arg="' + escapeHtml(id) + '" data-kd-act="lbRowKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
+    // Шапка — не кнопка: карточка всегда развёрнута, сворачивать её нельзя.
+    return '<div class="lwl-row lb-row' + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
+        '<div class="lwl-toggle">' +
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
         '<span class="lwl-score">' + badge + '</span>' +
-        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         metaLine +
         '</div>' +
         details +

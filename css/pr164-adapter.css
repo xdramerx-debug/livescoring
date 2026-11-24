@@ -1084,3 +1084,49 @@ body.sun-mode .lb-row .tn-status {
     background: #f4f8f5; border: 1px solid #000000; color: #000000;
 }
 body.sun-mode .lb-row .tn-status.tn-a { color: #1b5e20; border-color: #1b5e20; background: #e8f5e9; }
+
+/* ── Страница профиля игрока (player.html) ────────────────────────────
+   Шапка с аватаром и HCP, плитки статистики по играм, достижения и
+   история раундов. Мобильные и ПК: сетки перестраиваются сами. */
+body .pp-topbar { margin-bottom: 12px; }
+body .pp-hero {
+    display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap;
+    padding: 20px 22px;
+}
+body .pp-hero-avatar { flex: 0 0 auto; }
+body .pp-hero-main { flex: 1 1 260px; min-width: 0; }
+body .pp-name {
+    font-family: var(--ff); font-size: 22px; font-weight: 700;
+    color: var(--white); line-height: 1.3;
+}
+body .pp-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+    color: var(--muted); font-size: 13.5px; margin-top: 8px;
+}
+body .pp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+body .pp-tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin: 18px 0;
+}
+body .pp-tile {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+}
+body .pp-tile-val {
+    font-family: var(--ff); font-size: 24px; font-weight: 800;
+    color: var(--white); line-height: 1.1;
+}
+body .pp-tile-lbl {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted); margin-top: 5px;
+}
+body .pp-section h3 {
+    color: var(--gold); font-family: var(--ff); font-size: 18px;
+    margin: 0 0 12px;
+}
+@media (max-width: 480px) {
+    body .pp-hero { padding: 16px 14px; gap: 12px; }
+    body .pp-name { font-size: 19px; }
+    body .pp-tiles { grid-template-columns: repeat(2, 1fr); }
+    body .pp-tile-val { font-size: 21px; }
+}

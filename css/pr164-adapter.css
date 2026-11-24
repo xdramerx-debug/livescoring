@@ -871,13 +871,24 @@ body .lb-row:hover { border-color: rgba(201, 168, 76, .55); box-shadow: 0 14px 3
 body .lb-row.lb-row-live { border-left: 3px solid rgba(46, 204, 113, .55); }
 
 /* Шапка: строка 1 — дата и статус, строка 2 — мета-поток. */
+/* Шапка-сводка — кнопка: тап по ней сворачивает/разворачивает карточку. */
 body .live-who-list .lb-row .lwl-toggle {
+    position: relative; box-sizing: border-box; width: 100%;
     display: flex; flex-wrap: wrap; align-items: center;
-    gap: 5px 10px; padding: 9px 14px 8px;
-    cursor: default;
+    gap: 5px 10px; padding: 9px 38px 8px 14px;
+    cursor: pointer; text-align: left; font: inherit; color: inherit;
     background: rgba(255, 255, 255, .03);
-    border-bottom: 1px solid rgba(255, 255, 255, .06);
+    border: 0; border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
+body .live-who-list .lb-row .lwl-toggle:focus-visible {
+    outline: 2px solid var(--gold); outline-offset: -2px;
+}
+body .live-who-list .lb-row .lwl-chev {
+    position: absolute; right: 12px; top: 50%; margin-top: -7px;
+    color: var(--muted); font-size: 12px;
+    transition: transform .18s ease;
+}
+body .live-who-list .lb-row.lb-open .lwl-chev { transform: rotate(180deg); }
 body .live-who-list .lb-row .lwl-name {
     order: 1; flex: 1 1 auto; min-width: 0;
     font-size: 14px; font-weight: 800; color: var(--white); letter-spacing: .1px;
@@ -912,11 +923,12 @@ body .lb-row .tn-status {
     white-space: nowrap;
 }
 
-/* Детали карточки: всегда развёрнуты — сворачивания на «Все раунды» нет. */
+/* Детали карточки: свёрнуты по умолчанию, раскрываются тапом по шапке. */
 body .live-who-list .lb-row .lwl-details {
-    display: block;
+    display: none;
     padding: 6px 16px 16px;
 }
+body .live-who-list .lb-row.lb-open .lwl-details { display: block; }
 body .live-who-list .lb-row .lwl-meta { padding-top: 12px; gap: 8px 14px; }
 body .live-who-list .lb-row .lwl-extra {
     display: inline-flex; align-items: center; gap: 6px;
@@ -968,7 +980,7 @@ body .lb-row .club-sc { margin-top: 0; }
 
 /* ПК: шапка собирается в одну строку — дата, мета-поток, статус, шеврон. */
 @media (min-width: 720px) {
-    body .live-who-list .lb-row .lwl-toggle { flex-wrap: nowrap; gap: 12px; padding: 15px 18px 13px; }
+    body .live-who-list .lb-row .lwl-toggle { flex-wrap: nowrap; gap: 12px; padding: 15px 44px 13px 18px; }
     body .live-who-list .lb-row .lwl-name { flex: 0 0 auto; }
     body .live-who-list .lb-row .lwl-meta-line { order: 2; flex: 1 1 auto; padding-left: 0; flex-wrap: nowrap; }
     body .live-who-list .lb-row .lwl-hole::before {

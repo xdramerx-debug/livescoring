@@ -586,6 +586,8 @@ function renderRound(id, r) {
     // игроки со своими бейджами не видны, пока раунд не раскрыт.
     var roundBirdies = 0, roundEagles = 0;
 
+    // Одиночный раунд (1 игрок): таблица-лидерборд бессмысленна — показываем одну строку результата.
+    var isSoloList = list.length <= 1;
     var rows = list.map(function(p) {
         roundBirdies += p.birdies || 0;
         roundEagles += p.eagles || 0;
@@ -607,6 +609,17 @@ function renderRound(id, r) {
 
         // role="row"/"cell" — чтобы таблица читалась скринридером по строкам
         // и столбцам, хотя собрана на div'ах (таблицы <table> тут нет).
+        if (isSoloList) {
+            return '<div class="rlb-row rlb-row-solo" role="button" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(p.pid) + '" data-arg2="' + escapeHtml(id) + '">' +
+                '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
+                '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;flex-wrap:wrap;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + bestBadge + '</div>' +
+                '<span class="rlb-thru rlb-thru-on">' + holeInfo + '</span></div></div>' +
+                '<div class="rlb-solo-nums">' +
+                '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
+                '<span class="rlb-solo-stat"><i>Gross</i><b>' + gross + '</b></span>' +
+                '<span class="rlb-solo-stat"><i>' + stblShort + '</i><b>' + p.stblField + ' / ' + p.stblExact + '</b></span>' +
+                '</div></div>';
+        }
         return '<div class="rlb-row" role="row" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(p.pid) + '" data-arg2="' + escapeHtml(id) + '">' +
             '<span class="rlb-pos ' + posCls + '" role="cell">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player" role="cell">' + fmtUserAvatar(p, 28) +
@@ -676,7 +689,8 @@ function renderRound(id, r) {
         (r.mode === 'solo' ? '<span class="lwl-extra"><i class="fas fa-user"></i> ' + soloWord + '</span>' : '') +
         '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>' +
-        '<div class="rlb lb-rlb" role="table" aria-label="' + escapeHtml(t('players_label')) + '">' + head + rows + '</div>' +
+        (isSoloList ? '<div class="rlb lb-rlb lb-rlb-solo">' + rows + '</div>'
+            : '<div class="rlb lb-rlb" role="table" aria-label="' + escapeHtml(t('players_label')) + '">' + head + rows + '</div>') +
         actions +
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden"></div>' +
         '</div>';

@@ -928,6 +928,61 @@ body.sun-mode .live-who-list .lb-row .rlb-row { border-bottom: 1px solid rgba(0,
 body.sun-mode .live-who-list .lb-row .rlb-row:hover { background: rgba(27, 94, 32, .07); }
 body.sun-mode .live-who-list .lb-row .rlb-name { color: #0b2912; }
 
+/* Одиночный раунд: строка результата вместо таблицы-лидерборда. */
+body .lb-row .lb-rlb-solo {
+    margin-top: 12px;
+    border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .02);
+    overflow: hidden;
+}
+body .live-who-list .lb-row .rlb-row-solo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 12px 14px;
+    border-bottom: none;
+}
+body .live-who-list .lb-row .rlb-row-solo .rlb-player { flex: 1 1 180px; }
+body .lb-row .rlb-solo-nums {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
+}
+body .lb-row .rlb-solo-stat {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+}
+body .lb-row .rlb-solo-stat i {
+    font-style: normal;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+body .lb-row .rlb-solo-stat b {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+}
+body .live-who-list .lb-row .rlb-row-solo .rlb-par {
+    min-width: 44px;
+    text-align: right;
+}
+body.sun-mode .lb-row .rlb-solo-stat b { color: #0b2912; }
+
+/* Шапка таблицы внутри карточек: sticky «тонет» в коротких таблицах и наезжает на строки — отключаем. */
+body .live-who-list .lb-row .rlb-head {
+    position: static;
+}
+
 /* Уточнения: мета-поток «игроки · формат · время» сливается строкой,
    кнопки действий на телефоне не переносят подписи. */
 body .live-who-list .lb-row .lwl-hole { flex: 0 0 auto; }

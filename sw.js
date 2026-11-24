@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.140.0-22ba00af';
+const CACHE_NAME = 'pestovo-v1.140.0-121b73f2';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -60,7 +60,7 @@ const STATIC_ASSETS = [
     'css/entry-scorecard.css?v=a34f8c94',
     'css/fontawesome-subset.css?v=f83958d8',
     'css/fonts-local.css?v=8523462a',
-    'css/pr164-adapter.css?v=56478a92',
+    'css/pr164-adapter.css?v=22728f61',
     'css/pr164.css?v=a5317bf8',
     'css/product-ux.css?v=ad3d977a',
     'css/stats-page.css?v=45d564f2',
@@ -69,7 +69,7 @@ const STATIC_ASSETS = [
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=dc2bdd18',
     'dist/livescoring-modules.js?v=76ee29b3',
-    'js/app.js?v=7066960c',
+    'js/app.js?v=887eb9e7',
     'js/auth.js?v=d568c5fb',
     'js/clarity.js?v=2804c967',
     'js/design-system.js?v=b78132a0',
@@ -107,8 +107,8 @@ const STATIC_ASSETS = [
     'js/tournament-public.js?v=ee857497',
     'js/tournaments.js?v=0b5653af',
     'js/ui-events.js?v=3d524484',
-    'js/utils-scorecards.js?v=9f6de5ad',
-    'js/utils.js?v=372c3adf',
+    'js/utils-scorecards.js?v=6c370449',
+    'js/utils.js?v=a0f1e178',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 

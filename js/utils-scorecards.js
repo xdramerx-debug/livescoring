@@ -23,7 +23,16 @@ function renderClubScorecard(player, round, opts) {
     var html = '<section class="club-sc" data-sc-completed="' + completed + '" data-sc-view="' + getRoundScorecardView(r) + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
     if (!completed) html += '<header class="club-sc-head"><strong>' + escapeHtml(name) + '</strong> ' + fmtTeePill(tee) + '<span>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</span></header>';
     if (opts.label) html += '<div class="club-sc-caption">' + escapeHtml(opts.label) + '</div>';
-    if (completed) html += '<div class="sc-round-summary">' + scorecardPlayerSummaryHTML(name, tee, hcp, stats, order.length) + '</div>' + scorecardDetailsStartHTML();
+    // Компактный режим (главная, лидерборд) — результаты по лункам видны сразу,
+    // без промежуточной свёртки «Результаты по лункам»: сворачивается сама строка
+    // раунда, одного уровня достаточно. Развёрнутый режим (админка, маркер,
+    // сдача карточки) сохраняет привычную свёртку.
+    var flatHoles = completed && !!opts.compact;
+    if (completed) {
+        var badges = (typeof buildPlayerBadges === 'function') ? buildPlayerBadges(p, r) : '';
+        html += '<div class="sc-round-summary">' + scorecardPlayerSummaryHTML(name, tee, hcp, stats, order.length, null, badges) + '</div>' +
+            (flatHoles ? '<div class="sc-hole-content">' : scorecardDetailsStartHTML());
+    }
     var total = 0, played = 0;
     // Keep the actual playing order, including shotgun starts and nine-hole rounds.
     for (var offset = 0; offset < order.length; offset += 9) {
@@ -57,7 +66,7 @@ function renderClubScorecard(player, round, opts) {
         html += '</div></div><div class="club-sc-subtotal">' + (en ? 'Subtotal' : 'Промежуточный итог') + ': <b>' + (count ? gross : '—') + '</b></div></div>';
     }
     html += '<footer class="club-sc-total"><span>Gross <b>' + (played ? total : '—') + '</b></span><span>' + (en ? 'Played ' : 'Сыграно ') + played + '/' + order.length + '</span></footer>';
-    if (completed) html += '</div></details>';
+    if (completed) html += flatHoles ? '</div>' : '</div></details>';
     return html + '</section>';
 }
 
@@ -127,14 +136,18 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
         return '<div class="gsg-pname">' + lines + '</div>';
     }
     var completed = isCompletedScorecard(r);
+    var flatHoles = completed && !!opts.compact;
     var html = '<section class="club-sc club-sc-group" data-sc-completed="' + completed + '" data-sc-view="' + esc(view) + '" data-sc-players="' + n + '" aria-label="' + esc(title) + '">';
     html += '<header class="club-sc-head club-sc-group-head"><strong><i class="fas fa-users"></i> ' + esc(title) + '</strong>';
     if (fmtTxt) html += '<span class="gsg-format">' + esc(fmtTxt) + '</span>';
     if (opts.showMarker) html += buildDualScorecardLegendHTML();
     html += '</header>';
     if (opts.label) html += '<div class="club-sc-caption">' + esc(opts.label) + '</div>';
-    html += '<div class="sc-round-summary">' + infos.map(function(inf, i) { return scorecardPlayerSummaryHTML(inf.name, inf.tee, inf.fhcp, completed ? inf.stats : null, order.length, i + 1); }).join('') + '</div>';
-    if (completed) html += scorecardDetailsStartHTML();
+    html += '<div class="sc-round-summary">' + infos.map(function(inf, i) {
+        var pBadges = (typeof buildPlayerBadges === 'function') ? buildPlayerBadges(inf.p, r) : '';
+        return scorecardPlayerSummaryHTML(inf.name, inf.tee, inf.fhcp, completed ? inf.stats : null, order.length, i + 1, pBadges);
+    }).join('') + '</div>';
+    if (completed) html += flatHoles ? '<div class="sc-hole-content">' : scorecardDetailsStartHTML();
     html += '<div class="club-sc-group-scroll" tabindex="0" aria-label="' + esc(en ? 'Group scores by holes' : 'Счёт группы по лункам') + '">';
     html += '<table class="gsg-table" style="min-width:' + (78 + n * 118) + 'px"><thead><tr>';
     html += '<th class="gsg-hole" scope="col">' + esc(en ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
@@ -263,7 +276,7 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
         html += '<span>' + esc(inf.shortName) + ' · Gross <b>' + (inf.stats.holesPlayed ? inf.stats.gross : '—') + '</b> <span class="' + scoreClass(inf.stats.toPar) + '">' + esc(fmtScore(inf.stats.toPar)) + '</span> · ' + inf.stats.holesPlayed + '/' + order.length + '</span>';
     });
     html += '</div></div>';
-    if (completed) return html + '</div></details></section>';
+    if (completed) return html + (flatHoles ? '</div>' : '</div></details>') + '</section>';
     // Кто где сейчас — живой статус флайта одной строкой.
     var thruBits = infos.map(function(inf) {
         return '<span class="gsg-thru"><b>' + esc(inf.shortName) + ':</b> ' + esc(inf.thru || '') + '</span>';

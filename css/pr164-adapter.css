@@ -372,3 +372,121 @@ body.sun-mode .tpv-par-5 .tpv-hole-par { color: #754400; }
 body.sun-mode .tpv-hole-meta .tpv-hole-dur::before { color: #56665b; }
 body.sun-mode .tpv-hole-bar { background: #dfe8e1; }
 body.sun-mode .tpv-hole-bar > span { background: linear-gradient(90deg, #1b5e20, #66bb6a); }
+
+/* ── Результат раунда: сводка игрока и счётная карточка ────────────────────
+   Сводка (sc-player-summary) — одна строка идентичности (имя + чипы ТИ/НСР)
+   и плитки метрик; счётная карточка (club-sc) — мягкие плитки лунок с
+   золотыми номерами. Плоская выдача лунок (.sc-hole-content без <details>)
+   приходит из компактного режима renderClubScorecard. */
+body .sc-round-summary { gap: 10px; margin: 4px 0 14px; }
+body .sc-player-summary {
+    padding: 12px 14px 13px; border: 1px solid rgba(201, 168, 76, .24); border-radius: 12px;
+    background: linear-gradient(160deg, rgba(201, 168, 76, .09), rgba(255, 255, 255, .02) 55%);
+}
+body .sc-player-identity { gap: 8px; font-size: 13px; }
+body .sc-player-identity strong { font-size: 15px; font-weight: 800; color: var(--white); letter-spacing: .1px; }
+body .sc-player-identity small { font-size: 11.5px; }
+body .sc-result-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+    gap: 8px; margin: 12px 0 0;
+}
+body .sc-result-metrics > div {
+    padding: 8px 10px 9px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .07); background: rgba(255, 255, 255, .045);
+}
+body .sc-result-metrics dt {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .7px;
+    text-transform: uppercase; color: var(--muted);
+}
+body .sc-result-metrics dd {
+    font-size: 20px; font-weight: 800; margin: 2px 0 0; color: var(--white);
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+body .sc-result-metrics > div:first-child dd { color: var(--gold-l); }
+body .sc-result-metrics dd.s-un { color: #2ecc71; }
+body .sc-result-metrics dd.s-ov { color: var(--red); }
+body .sc-result-metrics dd.s-ev { color: var(--white); }
+
+/* Свёртка «Результаты по лункам» — только в развёрнутом режиме; компактный
+   показывает лунки сразу (плоский .sc-hole-content). */
+body .sc-hole-content { padding-top: 2px; min-width: 0; }
+body .sc-hole-details > summary {
+    border-top: 1px dashed rgba(201, 168, 76, .25); border-radius: 8px; margin-top: 4px;
+}
+
+/* Счётная карточка: секции девяток и плитки лунок. */
+body .club-sc {
+    margin: 10px 0 0; padding: 14px; border-radius: 14px;
+    border: 1px solid rgba(201, 168, 76, .18); background: rgba(255, 255, 255, .025);
+}
+body .club-sc-caption {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+    color: var(--gold); margin: 12px 0 8px;
+}
+body .club-sc-side > .club-sc-caption:first-child { margin-top: 2px; }
+body .club-sc-labels > div, body .club-sc-cell {
+    border-radius: 7px; border: 1px solid rgba(255, 255, 255, .05);
+    background: rgba(255, 255, 255, .04);
+}
+body .club-sc-labels > div {
+    background: transparent; border-color: transparent;
+    font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+}
+body .club-sc-number {
+    background: linear-gradient(160deg, #d9b95e, #c9a84c); border-color: rgba(201, 168, 76, .55);
+    color: #142017; font-weight: 800;
+    box-shadow: 0 2px 6px rgba(201, 168, 76, .18);
+}
+body .club-sc-par {
+    background: rgba(201, 168, 76, .1); border-color: rgba(201, 168, 76, .16); color: var(--text);
+}
+body .club-sc-score { font-size: 17px; font-weight: 800; color: var(--white); }
+/* В карточках-раскладках (виды 2 и 5) ячейки — внутри своей рамки лунки. */
+body .club-sc[data-sc-view="2"] .club-sc-cell:not(.club-sc-number),
+body .club-sc[data-sc-view="5"] .club-sc-cell:not(.club-sc-number) {
+    border-color: transparent; background: transparent;
+}
+body .club-sc-subtotal {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+    gap: 4px 12px; padding: 10px 2px 2px; font-size: 11px; color: var(--muted);
+}
+body .club-sc-subtotal b { color: var(--gold-l); font-size: 13px; font-variant-numeric: tabular-nums; }
+body .club-sc-total { border-top: 1px dashed rgba(201, 168, 76, .2); margin-top: 6px; }
+body .club-sc-total b { color: var(--gold-l); }
+
+/* Действия под карточкой результата: одна компактная кнопка. */
+body .lwl-actions--recent { justify-content: flex-end; margin: 12px 0 2px; }
+body .lwl-actions--recent .btn { min-height: 38px; padding: 8px 14px; font-size: 12.5px; }
+
+/* Завершённый раунд — итоговая карточка: мигающая рамка «текущей лунки»
+   (sc-cur-tile) в ней не нужна, она остаётся только для живой игры. */
+body .club-sc[data-sc-completed="true"] .sc-cur-tile {
+    animation: none;
+    border-color: transparent !important;
+    background: transparent;
+}
+body .club-sc[data-sc-completed="true"] .sc-cur-tile::after { display: none; }
+
+/* Светлая тема («бумажная»): белые карточки, зелёные акценты. */
+body.sun-mode .sc-player-summary { background: #ffffff; border: 2px solid #000000; }
+body.sun-mode .sc-result-metrics > div { background: #f4f8f5; border: 1px solid #000000; }
+body.sun-mode .sc-result-metrics > div:first-child dd { color: #0b2912; }
+body.sun-mode .sc-result-metrics dd { color: #000000; }
+body.sun-mode .sc-result-metrics dd.s-un { color: #185a2c; }
+body.sun-mode .sc-result-metrics dd.s-ov { color: #b02a1f; }
+body.sun-mode .sc-result-metrics dd.s-ev { color: #000000; }
+body.sun-mode .club-sc { background: #ffffff; border: 2px solid #000000; }
+body.sun-mode .club-sc-caption { color: #0b2912; }
+body.sun-mode .club-sc-labels > div, body.sun-mode .club-sc-cell {
+    background: #f4f8f5; border: 1px solid #000000;
+}
+body.sun-mode .club-sc-labels > div { background: transparent; border-color: transparent; color: #253b2b; }
+body.sun-mode .club-sc-number {
+    background: #1b5e20; border-color: #0b2912; color: #ffffff; box-shadow: none;
+}
+body.sun-mode .club-sc-par { background: #e8f5e9; border-color: #899b8d; }
+body.sun-mode .club-sc-score { color: #000000; }
+body.sun-mode .club-sc-subtotal b { color: #0b2912; }
+body.sun-mode .club-sc-total { border-top-color: #899b8d; }
+body.sun-mode .club-sc-total b { color: #0b2912; }
+body.sun-mode .sc-hole-details > summary { border-top-color: #899b8d; }

@@ -113,7 +113,7 @@ function bindSettingsValue(path, render) {
     bindSettingsBusValue(rel, render);
 }
 
-function bindRealtimeValue(key, firebaseRef, render) {
+function bindRealtimeValue(key, firebaseRef, render, onError) {
     if (!key || !firebaseRef || typeof render !== 'function') return;
     var refPath = pestovoRefPath(firebaseRef);
     if (typeof db !== 'undefined' && db &&
@@ -123,15 +123,17 @@ function bindRealtimeValue(key, firebaseRef, render) {
     }
     var binding = realtimeValueBindings[key];
     if (!binding) {
-        binding = realtimeValueBindings[key] = { render: render, snapshot: null };
+        binding = realtimeValueBindings[key] = { render: render, onError: onError, snapshot: null };
         firebaseRef.on('value', function(snapshot) {
             binding.snapshot = snapshot;
             binding.render(snapshot);
         }, function(error) {
             console.error('[Firebase] ' + key + ':', error);
+            if (typeof binding.onError === 'function') binding.onError(error);
         });
     } else {
         binding.render = render;
+        binding.onError = onError;
         if (binding.snapshot) binding.render(binding.snapshot);
     }
 }

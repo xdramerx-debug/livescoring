@@ -491,6 +491,67 @@ body.sun-mode .club-sc-total { border-top-color: #899b8d; }
 body.sun-mode .club-sc-total b { color: #0b2912; }
 body.sun-mode .sc-hole-details > summary { border-top-color: #899b8d; }
 
+/* ── Цветные метки результата лунки ─────────────────────────────────────
+   Цифра счёта садится в кольцо (игл/берди/пар) или квадрат (боги/дабл+);
+   у игла и дабла — двойная рамка. Форма + цвет + слово в title/aria-label.
+   Классы r-eag…r-dbl ставит holeResClass (js/format.js). */
+body .sc-digit {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 24px; height: 24px; padding: 0 3px;
+    border: 2px solid transparent; border-radius: 50%;
+    font-weight: 800; line-height: 1; box-sizing: border-box; vertical-align: middle;
+}
+body .sc-digit.r-par { border-color: rgba(136, 164, 144, .55); color: var(--white); background: rgba(255, 255, 255, .05); }
+body .sc-digit.r-bir { border-color: #2ecc71; color: #2ecc71; background: rgba(46, 204, 113, .12); }
+body .sc-digit.r-eag { border-color: #f39c12; color: #f5b942; background: rgba(243, 156, 18, .14); box-shadow: 0 0 0 2px rgba(243, 156, 18, .3); }
+body .sc-digit.r-bog { border-radius: 6px; border-color: #5aade0; color: #7cc3ee; background: rgba(90, 173, 224, .12); }
+body .sc-digit.r-dbl { border-radius: 6px; border-color: #e05a4a; color: #ff8171; background: rgba(224, 90, 74, .16); box-shadow: 0 0 0 2px rgba(224, 90, 74, .3); }
+/* Крупные раскладки карточки (3/5): кольцо растёт вместе с цифрой. */
+body .club-sc[data-sc-view="3"] .sc-digit { min-width: 32px; height: 32px; }
+body .club-sc[data-sc-view="5"] .sc-digit { min-width: 42px; height: 42px; }
+@media (max-width: 380px) {
+    body .sc-digit { min-width: 20px; height: 20px; }
+}
+/* Плитка лунки несёт мягкую заливку результата; в таблице группы (chips
+   .gsg-score) метка — только кольцо вокруг цифры, без двойной пластины. */
+body .club-sc .club-sc-cell.r-eag { background: rgba(243, 156, 18, .1) !important; color: inherit !important; }
+body .club-sc .club-sc-cell.r-bir { background: rgba(46, 204, 113, .08) !important; color: inherit !important; }
+body .club-sc .club-sc-cell.r-par { background: rgba(255, 255, 255, .04) !important; color: inherit !important; }
+body .club-sc .club-sc-cell.r-bog { background: rgba(90, 173, 224, .08) !important; color: inherit !important; }
+body .club-sc .club-sc-cell.r-dbl { background: rgba(224, 90, 74, .1) !important; color: inherit !important; }
+body .club-sc .gsg-score.r-eag, body .club-sc .gsg-score.r-bir, body .club-sc .gsg-score.r-par,
+body .club-sc .gsg-score.r-bog, body .club-sc .gsg-score.r-dbl {
+    background: transparent !important; color: inherit !important;
+}
+/* Легенда меток (панель счётной карточки на «Все раунды»). */
+body .sc-marks-legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+    margin: 12px 2px 2px; font-size: 11px; color: var(--muted);
+}
+body .sc-marks-title {
+    font-weight: 800; letter-spacing: .5px; text-transform: uppercase; font-size: 10px; color: var(--gold);
+}
+body .smk-item { display: inline-flex; align-items: center; gap: 5px; }
+body .sc-digit.smk { min-width: 14px; height: 14px; padding: 0; font-size: 0; }
+
+/* Светлая тема: те же метки на бумаге. */
+body.sun-mode .sc-digit.r-par { border-color: #899b8d; color: #253b2b; background: #f7faf8; }
+body.sun-mode .sc-digit.r-bir { border-color: #1e7e34; color: #1e7e34; background: #e9f7ee; }
+body.sun-mode .sc-digit.r-eag { border-color: #b8860b; color: #8a6d1f; background: #fff3d9; box-shadow: 0 0 0 2px rgba(184, 134, 11, .3); }
+body.sun-mode .sc-digit.r-bog { border-color: #2c6f9e; color: #2c6f9e; background: #eaf2f9; }
+body.sun-mode .sc-digit.r-dbl { border-color: #b02a1f; color: #b02a1f; background: #fdecea; box-shadow: 0 0 0 2px rgba(176, 42, 31, .25); }
+body.sun-mode .club-sc .club-sc-cell.r-eag { background: #fff3d9 !important; }
+body.sun-mode .club-sc .club-sc-cell.r-bir { background: #e9f7ee !important; }
+body.sun-mode .club-sc .club-sc-cell.r-par { background: #f4f8f5 !important; }
+body.sun-mode .club-sc .club-sc-cell.r-bog { background: #eaf2f9 !important; }
+body.sun-mode .club-sc .club-sc-cell.r-dbl { background: #fdecea !important; }
+body.sun-mode .club-sc .gsg-score.r-eag, body.sun-mode .club-sc .gsg-score.r-bir, body.sun-mode .club-sc .gsg-score.r-par,
+body.sun-mode .club-sc .gsg-score.r-bog, body.sun-mode .club-sc .gsg-score.r-dbl {
+    background: transparent !important;
+}
+body.sun-mode .sc-marks-title { color: #8a6d1f; }
+body.sun-mode .sc-marks-legend { color: #253b2b; }
+
 /* ── «Поле клуба»: матрица msc-* (карточка поля + «Лунки» в статистике) ──
    Спокойные полосы строк вместо решётки одинаковых плиток: шапка —
    золотые чипы номеров, колонки OUT/IN/ВСЕГО — зона итогов, строка пар —
@@ -793,14 +854,19 @@ body .lb-row {
     background: linear-gradient(170deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .012) 42%), rgba(19, 34, 24, .85);
     transition: border-color .18s ease, box-shadow .18s ease;
 }
-body .lb-row:hover { border-color: rgba(201, 168, 76, .38); box-shadow: 0 10px 26px rgba(0, 0, 0, .22); }
-body .lb-row.is-open { border-color: rgba(201, 168, 76, .45); box-shadow: 0 12px 30px rgba(0, 0, 0, .26); }
+/* Карточка всегда развёрнута — фиксированный «открытый» вид без .is-open. */
+body .lb-row {
+    border-color: rgba(201, 168, 76, .45);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .26);
+}
+body .lb-row:hover { border-color: rgba(201, 168, 76, .55); box-shadow: 0 14px 34px rgba(0, 0, 0, .3); }
 body .lb-row.lb-row-live { border-left: 3px solid rgba(46, 204, 113, .55); }
 
 /* Шапка: строка 1 — дата и статус, строка 2 — мета-поток. */
 body .live-who-list .lb-row .lwl-toggle {
     display: flex; flex-wrap: wrap; align-items: center;
     gap: 8px 12px; padding: 14px 16px 12px;
+    cursor: default;
 }
 body .live-who-list .lb-row .lwl-name {
     order: 1; flex: 1 1 auto; min-width: 0;
@@ -808,11 +874,6 @@ body .live-who-list .lb-row .lwl-name {
 }
 body .live-who-list .lb-row .lwl-name > i { color: var(--gold); font-size: 13px; opacity: 1; }
 body .live-who-list .lb-row .lwl-score { order: 2; flex: 0 0 auto; display: inline-flex; align-items: center; }
-body .live-who-list .lb-row .lwl-chev {
-    order: 3; flex: 0 0 auto;
-    width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 999px; background: rgba(201, 168, 76, .12); color: var(--gold); font-size: 11px;
-}
 body .live-who-list .lb-row .lwl-meta-line {
     order: 4; flex: 1 1 100%; min-width: 0;
     display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
@@ -841,8 +902,9 @@ body .lb-row .tn-status {
     white-space: nowrap;
 }
 
-/* Детали раскрытой карточки. */
+/* Детали карточки: всегда развёрнуты — сворачивания на «Все раунды» нет. */
 body .live-who-list .lb-row .lwl-details {
+    display: block;
     padding: 2px 16px 16px;
     border-top: 1px solid rgba(255, 255, 255, .06);
 }

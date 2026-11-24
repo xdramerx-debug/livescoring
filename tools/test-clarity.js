@@ -37,10 +37,15 @@ const code = fs.readFileSync(path.join(root, 'js/clarity.js'), 'utf8');
         }
         if (['scorer.html', 'marker.html', 'setup-round.html'].includes(page)) {
             assert(!w.document.querySelector('.score-pad').closest('details'), 'primary input is not hidden');
-            assert.strictEqual(w.document.querySelector('[data-act="toggleLargeUi"]').closest('details'), null, 'size is a direct action');
-            const method = w.document.querySelector('[data-score-input-method]');
-            method.value = 'stepper'; method.dispatchEvent(new w.Event('change'));
-            assert.strictEqual(w.localStorage.getItem('pestovo_score_input'), 'stepper');
+            // На экране активного раунда «Крупно» и выбор вида ввода убраны
+            // (максимально простой экран) — эти прямые действия остаются на
+            // scorer/marker.
+            if (page !== 'setup-round.html') {
+                assert.strictEqual(w.document.querySelector('[data-act="toggleLargeUi"]').closest('details'), null, 'size is a direct action');
+                const method = w.document.querySelector('[data-score-input-method]');
+                method.value = 'stepper'; method.dispatchEvent(new w.Event('change'));
+                assert.strictEqual(w.localStorage.getItem('pestovo_score_input'), 'stepper');
+            }
             assert.strictEqual(w.document.body.dataset.scoreInput, 'stepper');
             for (let n = 1; n <= 15; n++) assert(w.document.querySelector('.score-pad [data-arg="' + n + '"]'), 'all scores are directly reachable');
         }

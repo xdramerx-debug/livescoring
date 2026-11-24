@@ -247,7 +247,7 @@
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
-    <link rel="stylesheet" href="css/pr164-adapter.css?v=3a61b648">
+    <link rel="stylesheet" href="css/pr164-adapter.css?v=fc8b6b09">
 </head>
 <body class="round-setup-page score-compact pv-ux pv-setup pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
@@ -417,6 +417,9 @@
     <div id="active-scoring-view" class="hidden">
 
         <div class="score-entry card">
+            <div data-entry-block="holes" data-screen-display="scoring" data-display-key="holes" id="play-holes-block">
+                <div class="hole-nav" id="play-holes-nav"></div>
+            </div>
             <div class="hole-display" data-entry-block="info" data-screen-display="scoring" data-display-key="holeInfo">
                 <div class="hole-box h-hole" data-screen-display="scoring" data-display-key="holeNumber"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="play-hole">1</div></div>
                 <div class="hole-box h-par" data-screen-display="scoring" data-display-key="par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="play-par">4</div></div>
@@ -424,15 +427,7 @@
                 <div class="hole-box h-dl" data-screen-display="scoring" data-display-key="deadline"><div class="hole-lbl" data-i18n="deadline_lbl">Дедлайн</div><div class="hole-val" id="play-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
             </div>
 
-            <div data-entry-block="holes" data-screen-display="scoring" data-display-key="holes" id="play-holes-block">
-                <button type="button" class="holes-toggle" id="play-holes-toggle" data-act="togglePlayHolesNav" aria-expanded="false" aria-controls="play-holes-nav">
-                    <i class="fas fa-th"></i><span data-holes-toggle-label data-i18n="ui_a0e5860a63">Лунки</span><i class="fas fa-chevron-down" id="play-holes-toggle-chev"></i>
-                </button>
-                <div class="hole-nav" id="play-holes-nav"></div>
-            </div>
             <div data-entry-block="input" data-screen-display="scoring" data-display-key="input">
-            <!-- Кто играет, с какого ТИ и во сколько (раньше — только в соло) -->
-            <div class="timing-info" id="play-round-info" data-screen-display="scoring" data-display-key="timing" style="margin:4px 0 10px;"></div>
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" data-screen-display="scoring" data-display-key="verification" style="margin-top:12px;"></div>
             <div id="play-verify-status-mark" data-screen-display="scoring" data-display-key="verification" style="margin-top:6px;"></div>
@@ -446,9 +441,7 @@
                         <span class="dual-half__name" id="my-player-name-title" data-i18n="ui_08ff4e3814">Мой счёт: —</span>
                     </div>
                     <div class="dual-half__score">
-                        <div class="score-result" id="my-result"></div>
                         <div class="score-disp" id="my-disp" role="button" tabindex="0" data-act="editDualScore" data-arg="my" data-kd-act="editDualScore" data-kd-arg="my" data-kd-key="Enter,Space" data-prevent="1">—</div>
-                        <div class="dual-half__compare" data-screen-display="scoring" data-display-key="scoreComparison" id="my-compare"></div>
                     </div>
                     <div class="dual-half__controls">
                         <button class="dual-btn dual-btn--minus" data-act="adjScore" data-arg="my" data-arg2="-1" aria-label="Минус" data-i18n-aria-label="ui_cb8c5d52e1">−</button>
@@ -462,9 +455,7 @@
                         <span class="dual-half__name" id="mark-player-name" data-i18n="ui_be83f247cd">Счёт игрока: —</span>
                     </div>
                     <div class="dual-half__score">
-                        <div class="score-result" id="mark-result"></div>
                         <div class="score-disp" id="mark-disp" role="button" tabindex="0" data-act="editDualScore" data-arg="mark" data-kd-act="editDualScore" data-kd-arg="mark" data-kd-key="Enter,Space" data-prevent="1">—</div>
-                        <div class="dual-half__compare" data-screen-display="scoring" data-display-key="scoreComparison" id="mark-compare"></div>
                     </div>
                     <div class="dual-half__controls">
                         <button class="dual-btn dual-btn--minus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="-1" aria-label="Минус маркируемого" data-i18n-aria-label="ui_68660731cc">−</button>
@@ -489,10 +480,6 @@
                 <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="10">10</button>
                 <button type="button" class="score-pad-key score-pad-par" data-act="setScorePadPar" data-i18n="score_pad_par">Пар</button>
             <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="11">11</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="12">12</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="13">13</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="14">14</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="15">15</button></div>
-            <div class="score-toolbar">
-                <button type="button" class="btn btn-ol" data-act="undoLastHole"><i class="fas fa-rotate-left"></i> <span data-i18n="undo_last_hole">Отменить лунку</span></button>
-                <button type="button" class="btn btn-ol" data-act="toggleLargeUi"><i class="fas fa-expand"></i> <span data-i18n="large_ui_btn">Крупно</span></button>
-            </div>
             <button class="btn btn-g btn-block" id="save-hole-btn" data-act="saveHoleScores" style="padding:16px;font-size:16px;margin-top:20px;">
                 <i class="fas fa-check" id="save-hole-btn-icon"></i> <span id="save-hole-btn-text" data-i18n="next_hole_btn">Подтвердить ✓</span>
             </button>
@@ -502,13 +489,14 @@
         <div id="group-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
 
         <div class="round-card scorecard-fold" data-screen-display="scoring" data-display-key="scorecard" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку" data-i18n-title="ui_372a391df1">
-                <i class="fas fa-chevron-down" id="group-sc-panel-icon" aria-hidden="true"></i>
-                <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
-            </button>
-            <div id="group-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-                <div class="card">
-                    <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
+            <div class="card">
+                <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку" data-i18n-title="ui_372a391df1">
+                    <i class="fas fa-chevron-down" id="group-sc-panel-icon" aria-hidden="true"></i>
+                    <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
+                </button>
+                <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
+                <div id="play-group-summary-compact"></div>
+                <div id="group-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
                     <div id="play-group-summary"></div>
                 </div>
             </div>
@@ -556,10 +544,6 @@
         <button id="group-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" data-act="pestovoGroupForceFinish">
             <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
-        <details class="clarity-disclosure" ><summary data-clarity-ru="Параметры раунда" data-clarity-en="Round preferences">Параметры раунда</summary><label class="clarity-input-choice"><span data-clarity-ru="Ввод счёта" data-clarity-en="Score input">Ввод счёта</span><select class="form-input" data-score-input-method><option value="pad" data-clarity-ru="Выбор числа" data-clarity-en="Number pad">Выбор числа</option><option value="stepper" data-clarity-ru="Плюс / минус" data-clarity-en="Plus / minus">Плюс / минус</option></select></label><label class="stableford-display-control" id="group-stableford-control" data-screen-display="scoring" data-display-key="stableford">
-            <input type="checkbox" id="group-stableford-toggle" data-act="toggleGroupStablefordDisplay" data-checked="1">
-            <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
-        </label></details>
     </div>
 
 
@@ -595,7 +579,7 @@
 <script defer src="js/score-pad.js?v=03df3958"></script>
 <script defer src="js/official-call.js?v=7ae05fbc"></script>
 <script defer src="js/score-display.js?v=8c8f213a"></script>
-<script defer src="js/live.js?v=340c6466"></script>
+<script defer src="js/live.js?v=f6028efc"></script>
 <script defer src="js/solo.js?v=8ebc1f83"></script>
 <script defer src="js/round-setup.js?v=f0f77ec1"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>

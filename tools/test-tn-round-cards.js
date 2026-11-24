@@ -84,7 +84,9 @@ function check(condition, message) { assert.ok(condition, message); passed.push(
         'reset clears tournament-only overrides so all QR screens inherit common settings');
 
     const page = new JSDOM(read('setup-round.html')).window.document;
-    ['holeInfo', 'holes', 'input', 'myScore', 'markerScore', 'qr', 'scorecard', 'officials', 'finish', 'stableford'].forEach(key => {
+    // 'stableford' убран из экрана ввода: персонального тоггла Stableford
+    // на простом экране активного раунда больше нет.
+    ['holeInfo', 'holes', 'input', 'myScore', 'markerScore', 'qr', 'scorecard', 'officials', 'finish'].forEach(key => {
         check(page.querySelector('[data-screen-display="scoring"][data-display-key="' + key + '"]'),
             'QR score-entry markup exposes the ' + key + ' element setting');
     });

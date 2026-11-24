@@ -23,7 +23,6 @@ var groupPaceTimer = null;
 // только игроки без сохранённого личного выбора.
 document.addEventListener('pestovo-stableford-default-change', function() {
     if (!curRoundData || !canEditGroup) return;
-    updateGroupStablefordToggle();
     renderPlayHole();
 });
 
@@ -72,109 +71,47 @@ function updateScoringHeader() {
     }
 }
 
+// Подсветка «чей ход» на половинках счёта и разделителе. Строка статусов
+// сравнения (⏳/✅/⚠️) из интерфейса убрана — остаётся тихая подсветка.
 function updateDualCompare() {
-    var myComp = lGet('my-compare');
-    var markComp = lGet('mark-compare');
     var divider = lGet('dual-divider');
     if (!curRoundData || !myUid) return;
-    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     var myPlayer = curRoundData.players && curRoundData.players[myUid];
     if (!myPlayer) return;
 
-    // Левая половина: мой счёт vs счёт моего маркера для меня.
-    // Статус — компактной иконкой (⏳/✅/⚠️), чей ход — подсветкой карточки.
+    // Левая половина: подсветка хода — по СОХРАНЁННОМУ счёту (черновик
+    // myScore не в счёт).
     var myHalf = document.getElementById('dual-half-my');
-    if (myComp) {
+    if (myHalf) {
         var myMarkerId = myPlayer.markedBy;
-        var myS = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || myScore || 0;
-        var markerS = 0;
-        if (myMarkerId) {
-            markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0;
-        }
-        if (myS > 0 && markerS > 0) {
-            if (myS === markerS) {
-                myComp.className = 'dual-half__compare compare-ok';
-                myComp.innerHTML = '✅';
-                myComp.title = isEn ? 'Match' : 'Совпадает';
-                myComp.setAttribute('aria-label', myComp.title);
-            } else {
-                var delta = myS - markerS;
-                var deltaStr = (delta > 0 ? '+' : '') + delta;
-                myComp.className = 'dual-half__compare compare-bad';
-                myComp.innerHTML = '⚠️ Δ' + deltaStr;
-                myComp.title = isEn ? 'Mismatch: you ' + myS + ', marker ' + markerS : 'Расхождение: вы ' + myS + ', маркер ' + markerS;
-                myComp.setAttribute('aria-label', myComp.title);
-            }
-        } else if (myS > 0) {
-            myComp.className = 'dual-half__compare compare-wait';
-            myComp.innerHTML = '⏳';
-            myComp.title = isEn ? 'Waiting for marker' : 'Ждём маркера';
-            myComp.setAttribute('aria-label', myComp.title);
+        var mySaved = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || 0;
+        var myMkSaved = myMarkerId ? (parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0) : 0;
+        myHalf.classList.remove('dual-turn', 'dual-wait', 'dual-ok');
+        if (mySaved > 0 && myMkSaved > 0) {
+            myHalf.classList.add(mySaved === myMkSaved ? 'dual-ok' : 'dual-turn');
+        } else if (mySaved > 0) {
+            myHalf.classList.add('dual-wait');
         } else {
-            myComp.className = 'dual-half__compare';
-            myComp.innerHTML = '';
-            myComp.title = '';
-            myComp.removeAttribute('aria-label');
-        }
-        // Подсветка хода — по СОХРАНЁННОМУ счёту (черновик myScore не в счёт).
-        if (myHalf) {
-            var mySaved = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || 0;
-            var myMkSaved = myMarkerId ? (parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0) : 0;
-            myHalf.classList.remove('dual-turn', 'dual-wait', 'dual-ok');
-            if (mySaved > 0 && myMkSaved > 0) {
-                myHalf.classList.add(mySaved === myMkSaved ? 'dual-ok' : 'dual-turn');
-            } else if (mySaved > 0) {
-                myHalf.classList.add('dual-wait');
-            } else {
-                myHalf.classList.add('dual-turn');
-            }
+            myHalf.classList.add('dual-turn');
         }
     }
 
-    // Правая половина: маркируемый — мой ввод vs его собственный счёт
+    // Правая половина: маркируемый.
     var markHalf = lGet('marker-input-container');
-    if (markComp && myTargetUid) {
+    if (markHalf && myTargetUid) {
         var tp = curRoundData.players && curRoundData.players[myTargetUid];
         if (tp) {
             var tOwn = parseInt(tp.scores && tp.scores[playHole]) || 0;
-            var tMine = targetScore || parseInt(tp.markerScores && tp.markerScores[myUid] && tp.markerScores[myUid][playHole]) || 0;
-            if (tOwn > 0 && tMine > 0) {
-                if (tOwn === tMine) {
-                    markComp.className = 'dual-half__compare compare-ok';
-                    markComp.innerHTML = '✅';
-                    markComp.title = isEn ? 'Match' : 'Совпадает';
-                    markComp.setAttribute('aria-label', markComp.title);
+            var tFinished = (typeof isPlayerFinishedRound === 'function') && isPlayerFinishedRound(curRoundData, myTargetUid);
+            var tMineSaved = parseInt(tp.markerScores && tp.markerScores[myUid] && tp.markerScores[myUid][playHole]) || 0;
+            markHalf.classList.remove('dual-turn', 'dual-wait', 'dual-ok');
+            if (!tFinished) {
+                if (tMineSaved > 0 && tOwn > 0) {
+                    markHalf.classList.add(tMineSaved === tOwn ? 'dual-ok' : 'dual-turn');
+                } else if (tMineSaved > 0) {
+                    markHalf.classList.add('dual-wait');
                 } else {
-                    var d2 = tMine - tOwn;
-                    var d2Str = (d2 > 0 ? '+' : '') + d2;
-                    markComp.className = 'dual-half__compare compare-bad';
-                    markComp.innerHTML = '⚠️ Δ' + d2Str;
-                    markComp.title = isEn ? 'Mismatch: marker ' + tMine + ', player ' + tOwn : 'Расхождение: маркер ' + tMine + ', игрок ' + tOwn;
-                    markComp.setAttribute('aria-label', markComp.title);
-                }
-            } else if (tMine > 0) {
-                markComp.className = 'dual-half__compare compare-wait';
-                markComp.innerHTML = '⏳';
-                markComp.title = isEn ? 'Waiting for player' : 'Ждём игрока';
-                markComp.setAttribute('aria-label', markComp.title);
-            } else {
-                markComp.className = 'dual-half__compare';
-                markComp.innerHTML = '';
-                markComp.title = '';
-                markComp.removeAttribute('aria-label');
-            }
-            if (markHalf) {
-                var tFinished = (typeof isPlayerFinishedRound === 'function') && isPlayerFinishedRound(curRoundData, myTargetUid);
-                var tMineSaved = parseInt(tp.markerScores && tp.markerScores[myUid] && tp.markerScores[myUid][playHole]) || 0;
-                markHalf.classList.remove('dual-turn', 'dual-wait', 'dual-ok');
-                if (!tFinished) {
-                    if (tMineSaved > 0 && tOwn > 0) {
-                        markHalf.classList.add(tMineSaved === tOwn ? 'dual-ok' : 'dual-turn');
-                    } else if (tMineSaved > 0) {
-                        markHalf.classList.add('dual-wait');
-                    } else {
-                        markHalf.classList.add('dual-turn');
-                    }
+                    markHalf.classList.add('dual-turn');
                 }
             }
         }
@@ -940,40 +877,6 @@ function pestovoCreateRound() {
 function startGroup() { return pestovoCreateRound(); }
 
 // ==========================================
-// ЛИЧНОЕ ОТОБРАЖЕНИЕ STABLEFORD В ЕДИНОМ РАУНДЕ
-// ==========================================
-function updateGroupStablefordToggle() {
-    var toggle = document.getElementById('group-stableford-toggle');
-    var control = document.getElementById('group-stableford-control');
-    if (!toggle) return;
-
-    var player = curRoundData && curRoundData.players && myUid ? curRoundData.players[myUid] : null;
-    toggle.checked = isPlayerStablefordDisplayEnabled(player);
-    toggle.disabled = !canEditGroup || !player;
-    if (control) control.classList.toggle('is-disabled', toggle.disabled);
-}
-
-function toggleGroupStablefordDisplay(enabled) {
-    if (!canEditGroup || !curRid || !myUid || !curRoundData || !curRoundData.players || !curRoundData.players[myUid]) return;
-
-    enabled = !!enabled;
-    // Отображаем новый выбор сразу, а затем сохраняем его именно в карточке
-    // этого игрока текущего раунда — другие игроки не затрагиваются.
-    curRoundData.players[myUid].stablefordDisplay = enabled;
-    renderPlayHole();
-    updateGroupStablefordToggle();
-
-    db.ref('rounds/' + curRid + '/players/' + myUid + '/stablefordDisplay').set(enabled).then(function() {
-        toast(enabled
-            ? (currentLang === 'en' ? 'Stableford points are shown' : 'Очки Stableford показаны')
-            : (currentLang === 'en' ? 'Stableford points are hidden' : 'Очки Stableford скрыты'), 'info');
-    }).catch(function(error) {
-        console.warn('[Stableford] Cannot save personal display setting', error);
-        toast(currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford', 'error');
-    });
-}
-
-// ==========================================
 // ПРОВЕРКА ДОСТУПА К РАУНДУ
 // ==========================================
 function getActingUid() {
@@ -1145,7 +1048,6 @@ function applyRoundState(data) {
         var myTitle = lGet('my-player-name-title');
         var myFallbackPlayer = typeof currentUserData !== 'undefined' ? currentUserData : null;
         if (myTitle) myTitle.textContent = scoreEntryPlayerLabel('my', myPlayer, myFallbackPlayer);
-        updateGroupStablefordToggle();
 
         var markContainer = lGet('marker-input-container');
         var dualPanel = lGet('dual-score-panel');
@@ -1373,14 +1275,6 @@ function buildPlayHolesNav() {
             entryHoleContentHTML(s, mkForHole, h, myFieldHcp) + '</button>';
     });
     el.innerHTML = html;
-    applyPlayHolesCollapsed();
-    // В свёрнутой полосе текущая лунка всегда в видимой области.
-    try {
-        if (el.classList.contains('holes-collapsed')) {
-            var activeBtn = el.querySelector('.hole-btn.active');
-            if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
-        }
-    } catch (e) { console.warn("[silent]", e); }
 }
 
 function doPlayHole(h) {
@@ -1437,8 +1331,6 @@ function renderPlayHole() {
         } catch (e) { console.warn('[silent]', e); }
         playDlEl.textContent = deadlineTs ? fmtTime(deadlineTs) : '—';
     }
-    renderPlayRoundInfo(myPlayer);
-
     var order = getRoundOrder(curRoundData);
     var isLastHole = (playHole === order[order.length - 1]);
 
@@ -1486,14 +1378,10 @@ function renderPlayHole() {
     if (markContainer) {
         var markBtns = markContainer.querySelector('.score-btns') || markContainer.querySelector('.dual-half__controls');
         var markDisp = lGet('mark-disp');
-        var markRes = lGet('mark-result');
         if (targetFinished && !dualEditing.mark) {
             var tp = (curRoundData && curRoundData.players && curRoundData.players[myTargetUid]) || {};
-            var tpScores = tp.scores || {};
-            var tpHoles = Object.values(tpScores).filter(function(v){ return parseInt(v) >= 1; }).length;
             if (markBtns) markBtns.style.display = 'none';
             if (markDisp) markDisp.innerHTML = '<span style="font-size:22px;color:var(--gold);"><i class="fas fa-flag-checkered"></i> ✓</span>';
-            if (markRes) markRes.textContent = (currentLang === 'en' ? 'Finished (' + tpHoles + 'h)' : 'Завершил(а) (' + tpHoles + ' л.)');
         } else {
             if (markBtns) markBtns.style.display = '';
         }
@@ -1540,33 +1428,6 @@ function renderPlayHole() {
         var activeBtn = document.querySelector('#play-holes-nav .hole-btn.active');
         if (activeBtn) activeBtn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
     } catch (e) { console.warn("[silent]", e); }
-}
-
-// Строка «кто играет, с какого ТИ, во сколько и в каком формате» — раньше
-// была только на одиночном экране, теперь одна на весь экран ввода счёта.
-function renderPlayRoundInfo(myPlayer) {
-    var el = lGet('play-round-info');
-    if (!el || !curRoundData) return;
-    var p = myPlayer || {};
-    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    var teeCode = p.tee || curRoundData.tee || 'wh';
-    var teeHtml = (typeof fmtTeePill === 'function') ? fmtTeePill(teeCode) : escapeHtml(teeCode);
-    var start = (typeof fmtTime === 'function') ? fmtTime(curRoundData.startTime) : '—';
-    var name = (typeof playerDisplayName === 'function') ? playerDisplayName(p, myUid) : (p.name || '');
-    var exact = (typeof fmtExactHcp === 'function') ? fmtExactHcp(p.exactHcp) : '—';
-    var field = (typeof fmtFieldHcp === 'function') ? fmtFieldHcp(p.fieldHcp) : '—';
-    var format = curRoundData.format || 'Stroke Play';
-    var courseLbl = isEn ? 'course' : 'пол.';
-    var startLbl = (typeof t === 'function') ? t('start') : (isEn ? 'Start' : 'Старт');
-    var teeLbl = (typeof t === 'function') ? t('tee_select') : (isEn ? 'Tee' : 'ТИ');
-    var formatLbl = (typeof t === 'function') ? t('format_select') : (isEn ? 'Format' : 'Формат');
-    el.innerHTML =
-        '<div data-act="openPlayerProfileModal" data-arg="' + escapeHtml(myUid || '') + '" data-arg2="' + escapeHtml(curRid || '') + '" style="cursor:pointer;">' +
-            '<b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(name) + '</b>' +
-            ' · <b>HCP:</b> ' + escapeHtml(exact) + ' (' + courseLbl + ' ' + escapeHtml(field) + ')</div>' +
-        '<div><b>' + startLbl + ':</b> ' + escapeHtml(start) +
-            ' · <b>' + teeLbl + ':</b> ' + teeHtml +
-            ' · <b>' + formatLbl + ':</b> ' + escapeHtml(format) + '</div>';
 }
 
 function adjScore(who, delta) {
@@ -1658,44 +1519,6 @@ function cancelDualEdit(who) {
     dualEditing[who] = false;
     updScoreDisplay(who, who === 'my' ? myScore : targetScore);
     if (typeof updateDualCompare === 'function') updateDualCompare();
-}
-
-// Сворачивание сетки лунок в горизонтальную полосу (состояние — в localStorage).
-function getPlayHolesCollapsed() {
-    var v = null;
-    try { v = localStorage.getItem('pestovo_play_holes_collapsed'); } catch (e) { console.warn("[silent]", e); }
-    // По умолчанию свёрнуто: карточки ввода сразу у большого пальца.
-    return v === null ? true : v === '1';
-}
-
-function applyPlayHolesCollapsed() {
-    var nav = lGet('play-holes-nav');
-    var btn = lGet('play-holes-toggle');
-    var c = getPlayHolesCollapsed();
-    if (nav) nav.classList.toggle('holes-collapsed', c);
-    if (btn) {
-        var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-        btn.setAttribute('aria-expanded', c ? 'false' : 'true');
-        var lbl = btn.querySelector('[data-holes-toggle-label]');
-        if (lbl) lbl.textContent = isEn ? 'Holes' : 'Лунки';
-        var chev = lGet('play-holes-toggle-chev');
-        if (chev) chev.className = 'fas ' + (c ? 'fa-chevron-down' : 'fa-chevron-up');
-    }
-}
-
-function togglePlayHolesNav() {
-    var next = !getPlayHolesCollapsed();
-    try { localStorage.setItem('pestovo_play_holes_collapsed', next ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-    applyPlayHolesCollapsed();
-    // В полосе сразу показываем текущую лунку.
-    try {
-        var nav = lGet('play-holes-nav');
-        var activeBtn = nav && nav.querySelector('.hole-btn.active');
-        if (nav && nav.classList.contains('holes-collapsed') && activeBtn) {
-            activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
-        }
-    } catch (e) { console.warn("[silent]", e); }
-    if (typeof vib === 'function') vib(10);
 }
 
 function checkPlayVerification() {
@@ -2087,9 +1910,35 @@ function renderPlaySummary() {
             : generateGroupHoleTableHTML(curRoundData, { showMarker: true });
         return '<div class="live-group-unified-card">' + card + '</div>';
     };
+    renderGroupCompactRows();
     if (typeof pestovoEntryCardsInto === 'function') pestovoEntryCardsInto(el, buildSummary);
     else el.innerHTML = buildSummary();
-    ensureScorecardOpen('group-sc-panel');
+}
+
+// Компактная сводка «игроки и счёт» — видна в свёрнутом состоянии карточки
+// группы; полные таблицы лунок остаются за шевроном.
+function renderGroupCompactRows() {
+    var el = lGet('play-group-summary-compact');
+    if (!el || !curRoundData || !curRoundData.players) return;
+    var order = getRoundOrder(curRoundData);
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var html = '';
+    Object.keys(curRoundData.players).forEach(function (pid) {
+        var p = curRoundData.players[pid] || {};
+        var st = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        var name = (typeof scoreEntryFullName === 'function') ? scoreEntryFullName(p, null) : (p.name || '—');
+        var teeCode = p.tee || curRoundData.tee || 'wh';
+        var teeHtml = (typeof fmtTeePill === 'function') ? fmtTeePill(teeCode) : escapeHtml(teeCode);
+        var fin = (typeof isPlayerFinishedRound === 'function') && isPlayerFinishedRound(curRoundData, pid);
+        html += '<div class="gs-compact-row">' +
+            '<span class="gs-compact-name">' + escapeHtml(name) + ' ' + teeHtml + '</span>' +
+            '<span class="gs-compact-score">' +
+            (fin ? '<i class="fas fa-flag-checkered" title="' + (isEn ? 'Finished' : 'Завершил(а)') + '"></i> ' : '') +
+            '<b>' + (st.gross || '—') + '</b>' +
+            '<span class="' + (typeof scoreClass === 'function' ? scoreClass(st.toPar) : '') + '">' + fmtScore(st.toPar) + '</span>' +
+            '</span></div>';
+    });
+    el.innerHTML = html;
 }
 
 // ==========================================

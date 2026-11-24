@@ -46,9 +46,15 @@ const root = path.join(__dirname, '..');
                 if (['scorer.html', 'marker.html', 'setup-round.html'].includes(name)) {
                     const pad = page.locator('.score-pad').first();
                     assert(!await pad.isVisible(), 'Legacy stepper is the fresh-install default');
-                    await page.locator('[data-score-input-method]').first().evaluate(el => { el.value = 'pad'; el.dispatchEvent(new Event('change')); });
+                    if (name !== 'setup-round.html') {
+                        await page.locator('[data-score-input-method]').first().evaluate(el => { el.value = 'pad'; el.dispatchEvent(new Event('change')); });
+                        assert.strictEqual(await page.locator('[data-act="toggleLargeUi"]').first().evaluate(el => el.closest('details')), null, 'large mode is not nested');
+                    } else {
+                        // На экране активного раунда выбор вида ввода и «Крупно»
+                        // убраны (максимально простой экран) — включаем пад напрямую.
+                        await page.evaluate(() => { document.body.dataset.scoreInput = 'pad'; });
+                    }
                     assert(await pad.isVisible(), 'Modern number pad remains available');
-                    assert.strictEqual(await page.locator('[data-act="toggleLargeUi"]').first().evaluate(el => el.closest('details')), null, 'large mode is not nested');
                     await page.evaluate(() => {
                         window.scScore = 0; window.mkScore = 0; window.myScore = 0;
                         window.updDisp = function () {}; window.updScoreDisplay = function () {};

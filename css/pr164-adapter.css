@@ -1130,3 +1130,38 @@ body .pp-section h3 {
     body .pp-tiles { grid-template-columns: repeat(2, 1fr); }
     body .pp-tile-val { font-size: 21px; }
 }
+
+/* ============ Экран ввода счёта: простой вид ============ */
+/* Под крупным счётом — только цифра, без подписи «Фора +N». */
+body #active-scoring-view .hcp-caption { display: none !important; }
+/* Шеврон разворота карточки не должен наезжать на заголовок сводки. */
+body .scorecard-fold > .card > h2 { padding-right: 42px; }
+/* Компактная сводка группы: игроки и счёт в свёрнутом виде. */
+body .gs-compact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 13.5px;
+}
+body .gs-compact-row:last-child { border-bottom: 0; }
+body .gs-compact-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--white);
+    font-weight: 600;
+}
+body .gs-compact-name .tee-pill { flex-shrink: 0; }
+body .gs-compact-score {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-size: 14px;
+}
+body .gs-compact-score b { color: var(--white); font-size: 15px; }
+body.sun-mode .gs-compact-row { border-bottom-color: var(--border); }

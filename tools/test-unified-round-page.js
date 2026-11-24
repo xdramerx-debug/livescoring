@@ -41,7 +41,14 @@ ok(!/id="read-only-view"/.test(rawHtml), 'нет отдельного одино
 ok(!/id="g-disp"/.test(rawHtml), 'нет дублирующего индикатора счёта g-disp');
 ok(/id="active-scoring-view"/.test(rawHtml), 'есть общий экран ввода #active-scoring-view');
 ok(/id="play-deadline"/.test(rawHtml), 'на общем экране есть дедлайн лунки (раньше только в соло)');
-ok(/id="play-round-info"/.test(rawHtml), 'на общем экране есть строка данных раунда');
+ok(!/id="play-round-info"/.test(rawHtml), 'строка данных раунда убрана (максимально простой экран)');
+ok(!/id="my-result"|id="mark-result"/.test(rawHtml), 'плашки «E · Par» под счётом убраны');
+ok(!/id="my-compare"|id="mark-compare"/.test(rawHtml), 'строки статусов сравнения (⏳/✅/⚠️) убраны');
+ok(!/class="score-toolbar"/.test(rawHtml), 'панель «Отменить лунку» / «Крупно» убрана');
+ok(!/id="play-holes-toggle"/.test(rawHtml), 'выпадашка «Лунки» убрана — сетка лунок развёрнута сверху');
+ok(/id="play-holes-nav"/.test(rawHtml), 'сетка лунок на месте');
+ok(/id="play-group-summary-compact"/.test(rawHtml), 'сводка группы в свёрнутом виде показывает игроков и счёт');
+ok(!/Параметры раунда/.test(rawHtml), 'блок «Параметры раунда» убран');
 
 const html = rawHtml.replace(/<script src="https?:[^"]*"><\/script>/g, '');
 const dom = new JSDOM(html, {
@@ -152,8 +159,8 @@ nextFrame(function () {
     const invite = doc.getElementById('invite-qrs-card');
     ok(invite.classList.contains('hidden'), 'соло-раунд: QR-подключения скрыты (подключать некого)');
 
-    const info = doc.getElementById('play-round-info');
-    ok(!!info && info.innerHTML.indexOf('Иван Соло') !== -1, 'строка данных раунда заполнена игроком');
+    const info = doc.getElementById('play-group-summary-compact');
+    ok(!!info && info.textContent.indexOf('Иван Соло') !== -1, 'сводка группы показывает игроков и счёт');
     const dl = doc.getElementById('play-deadline');
     ok(!!dl && dl.textContent !== '—', 'дедлайн лунки рассчитан → ' + (dl ? dl.textContent : ''));
 

@@ -65,7 +65,7 @@ function buildCourseCard() {
 
     // Front 9 (OUT). Заголовками «Первые 9 / Вторые 9» больше не дублируем
     // разбиение девяток — оно и так читается из колонок OUT/IN.
-    var html = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
+    var html = '<div class="pestovo-modern-scorecard msc-course-panel">';
     html += '<div class="msc-tile-grid msc-grid-9">';
 
     // Header row
@@ -75,7 +75,7 @@ function buildCourseCard() {
 
     // Tees
     teeKeys.forEach(function(tKey) {
-        html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
+        html += '<div class="msc-tile msc-lbl-' + tKey + '"><span class="msc-tee-dot msc-dot-' + tKey + '"></span>' + t('tee_' + tKey) + '</div>';
         var sum = 0;
         for (var h = 1; h <= 9; h++) {
             var d = holeDist(h, tKey);
@@ -105,18 +105,18 @@ function buildCourseCard() {
     html += '</div></div>';
 
     // Back 9 (IN & TOTAL)
-    html += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
+    html += '<div class="pestovo-modern-scorecard msc-course-panel">';
     html += '<div class="msc-tile-grid msc-grid-10">';
 
     // Header row
     html += '<div class="msc-tile msc-hdr-lbl"><span class="msc-total-long">' + hdrLblLong + '</span><span class="msc-total-short">' + hdrLblShort + '</span></div>';
     for (h = 10; h <= 18; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
     html += '<div class="msc-tile msc-hdr-tot">' + inStr + '</div>';
-    html += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);"><span class="msc-total-long">' + totalStr + '</span><span class="msc-total-short">Σ</span></div>';
+    html += '<div class="msc-tile msc-hdr-tot msc-hdr-final"><span class="msc-total-long">' + totalStr + '</span><span class="msc-total-short">Σ</span></div>';
 
     // Tees
     teeKeys.forEach(function(tKey) {
-        html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
+        html += '<div class="msc-tile msc-lbl-' + tKey + '"><span class="msc-tee-dot msc-dot-' + tKey + '"></span>' + t('tee_' + tKey) + '</div>';
         var sumI = 0, sumO = 0;
         for (var h = 1; h <= 9; h++) sumO += holeDist(h, tKey);
         for (h = 10; h <= 18; h++) {
@@ -125,7 +125,7 @@ function buildCourseCard() {
             html += '<div class="msc-tile msc-val-' + tKey + '">' + d + '</div>';
         }
         html += '<div class="msc-tile msc-tot-' + tKey + '">' + sumI + '</div>';
-        html += '<div class="msc-tile msc-tot-' + tKey + '" style="font-weight:900;">' + (sumO + sumI) + '</div>';
+        html += '<div class="msc-tile msc-tot-' + tKey + ' msc-tot-final">' + (sumO + sumI) + '</div>';
     });
 
     // Par row
@@ -137,7 +137,7 @@ function buildCourseCard() {
         html += '<div class="msc-tile msc-val-par">' + p + '</div>';
     }
     html += '<div class="msc-tile msc-tot-par">' + pI + '</div>';
-    html += '<div class="msc-tile msc-tot-par" style="font-weight:900;">' + (pO + pI) + '</div>';
+    html += '<div class="msc-tile msc-tot-par msc-tot-final">' + (pO + pI) + '</div>';
 
     // Index row
     html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
@@ -145,7 +145,7 @@ function buildCourseCard() {
         html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
     }
     html += '<div class="msc-tile msc-tot-idx">—</div>';
-    html += '<div class="msc-tile msc-tot-idx">—</div>';
+    html += '<div class="msc-tile msc-tot-idx msc-tot-final">—</div>';
 
     html += '</div></div>';
 

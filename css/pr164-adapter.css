@@ -492,32 +492,42 @@ body.sun-mode .club-sc-total b { color: #0b2912; }
 body.sun-mode .sc-hole-details > summary { border-top-color: #899b8d; }
 
 /* ── Цветные метки результата лунки ─────────────────────────────────────
-   Цифра счёта садится в кольцо (игл/берди/пар) или квадрат (боги/дабл+);
-   у игла и дабла — двойная рамка. Форма + цвет + слово в title/aria-label.
-   Классы r-eag…r-dbl ставит holeResClass (js/format.js). */
+   Форма по правилу клуба: игл — треугольник, берди — кружок, пар —
+   квадрат, боги — жёлтый квадрат, дабл и выше — красный квадрат.
+   Форма + цвет + слово в title/aria-label. Классы r-eag…r-dbl ставит
+   holeResClass (js/format.js). */
 body .sc-digit {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 24px; height: 24px; padding: 0 3px;
-    border: 2px solid transparent; border-radius: 50%;
+    border: 2px solid transparent; border-radius: 5px;
     font-weight: 800; line-height: 1; box-sizing: border-box; vertical-align: middle;
 }
-body .sc-digit.r-par { border-color: rgba(136, 164, 144, .55); color: var(--white); background: rgba(255, 255, 255, .05); }
-body .sc-digit.r-bir { border-color: #2ecc71; color: #2ecc71; background: rgba(46, 204, 113, .12); }
-body .sc-digit.r-eag { border-color: #f39c12; color: #f5b942; background: rgba(243, 156, 18, .14); box-shadow: 0 0 0 2px rgba(243, 156, 18, .3); }
-body .sc-digit.r-bog { border-radius: 6px; border-color: #5aade0; color: #7cc3ee; background: rgba(90, 173, 224, .12); }
-body .sc-digit.r-dbl { border-radius: 6px; border-color: #e05a4a; color: #ff8171; background: rgba(224, 90, 74, .16); box-shadow: 0 0 0 2px rgba(224, 90, 74, .3); }
+body .sc-digit.r-par { border-color: rgba(136, 164, 144, .55); color: var(--white) !important; background: rgba(255, 255, 255, .05) !important; }
+body .sc-digit.r-bir { border-radius: 50%; border-color: #2ecc71; color: #2ecc71 !important; background: rgba(46, 204, 113, .12) !important; }
+/* Игл и лучше — золотой треугольник: контур и лёгкая заливка в SVG-фоне.
+   Цифра садится пониже и чуть мельче — вписывается в треугольник. */
+body .sc-digit.r-eag {
+    border: none; border-radius: 0;
+    min-width: 27px; height: 24px;
+    align-items: flex-end; padding-bottom: 2px;
+    font-size: .72em;
+    color: #f5b942 !important; box-shadow: none;
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyOCAyOCc+PHBvbHlnb24gcG9pbnRzPScxNCwzLjIgMjUuNCwyNC40IDIuNiwyNC40JyBmaWxsPScjZjM5YzEyJyBmaWxsLW9wYWNpdHk9JzAuMTInIHN0cm9rZT0nI2YzOWMxMicgc3Ryb2tlLXdpZHRoPScyLjInIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48L3N2Zz4=") center / 100% 100% no-repeat !important;
+}
+body .sc-digit.r-bog { border-color: #d9b52c; color: #e8c94e !important; background: rgba(217, 181, 44, .13) !important; }
+body .sc-digit.r-dbl { border-color: #e05a4a; color: #ff8171 !important; background: rgba(224, 90, 74, .16) !important; box-shadow: 0 0 0 2px rgba(224, 90, 74, .3); }
 /* Крупные раскладки карточки (3/5): кольцо растёт вместе с цифрой. */
 body .club-sc[data-sc-view="3"] .sc-digit { min-width: 32px; height: 32px; }
 body .club-sc[data-sc-view="5"] .sc-digit { min-width: 42px; height: 42px; }
 @media (max-width: 380px) {
-    body .sc-digit { min-width: 20px; height: 20px; }
+    body .sc-digit, body .sc-digit.r-eag { min-width: 20px; height: 20px; }
 }
 /* Плитка лунки несёт мягкую заливку результата; в таблице группы (chips
    .gsg-score) метка — только кольцо вокруг цифры, без двойной пластины. */
 body .club-sc .club-sc-cell.r-eag { background: rgba(243, 156, 18, .1) !important; color: inherit !important; }
 body .club-sc .club-sc-cell.r-bir { background: rgba(46, 204, 113, .08) !important; color: inherit !important; }
 body .club-sc .club-sc-cell.r-par { background: rgba(255, 255, 255, .04) !important; color: inherit !important; }
-body .club-sc .club-sc-cell.r-bog { background: rgba(90, 173, 224, .08) !important; color: inherit !important; }
+body .club-sc .club-sc-cell.r-bog { background: rgba(217, 181, 44, .09) !important; color: inherit !important; }
 body .club-sc .club-sc-cell.r-dbl { background: rgba(224, 90, 74, .1) !important; color: inherit !important; }
 body .club-sc .gsg-score.r-eag, body .club-sc .gsg-score.r-bir, body .club-sc .gsg-score.r-par,
 body .club-sc .gsg-score.r-bog, body .club-sc .gsg-score.r-dbl {
@@ -535,15 +545,18 @@ body .smk-item { display: inline-flex; align-items: center; gap: 5px; }
 body .sc-digit.smk { min-width: 14px; height: 14px; padding: 0; font-size: 0; }
 
 /* Светлая тема: те же метки на бумаге. */
-body.sun-mode .sc-digit.r-par { border-color: #899b8d; color: #253b2b; background: #f7faf8; }
-body.sun-mode .sc-digit.r-bir { border-color: #1e7e34; color: #1e7e34; background: #e9f7ee; }
-body.sun-mode .sc-digit.r-eag { border-color: #b8860b; color: #8a6d1f; background: #fff3d9; box-shadow: 0 0 0 2px rgba(184, 134, 11, .3); }
-body.sun-mode .sc-digit.r-bog { border-color: #2c6f9e; color: #2c6f9e; background: #eaf2f9; }
-body.sun-mode .sc-digit.r-dbl { border-color: #b02a1f; color: #b02a1f; background: #fdecea; box-shadow: 0 0 0 2px rgba(176, 42, 31, .25); }
+body.sun-mode .sc-digit.r-par { border-color: #899b8d; color: #253b2b !important; background: #f7faf8 !important; }
+body.sun-mode .sc-digit.r-bir { border-color: #1e7e34; color: #1e7e34 !important; background: #e9f7ee !important; }
+body.sun-mode .sc-digit.r-eag {
+    border: none; color: #8a6d1f !important; box-shadow: none;
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyOCAyOCc+PHBvbHlnb24gcG9pbnRzPScxNCwzLjIgMjUuNCwyNC40IDIuNiwyNC40JyBmaWxsPScjYjg4NjBiJyBmaWxsLW9wYWNpdHk9JzAuMTQnIHN0cm9rZT0nI2I4ODYwYicgc3Ryb2tlLXdpZHRoPScyLjInIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48L3N2Zz4=") center / 100% 100% no-repeat !important;
+}
+body.sun-mode .sc-digit.r-bog { border-color: #a67c00; color: #8a6d1f !important; background: #fff5cc !important; }
+body.sun-mode .sc-digit.r-dbl { border-color: #b02a1f; color: #b02a1f !important; background: #fdecea !important; box-shadow: 0 0 0 2px rgba(176, 42, 31, .25); }
 body.sun-mode .club-sc .club-sc-cell.r-eag { background: #fff3d9 !important; }
 body.sun-mode .club-sc .club-sc-cell.r-bir { background: #e9f7ee !important; }
 body.sun-mode .club-sc .club-sc-cell.r-par { background: #f4f8f5 !important; }
-body.sun-mode .club-sc .club-sc-cell.r-bog { background: #eaf2f9 !important; }
+body.sun-mode .club-sc .club-sc-cell.r-bog { background: #fff5cc !important; }
 body.sun-mode .club-sc .club-sc-cell.r-dbl { background: #fdecea !important; }
 body.sun-mode .club-sc .gsg-score.r-eag, body.sun-mode .club-sc .gsg-score.r-bir, body.sun-mode .club-sc .gsg-score.r-par,
 body.sun-mode .club-sc .gsg-score.r-bog, body.sun-mode .club-sc .gsg-score.r-dbl {
@@ -870,25 +883,25 @@ body .live-who-list .lb-row .lwl-toggle {
 }
 body .live-who-list .lb-row .lwl-name {
     order: 1; flex: 1 1 auto; min-width: 0;
-    font-size: 15px; font-weight: 800; color: var(--white); letter-spacing: .1px;
+    font-size: 14px; font-weight: 800; color: var(--white); letter-spacing: .1px;
 }
 body .live-who-list .lb-row .lwl-name > i { color: var(--gold); font-size: 13px; opacity: 1; }
 body .live-who-list .lb-row .lwl-score { order: 2; flex: 0 0 auto; display: inline-flex; align-items: center; }
 body .live-who-list .lb-row .lwl-meta-line {
     order: 4; flex: 1 1 100%; min-width: 0;
-    display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
-    padding-left: 25px; color: var(--muted);
+    display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px;
+    padding-left: 22px; color: var(--muted);
 }
 body .live-who-list .lb-row .lwl-hole {
     display: inline-flex; align-items: center; gap: 5px;
     min-height: 0; padding: 0; border: 0; border-radius: 0;
     background: transparent; color: var(--muted);
-    font-size: 12.5px; font-weight: 600;
+    font-size: 11.5px; font-weight: 600;
 }
 body .live-who-list .lb-row .lwl-hole i { color: var(--gold); font-size: 10px; margin-right: 0; }
 body .live-who-list .lb-row .lwl-start {
     display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px;
-    min-width: 0; color: var(--muted); font-size: 12px;
+    min-width: 0; color: var(--muted); font-size: 11.5px;
 }
 body .live-who-list .lb-row .lwl-start .pv-badge {
     font-size: 10px; padding: 2px 7px;

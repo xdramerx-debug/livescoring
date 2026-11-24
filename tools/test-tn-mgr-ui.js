@@ -437,10 +437,18 @@ function run() {
                 search.placeholder.indexOf('по имени или фамилии') !== -1, search.placeholder);
             check('счётчики участников отрисованы', out.indexOf('Всего участников') !== -1);
             type(search, 'Smirnov');       // латиница → русская фамилия
-            return wait(60).then(function () {
-                var suggestions = $$('.tnm-suggestion');
+            // Подсказки рисуются после дебаунса поиска — под параллельной
+            // нагрузкой 60 мс не хватало, и тест флакал. Ждём до 3 секунд.
+            return (function pollSuggestions(attemptsLeft) {
+                return wait(60).then(function () {
+                    var list = $$('.tnm-suggestion');
+                    if (!list.length && attemptsLeft > 0) return pollSuggestions(attemptsLeft - 1);
+                    return list;
+                });
+            })(50).then(function (suggestions) {
                 check('поиск латиницей находит игрока из справочника (RU↔EN)', suggestions.length >= 1, suggestions.length);
                 var first = suggestions[0];
+                if (!first) return null;
                 check('подсказка — «Смирнов Алексей»', first.getAttribute('data-name').indexOf('Смирнов') !== -1, first.getAttribute('data-name'));
                 click(first);
                 return wait(80);

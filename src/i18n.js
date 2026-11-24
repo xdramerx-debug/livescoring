@@ -485,6 +485,8 @@ export var I18N = {
         pv_offline_title: 'Нет сети',
         pv_offline_text: 'Нет сети. Счёт сохранится на этом устройстве и отправится, когда связь вернётся.',
         pv_offline_retry: 'Повторить',
+        data_load_error_title: 'Не удалось загрузить данные',
+        data_load_error_text: 'Проверьте интернет-соединение и нажмите «Повторить»',
         pv_synced: 'Счёт отправлен',
 
         course_card_sub: '18 лунок · Пар 72 · Все ТИ (метры)',
@@ -1457,6 +1459,8 @@ export var I18N = {
         pv_offline_title: 'Offline',
         pv_offline_text: 'Offline. Scores are kept on this device and sent when the connection returns.',
         pv_offline_retry: 'Retry',
+        data_load_error_title: 'Couldn\'t load data',
+        data_load_error_text: 'Check your internet connection and tap Retry',
         pv_synced: 'Scores sent',
 
         course_card_sub: '18 Holes · Par 72 · All Tees (meters)',

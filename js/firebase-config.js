@@ -42,8 +42,7 @@ function pestovoFunctions() {
     if (!pestovoFnPromise) {
         pestovoFnPromise = new Promise(function (resolve, reject) {
             var s = document.createElement('script');
-            s.src = 'https://www.gstatic.com/firebasejs/' + PESTOVO_FIREBASE_SDK_VERSION +
-                '/firebase-functions-compat.js';
+            s.src = 'js/vendor/firebase-functions-compat.js';
             s.async = true;
             s.onload = function () {
                 if (typeof firebase !== 'undefined' && firebase.functions) {

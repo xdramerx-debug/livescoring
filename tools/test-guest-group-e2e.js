@@ -142,6 +142,9 @@ async function waitForPage(win, doc, playersCount) {
 async function runScenario(expectSuccess, label, players) {
     let html = fs.readFileSync(path.join(ROOT, 'setup-round.html'), 'utf8');
     html = html.replace(/<script src="https?:[^"]*"><\/script>/g, '');
+    // SDK self-hosted в js/vendor/ (теги выше вырезали только remote) —
+    // настоящий firebase перетёр бы фейковый из STUB, оставляем фейк.
+    html = html.replace(/<script src="js\/vendor\/firebase-[^"]*"><\/script>/g, '');
     // jsdom не выполняет <script type="module"> — фундамент (t, toast,
     // currentLang, …) подставляем семью классическими тегами, как делает
     // tools/browser-check.js для своего classic-варианта (тот же порядок).

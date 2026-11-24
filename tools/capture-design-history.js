@@ -79,7 +79,7 @@ function seed() {
                 }
                 const file = decodeURIComponent(url.pathname.slice(1));
                 if (file.startsWith('__fonts/')) return route.fulfill({ body: fs.readFileSync(path.join(root, 'fonts', path.basename(file))), contentType: 'font/woff2' });
-                if (file === 'js/firebase-config.js' || file === 'sw.js') return route.fulfill({ contentType: 'application/javascript', body: '/* fixture supplies globals; no production connection */' });
+                if (file === 'js/firebase-config.js' || file === 'sw.js' || file.indexOf('js/vendor/firebase-') === 0) return route.fulfill({ contentType: 'application/javascript', body: '/* fixture supplies globals; no production connection */' });
                 const bytes = blob(file);
                 if (!bytes) return route.fulfill({ status: 404, body: '' });
                 const ext = path.extname(file);

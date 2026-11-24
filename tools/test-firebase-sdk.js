@@ -4,20 +4,20 @@
  *
  * Что ловит:
  *
- * 1. Разнобой версий. Страницы грузят CDN-бандлы firebase-app/database/auth-
- *    compat. Если одну поднять, а вторую забыть, в одном приложении окажутся
- *    два экземпляра SDK — это не падает сразу, а расходится по поведению
- *    (второй initializeApp, свои слушатели, свои очереди записи). Версия теперь
- *    живёт одной константой в js/firebase-config.js, тест сверяет с ней все
- *    ссылки в HTML и в js/*.js.
+ * 1. Разнобой версий. Страницы грузят firebase-app/database/auth-compat из
+ *    js/vendor/ (self-hosted: gstatic не закэширован Service Worker'ом, и на
+ *    слабой мобильной сети SDK с CDN просто не доезжал — секции данных
+ *    зависали на скелетонах навсегда). Версия живёт одной константой в
+ *    js/firebase-config.js; тест сверяет с ней версии внутри vendored-бандлов
+ *    и проверяет, что ссылки на gstatic вообще исчезли.
  *
  * 2. Порядок тегов. database-compat и auth-compat обязаны идти после
  *    app-compat: они расширяют пространство firebase.*, а не создают его.
  *
- * 3. Лишний бандл. firebase-functions-compat.js (~30 КБ) раньше грузился
- *    тегом на 12 страницах, хотя callable-вызовов на них могло не быть.
- *    Теперь он подгружается по требованию из pestovoFunctions(), поэтому
- *    статический тег на странице — это возврат лишнего трафика.
+ * 3. Лишний бандл. firebase-functions-compat.js (~10 КБ) грузится тегом
+ *    только там, где нужен — он подгружается по требованию из
+ *    pestovoFunctions(), поэтому статический тег на странице — это возврат
+ *    лишнего трафика.
  *
  * 4. Прямые вызовы firebase.functions() вне firebase-config.js: с ленивой
  *    загрузкой firebase.functions появляется только после подгрузки бандла,
@@ -37,45 +37,64 @@ const VERSION = versionMatch[1];
 assert.ok(/^\d+\.\d+\.\d+$/.test(VERSION), CONFIG + ': версия SDK выглядит как семвер: ' + VERSION);
 
 const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html'));
-const SDK_RE = /gstatic\.com\/firebasejs\/(\d+\.\d+\.\d+)\/(firebase-[a-z-]+)\.js/g;
+const VENDOR_RE = /src="js\/vendor\/(firebase-[a-z-]+)\.js(\?v=[0-9a-f]+)?"/g;
 
-// ── 1-2. Версия и порядок тегов ───────────────────────────────────────────
-const versions = new Set();
+// ── 1. SDK self-hosted: ссылок на gstatic больше нет нигде ────────────────
+const scanFiles = pages.map(f => path.join(ROOT, f))
+    .concat([path.join(ROOT, CONFIG)])
+    .concat(fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')).map(f => path.join(ROOT, 'js', f)))
+    .concat([path.join(ROOT, 'sw.js')]);
+for (const file of scanFiles) {
+    const src = fs.readFileSync(file, 'utf8');
+    assert.ok(src.indexOf('gstatic.com/firebasejs') === -1,
+        path.relative(ROOT, file) + ': остались ссылки на gstatic.com/firebasejs — ' +
+        'SDK должен грузиться из js/vendor/ (CDN не переживает слабую мобильную сеть)');
+}
+
+const vendorBundles = ['firebase-app-compat.js', 'firebase-database-compat.js',
+    'firebase-auth-compat.js', 'firebase-functions-compat.js'];
+for (const b of vendorBundles) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'js', 'vendor', b)), 'нет js/vendor/' + b);
+}
+// Бандл app-compat несёт строку версии — по нему сверяем соответствие
+// PESTOVO_FIREBASE_SDK_VERSION (остальные три из того же npm-дропа
+// firebase@<версия> идут в комплекте с этим файлом).
+{
+    const src = fs.readFileSync(path.join(ROOT, 'js', 'vendor', 'firebase-app-compat.js'), 'utf8');
+    assert.ok(src.indexOf('"' + VERSION + '"') !== -1,
+        'js/vendor/firebase-app-compat.js: внутри нет версии "' + VERSION + '" — ' +
+        'бандл из другого релиза SDK, нужен npm-пакет firebase@' + VERSION);
+}
+
+// ── 2. Версия и порядок тегов на страницах ────────────────────────────────
 let pagesWithSdk = 0;
 for (const page of pages) {
     const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
-    const tags = [...html.matchAll(SDK_RE)].map(m => ({ version: m[1], bundle: m[2] }));
+    const tags = [...html.matchAll(VENDOR_RE)].map(m => m[1]);
     if (!tags.length) continue;
     pagesWithSdk++;
 
-    for (const tag of tags) {
-        versions.add(tag.version);
-        assert.strictEqual(tag.version, VERSION,
-            page + ': версия SDK ' + tag.version + ' не совпадает с ' + CONFIG + ' (' + VERSION + ')');
-        assert.notStrictEqual(tag.bundle, 'firebase-functions-compat',
+    for (const bundle of tags) {
+        assert.notStrictEqual(bundle, 'firebase-functions-compat',
             page + ': firebase-functions-compat грузится тегом — он должен подгружаться ' +
             'по требованию из pestovoFunctions()');
     }
 
-    const names = tags.map(t => t.bundle);
-    const appIdx = names.indexOf('firebase-app-compat');
+    const appIdx = tags.indexOf('firebase-app-compat');
     assert.ok(appIdx !== -1, page + ': не подключён firebase-app-compat.js');
     for (const dep of ['firebase-database-compat', 'firebase-auth-compat']) {
-        const idx = names.indexOf(dep);
+        const idx = tags.indexOf(dep);
         if (idx === -1) continue;
         assert.ok(idx > appIdx, page + ': ' + dep + '.js обязан идти после firebase-app-compat.js');
     }
 }
 assert.ok(pagesWithSdk >= 10, 'страниц с Firebase SDK не меньше 10, найдено ' + pagesWithSdk);
-assert.strictEqual(versions.size, 1, 'все страницы обязаны грузить одну версию SDK, найдено: ' +
-    [...versions].join(', '));
 
 // ── 3. Ленивая загрузка functions-compat ──────────────────────────────────
 assert.ok(/function\s+pestovoFunctions\s*\(/.test(configSrc),
     CONFIG + ': нет функции pestovoFunctions() — ленивой загрузки бандла функций');
-assert.ok(configSrc.indexOf("'/firebase-functions-compat.js'") !== -1 ||
-    configSrc.indexOf('firebase-functions-compat.js') !== -1,
-    CONFIG + ': pestovoFunctions() не подгружает firebase-functions-compat.js');
+assert.ok(configSrc.indexOf("'js/vendor/firebase-functions-compat.js'") !== -1,
+    CONFIG + ': pestovoFunctions() не подгружает js/vendor/firebase-functions-compat.js');
 
 // ── 4. Ни одного прямого firebase.functions() вне конфигурации ────────────
 const direct = [];
@@ -102,5 +121,5 @@ for (const page of pages) {
         ', но нет ' + CONFIG + ' — pestovoFunctions() будет не определён');
 }
 
-console.log('Firebase SDK: версия ' + VERSION + ' одна на всех (' + pagesWithSdk +
+console.log('Firebase SDK ' + VERSION + ': self-hosted в js/vendor/ (' + pagesWithSdk +
     ' страниц), порядок тегов верен, functions-compat грузится по требованию');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.140.0-bfb34c82';
+const CACHE_NAME = 'pestovo-v1.140.0-b99528dc';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -58,7 +58,7 @@ const STATIC_ASSETS = [
     'css/clarity.css?v=e5b0c97a',
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
-    'css/fontawesome-subset.css?v=f83958d8',
+    'css/fontawesome-subset.css?v=a9cfbaab',
     'css/fonts-local.css?v=8523462a',
     'css/pr164-adapter.css?v=b329e904',
     'css/pr164.css?v=a5317bf8',
@@ -68,13 +68,13 @@ const STATIC_ASSETS = [
     'css/theme-v2.css?v=265c7b83',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=dc2bdd18',
-    'dist/livescoring-modules.js?v=76ee29b3',
-    'js/app.js?v=ee4af962',
+    'dist/livescoring-modules.js?v=399c54d3',
+    'js/app.js?v=477785d1',
     'js/auth.js?v=d568c5fb',
     'js/clarity.js?v=2804c967',
     'js/design-system.js?v=b78132a0',
     'js/entry-scorecard.js?v=9b8c4167',
-    'js/firebase-config.js?v=032a2499',
+    'js/firebase-config.js?v=715c9693',
     'js/handicap.js?v=7cb64b97',
     'js/kiosk-mode-detect.js?v=b6405ebe',
     'js/leaderboard.js?v=c9a25a32',
@@ -108,7 +108,10 @@ const STATIC_ASSETS = [
     'js/tournaments.js?v=0b5653af',
     'js/ui-events.js?v=3d524484',
     'js/utils-scorecards.js?v=6c370449',
-    'js/utils.js?v=a0f1e178',
+    'js/utils.js?v=6cbf9e03',
+    'js/vendor/firebase-app-compat.js?v=3d08dff5',
+    'js/vendor/firebase-auth-compat.js?v=00a09fb2',
+    'js/vendor/firebase-database-compat.js?v=5d5044fc',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
@@ -120,7 +123,7 @@ const STATIC_ASSETS = [
     'img/logo.png',
     'fonts/fa-brands-400-subset-d97c8617.woff2',
     'fonts/fa-regular-400-subset-8779ffa1.woff2',
-    'fonts/fa-solid-900-subset-d8671449.woff2',
+    'fonts/fa-solid-900-subset-4d7f1b32.woff2',
     'fonts/inter-cyrillic-400-normal.woff2',
     'fonts/inter-cyrillic-600-normal.woff2',
     'fonts/inter-cyrillic-700-normal.woff2',

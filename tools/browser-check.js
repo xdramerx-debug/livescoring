@@ -410,6 +410,11 @@ async function loadPage(launch, base, page, variant) {
     // Service Worker не должен участвовать в проверке. Регистрируется ПОСЛЕ
     // общего правила: в playwright приоритет у более позднего обработчика.
     await pageObj.route(/sw\.js(\?|$)/, function (route) { route.abort(); });
+    // SDK self-hosted в js/vendor/ — настоящий firebase перетёр бы стаб из
+    // addInitScript, поэтому его файлы отдаём пустыми (как раньше глушился CDN).
+    await pageObj.route(/js\/vendor\/firebase-[^?"]+\.js/, function (route) {
+        return route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* sdk stubbed in check */' });
+    });
 
     const target = base + '/' + page + '?__variant=' + variant;
     try {

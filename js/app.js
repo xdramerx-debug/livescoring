@@ -9,10 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     initNav();
     buildCourseCard();
-    loadLiveRounds();
-    loadRecentResults();
-    loadClubStats();
-    loadMyActiveRounds('my-active-rounds-container');
+    if (typeof db === 'undefined' || !db) {
+        // Firebase SDK не доехал (слабая мобильная сеть, блокировка CDN):
+        // честно показываем ошибку загрузки вместо вечных скелетонов.
+        showHomeDataError();
+    } else {
+        loadLiveRounds();
+        loadRecentResults();
+        loadClubStats();
+        loadMyActiveRounds('my-active-rounds-container');
+        monitorHomeDataConnection();
+    }
     // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
@@ -935,6 +942,56 @@ function syncHomeLiveChips() {
     });
 }
 
+// ── ОШИБКА ЗАГРУЗКИ ДАННЫХ ГЛАВНОЙ ─────────────────────────────────────────
+// Если SDK не загрузился или база недоступна, секции «Сейчас на поле» и
+// «Последние результаты» не должны вечно держать скелетоны — показываем
+// понятную ошибку с кнопкой «Повторить» (RU/EN через data-i18n).
+function homeDataErrorHtml() {
+    var title = typeof t === 'function' ? t('data_load_error_title') : 'Не удалось загрузить данные';
+    var text = typeof t === 'function' ? t('data_load_error_text') : 'Проверьте интернет-соединение и нажмите «Повторить»';
+    var retry = typeof t === 'function' ? t('pv_offline_retry') : 'Повторить';
+    return '<div class="empty">' +
+        '<i class="fas fa-cloud-arrow-down"></i>' +
+        '<p><span data-i18n="data_load_error_title">' + title + '</span></p>' +
+        '<p><span data-i18n="data_load_error_text">' + text + '</span></p>' +
+        '<button type="button" class="btn btn-g btn-sm" data-act="retryDataLoad" style="margin-top:12px;">' +
+        '<i class="fas fa-rotate-right"></i> <span data-i18n="pv_offline_retry">' + retry + '</span></button>' +
+        '</div>';
+}
+
+// Заменяем скелетоны на ошибку: тронутые данные не перетираем — контейнер,
+// который уже что-то показывает, остаётся как есть (поздний рендер самоизлечит).
+function showHomeDataError() {
+    ['live-rounds', 'recent-results'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && el.innerHTML.indexOf('pv-skel') !== -1) el.innerHTML = homeDataErrorHtml();
+    });
+}
+window.retryDataLoad = function() { window.location.reload(); };
+
+// Контроль соединения с базой: RTDB молча ретраит подключения, и «value»
+// может не прийти никогда (заблокированный firebaseio.com, фильтры
+// оператора). Если за 12 секунд подключение не поднялось — показываем
+// ошибку вместо скелетонов. Поздние данные всё равно отрисуются поверх.
+var homeConnMonitorStarted = false;
+function monitorHomeDataConnection() {
+    if (typeof db === 'undefined' || !db) return;
+    if (homeConnMonitorStarted) return;
+    homeConnMonitorStarted = true;
+    var connected = false;
+    try {
+        db.ref('.info/connected').on('value', function(snap) {
+            if (snap && snap.val()) connected = true;
+        });
+    } catch (e) {
+        console.warn("[silent]", e);
+        return;
+    }
+    setTimeout(function() {
+        if (!connected) showHomeDataError();
+    }, 12000);
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
@@ -951,7 +1008,7 @@ function loadLiveRounds() {
         // иначе активный турнир «ждёт» rounds и не появляется на главной.
         renderHomeLiveRounds(homeLastRoundsData || {});
         if (homeLastRecentData) renderHomeRecentResults(homeLastRecentData);
-    });
+    }, function() { showHomeDataError(); });
 
     // «Сейчас на поле» = раунды со статусом active ПЛЮС scheduled, у которых
     // наступило время старта (их поднимает roundsDueForStart). Подписываемся
@@ -965,7 +1022,7 @@ function loadLiveRounds() {
             homeLiveRoundsByStatus[status] = (snap && snap.val && snap.val()) || {};
             homeLastRoundsData = homeMergeLiveRounds();
             renderHomeLiveRounds(homeLastRoundsData);
-        });
+        }, function() { showHomeDataError(); });
     });
 }
 
@@ -1304,7 +1361,7 @@ function loadRecentResults() {
         db.ref('rounds').orderByChild('status').equalTo('completed'), function(snap) {
         homeLastRecentData = snap.val() || {};
         renderHomeRecentResults(homeLastRecentData);
-    });
+    }, function() { showHomeDataError(); });
 }
 
 function renderHomeRecentResults(data) {
@@ -1340,7 +1397,7 @@ function renderHomeRecentResults(data) {
 
 function loadClubStats() {
     var el = document.getElementById('club-stats');
-    if (!el) return;
+    if (!el || typeof db === 'undefined' || !db) return;
 
     Promise.all([db.ref('rounds').once('value'), db.ref('usersPublic').once('value')]).then(function(snaps) {
         var rounds = snaps[0].val() || {};

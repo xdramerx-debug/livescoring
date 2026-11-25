@@ -65,9 +65,9 @@ function updateScoringHeader() {
             var myP = curRoundData.players && curRoundData.players[myUid];
             var myTee = myP && myP.tee ? myP.tee : (curRoundData.tee || 'wh');
             var d = (typeof holeDist === 'function' ? holeDist(playHole, myTee) : 0);
-            if (d) dist = ' · ' + d + (isEn ? 'm' : 'м');
+            if (d) dist = ' <span style="opacity:.45">•</span> ' + d + (isEn ? ' m' : ' м');
         } catch (e) { console.warn("[silent]", e); }
-        subEl.innerHTML = prog + ' · Par ' + par + dist;
+        subEl.innerHTML = prog + '<span class="scoring-hole-meta">Par <b>' + par + '</b>' + dist + '</span>';
     }
 }
 

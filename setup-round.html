@@ -488,17 +488,17 @@
 
         <div id="group-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
 
-        <div class="round-card scorecard-fold" data-screen-display="scoring" data-display-key="scorecard" style="margin:12px 0;">
-            <div class="card">
-                <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку" data-i18n-title="ui_372a391df1">
+        <div class="card scoring-summary-card" data-screen-display="scoring" data-display-key="scorecard">
+            <button type="button" class="scoring-summary-toggle" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false">
+                <span class="scoring-summary-toggle__title"><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></span>
+                <span class="scoring-summary-toggle__meta">
+                    <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Показать карточку</span>
                     <i class="fas fa-chevron-down" id="group-sc-panel-icon" aria-hidden="true"></i>
-                    <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
-                </button>
-                <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
-                <div id="play-group-summary-compact"></div>
-                <div id="group-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-                    <div id="play-group-summary"></div>
-                </div>
+                </span>
+            </button>
+            <div id="play-group-summary-compact" class="scoring-summary-compact"></div>
+            <div id="group-sc-panel" class="card-scorecard-panel hidden scoring-summary-panel">
+                <div id="play-group-summary"></div>
             </div>
         </div>
 

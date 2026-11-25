@@ -5561,7 +5561,7 @@ body.sun-mode .gsg-thru b { color:#000; }
 /* Input score squares match the shared on-screen scorecard. */
 .entry-score-square { position:relative; display:inline-flex; align-items:center; justify-content:center; width:1.5em; aspect-ratio:1; padding-top:5px; flex:none; line-height:1; font-weight:800; border:1px solid var(--border); border-radius:4px; background:rgba(201,168,76,.08); }
 .entry-handicap { position:absolute; top:4px; right:5px; max-width:calc(100% - 8px); }
-.entry-score-square .hcp-marks { position:static; display:flex; flex-direction:row; flex-wrap:wrap; gap:3px; margin:0; justify-content:flex-end; }
+.entry-score-square .hcp-marks { position:absolute; top:3px; right:3px; display:flex; flex-direction:row; flex-wrap:wrap; gap:2px; margin:0; justify-content:flex-end; }
 .entry-score-square .hm-bar { flex:0 0 2px; width:2px; height:8px; transform:rotate(25deg); background:var(--gold); box-shadow:none; }
 .entry-score-square .hm-minus .hm-bar { background:var(--red, #ff8171); }
 .score-entry { min-width:0; --score-btn:56px; --score-btn-fs:26px; }
@@ -5572,7 +5572,7 @@ body.sun-mode .gsg-thru b { color:#000; }
 .score-entry .entry-hole-number small { display:block; font-size:9px; font-weight:400; }
 .score-entry .hole-btn .entry-score-square { width:28px; max-width:100%; font-size:16px; }
 .score-entry .hole-btn .entry-handicap { top:2px; right:3px; }
-.score-entry .hole-btn .hcp-marks { position:static; gap:2px; }
+.score-entry .hole-btn .hcp-marks { position:absolute; top:3px; right:4px; gap:2px; }
 .score-entry .hole-btn .hm-bar { width:1.5px; flex-basis:1.5px; height:6px; }
 .score-entry .entry-marker { font-size:10px; color:var(--blue, #85c9ff); line-height:1.2; }
 .score-entry .score-disp { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px; }
@@ -6305,7 +6305,7 @@ body.sun-mode .holes-toggle{background:#fff;border-color:#000;color:#000;}
 body.sun-mode .hcp-badge{border:1px solid #000;box-shadow:none;}
 
 /* ── Точка маркера в углу квадрата вместо подписи «М —» ── */
-.entry-marker-dot{position:absolute;bottom:2px;right:3px;width:7px;height:7px;border-radius:50%;background:#5aade0;box-shadow:0 0 5px rgba(90,173,224,.9);}
+.entry-marker-dot{position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:#5aade0;box-shadow:0 0 5px rgba(90,173,224,.9);}
 .entry-marker-dot.mk-bad{background:#e05a4a;box-shadow:0 0 5px rgba(224,90,74,.9);animation:mk-dot-blink 1.1s ease-in-out infinite;}
 @keyframes mk-dot-blink{0%,100%{opacity:1;}50%{opacity:.3;}}
 .hole-btn.active .entry-marker-dot{background:#142017;box-shadow:none;}

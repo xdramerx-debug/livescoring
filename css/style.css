@@ -6082,18 +6082,19 @@ body.sun-mode .sev-device .club-sc-phone{background:#fff;box-shadow:inset 0 0 0 
 }
 @media(max-width:480px){
     .dual-score-split-panel{border-radius:16px!important;}
-    .dual-half{padding:10px 6px 10px!important;gap:6px!important;}
-    .dual-half__name{font-size:12px!important;}
-    .dual-half__score .score-disp{font-size:40px!important;min-height:46px!important;}
-    .dual-half__score .score-disp .entry-score-square{width:58px!important;font-size:36px!important;}
-    .dual-btn{height:50px;min-width:44px;max-width:56px;font-size:22px;border-radius:12px;}
+    .dual-half{padding:10px 10px 10px!important;gap:8px 10px!important;}
+    .dual-half__name{font-size:13px!important;}
+    .dual-half__score .score-disp{font-size:30px!important;min-height:40px!important;}
+    .dual-half__score .score-disp .entry-score-square{width:52px!important;font-size:30px!important;}
+    .dual-btn{height:50px;min-width:44px;max-width:none;flex:1;font-size:22px;border-radius:12px;}
     .dual-split-divider span{width:24px;height:24px;font-size:8px;}
 }
 @media(max-width:360px){
-    .dual-half{padding:8px 4px 8px!important;}
+    .dual-half{padding:8px 8px 8px!important;gap:6px 8px!important;}
     .dual-half__badge{font-size:8.5px;padding:2px 7px;}
-    .dual-half__name{font-size:11px;}
-    .dual-half__score .score-disp{font-size:36px!important;min-height:42px!important;}
+    .dual-half__name{font-size:12px;}
+    .dual-half__score .score-disp{font-size:28px!important;min-height:38px!important;}
+    .dual-half__score .score-disp .entry-score-square{width:46px!important;font-size:28px!important;}
     .dual-btn{height:46px;font-size:20px;}
 }
 
@@ -6221,47 +6222,60 @@ html.score-kiosk .page-head{
     display:block!important;
     margin-top:var(--nav-h,60px)!important;
     margin-bottom:0!important;
-    padding:6px 0!important;
+    padding:10px 0!important;
     position:sticky!important;
     top:var(--nav-h,70px)!important;
     z-index:20!important;
-    background:linear-gradient(180deg, rgba(11,26,14,.96) 0%, rgba(11,26,14,.88) 100%)!important;
+    background:linear-gradient(180deg, rgba(11,26,14,.97) 0%, rgba(11,26,14,.92) 100%)!important;
     backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;
-    border-bottom:1px solid rgba(201,168,76,.22)!important;
-    box-shadow:0 4px 20px rgba(0,0,0,.25)!important;
-    transition:background .25s ease!important;
+    border-bottom:1px solid rgba(201,168,76,.18)!important;
+    box-shadow:0 4px 20px rgba(0,0,0,.22)!important;
+}
+.page-head.scoring-compact .container,
+html.score-kiosk .page-head .container{
+    display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px 16px!important;
 }
 .page-head.scoring-compact .page-title,
 html.score-kiosk .page-head .page-title{
-    margin-bottom:2px!important;
-    overflow-wrap:anywhere;
-    font-size:14px!important;line-height:1.2!important;
+    margin:0!important;min-width:0;
+    font-size:clamp(15px,2vw,20px)!important;line-height:1.2!important;
     display:flex!important;align-items:center!important;gap:8px!important;
-    font-weight:800!important;
+    font-weight:800!important;letter-spacing:.01em;
+    color:var(--white)!important;
 }
 .page-head.scoring-compact .page-title::before{
-    content:'';width:6px;height:6px;border-radius:50%;flex:none;
+    content:'';width:7px;height:7px;border-radius:50%;flex:none;
     background:#2ecc71;box-shadow:0 0 8px rgba(46,204,113,.6);
     animation:live-dot 1.8s ease-in-out infinite;
 }
 @keyframes live-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.8);}}
 .page-head.scoring-compact .page-sub,
 html.score-kiosk .page-head .page-sub{
-    font-size:11px!important;margin-top:2px!important;
-    display:flex!important;align-items:center!important;gap:6px!important;
-    flex-wrap:wrap!important;
+    margin:0!important;flex-shrink:0;
+    font-size:13px!important;line-height:1.2!important;
+    display:flex!important;align-items:center!important;gap:8px!important;
+    flex-wrap:wrap!important;justify-content:flex-end;
+    color:var(--muted)!important;
 }
 .page-head.scoring-compact .page-sub .scoring-progress{
-    display:inline-flex;align-items:center;gap:4px;
-    background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.25);
-    padding:2px 8px;border-radius:999px;font-weight:700;color:var(--gold-l);
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.28);
+    padding:4px 10px;border-radius:999px;font-weight:800;color:var(--gold-l);
+    white-space:nowrap;
 }
-body.round-active .page-head:not(.scoring-compact){
-    display:block!important;
+.page-head.scoring-compact .page-sub .scoring-hole-meta{
+    display:inline-flex;align-items:center;gap:6px;
+    color:var(--muted);font-weight:600;white-space:nowrap;
 }
-body.round-active .page-head.scoring-compact.hidden{
-    display:block!important;
+.page-head.scoring-compact .page-sub .scoring-hole-meta b{color:var(--white);font-weight:700;}
+@media (max-width:720px){
+    .page-head.scoring-compact .container,
+    html.score-kiosk .page-head .container{flex-direction:column;align-items:flex-start!important;gap:6px!important;}
+    .page-head.scoring-compact .page-sub,
+    html.score-kiosk .page-head .page-sub{justify-content:flex-start;font-size:12px!important;gap:6px!important;}
 }
+body.round-active .page-head:not(.scoring-compact){display:block!important;}
+body.round-active .page-head.scoring-compact.hidden{display:block!important;}
 
 #club-sc-save-status:empty,#score-entry-status:empty{display:none;}
 
@@ -6371,8 +6385,19 @@ body.sun-mode .dual-score-input{background:#fff;color:#000;border-color:#000;}
 .hcp-caption{flex:1 0 100%;display:inline-flex;align-items:center;justify-content:center;gap:4px;margin-top:2px;font-size:11px;font-weight:800;letter-spacing:.1px;line-height:1.25;color:var(--gold-l);text-align:center;}
 .hcp-caption.neg{color:#ff8a7a;}
 .hcp-caption .fa-golf-ball-tee{font-size:10px;opacity:.9;}
+/* В панели ввода счёта палочка/метка форы — в верхнем правом углу. */
+.dual-half .hcp-caption{
+    position:absolute!important;top:10px;right:12px;
+    flex:none!important;width:auto!important;margin:0!important;
+    padding:3px 8px;border-radius:999px;
+    background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.28);
+    font-size:11px;line-height:1;white-space:nowrap;z-index:2;
+}
+.dual-half .hcp-caption.neg{background:rgba(224,90,74,.12);border-color:rgba(224,90,74,.35);color:#ff8a7a;}
+@media(max-width:480px){.dual-half .hcp-caption{top:8px;right:8px;font-size:10px;padding:2px 7px;}}
 body.sun-mode .hcp-caption{color:#000;}
 body.sun-mode .hcp-caption.neg{color:#c0392b;}
+body.sun-mode .dual-half .hcp-caption{background:#fff;border-color:#000;color:#000;}
 
 /* Свайп по цифрам лунок не отдаём горизонтальному скроллу полосы. */
 #play-holes-nav,#sc-holes,#mk-holes,#page-head.scoring-compact{touch-action:pan-y;}
@@ -6420,6 +6445,36 @@ body.sun-mode .score-confirm-bar{background:#fff;border-top:2px solid #000;}
 .scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .card-scorecard-panel > .card:first-child > h2{padding-right:42px;}
 body.sun-mode .scorecard-fold-btn,
 body.sun-mode .scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .scorecard-fold-btn{background:#fff;border-color:#000;color:#000;}
+
+/* Сводка группы/карточка на экране ввода счёта: один заголовок, без дублей. */
+.scoring-summary-card{padding:14px 16px;}
+.scoring-summary-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:0;margin:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;text-align:left;
+}
+.scoring-summary-toggle__title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;color:var(--white);letter-spacing:.01em;}
+.scoring-summary-toggle__title i{color:var(--gold-l);font-size:14px;}
+.scoring-summary-toggle__meta{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.scoring-summary-toggle__meta .fa-chevron-down{transition:transform .2s ease;font-size:12px;}
+.scoring-summary-toggle[aria-expanded="true"] .scoring-summary-toggle__meta .fa-chevron-down{transform:rotate(180deg);}
+.scoring-summary-compact{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
+.scoring-summary-compact:empty{display:none;}
+.gs-compact-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.12);}
+.gs-compact-name{display:flex;align-items:center;gap:8px;min-width:0;font-size:14px;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gs-compact-name .tee-pill{flex-shrink:0;}
+.gs-compact-score{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);flex-shrink:0;}
+.gs-compact-score b{font-size:16px;color:var(--white);font-weight:800;}
+.scoring-summary-panel{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+@media (max-width:640px){
+    .scoring-summary-card{padding:12px 14px;}
+    .scoring-summary-toggle__meta .scorecard-fold-label{display:none;}
+    .gs-compact-row{padding:7px 9px;}
+    .gs-compact-name{font-size:13px;}
+}
+body.sun-mode .scoring-summary-toggle__title,
+body.sun-mode .gs-compact-name,
+body.sun-mode .gs-compact-score b{color:#000;}
+body.sun-mode .gs-compact-row{background:#fff;border-color:#000;}
 
 /* Общая карточка: полное имя, без «М:» в ячейках, легенда по «i». */
 .gsg-table th.gsg-player{min-width:108px;white-space:normal;overflow:visible;}
@@ -7426,3 +7481,64 @@ body.lb-tv main { padding-top: 12px !important; }
 .score-entry[data-entry-layout="sand"] .holes-toggle{
     background:#fffdf8!important;border-color:#e2d2b0!important;color:#4a3a22!important;
 }
+/* ==========================================================
+   Активный раунд (setup-round.html #active-scoring-view) — полировка
+   ========================================================== */
+#active-scoring-view { max-width: 860px; margin: 0 auto; }
+#active-scoring-view .score-entry.card { margin-bottom: 14px; }
+#active-scoring-view .scoring-summary-card { margin: 14px 0; }
+#active-scoring-view #group-pace-assistant { margin: 14px 0; }
+#active-scoring-view #group-pace-assistant:empty { display: none; }
+#active-scoring-view .field-more { margin: 14px 0 8px; }
+#active-scoring-view .field-more > summary {
+    font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer;
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: rgba(255,255,255,.02); list-style: none; display: flex; align-items: center; gap: 8px;
+}
+#active-scoring-view .field-more > summary::-webkit-details-marker { display: none; }
+#active-scoring-view .field-more > summary::after { content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-left: auto; font-size: 11px; transition: transform .2s; }
+#active-scoring-view .field-more[open] > summary::after { transform: rotate(180deg); }
+#active-scoring-view .field-more[open] > summary { margin-bottom: 10px; }
+#active-scoring-view .official-call-btn { min-height: 46px; font-size: 14px; font-weight: 700; border-radius: 12px; }
+#active-scoring-view #group-finish-row { margin-top: 18px; margin-bottom: 10px; gap: 10px; }
+#active-scoring-view #group-finish-row .btn { min-height: 50px; font-size: 15px; font-weight: 700; border-radius: 12px; }
+#active-scoring-view #group-pause-btn { min-width: 120px; }
+#active-scoring-view #invite-qrs-card { margin: 14px 0; }
+
+/* Pace-assistant компактнее и чище */
+#active-scoring-view .pace-assistant {
+    padding: 14px 16px; border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+    border: 1px solid rgba(201,168,76,.16);
+}
+#active-scoring-view .pace-assistant-header { margin-bottom: 10px; font-size: 13px; }
+#active-scoring-view .pace-assistant-grid { gap: 8px; }
+#active-scoring-view .pace-assistant-grid > div {
+    padding: 8px 6px; border-radius: 10px;
+    background: rgba(0,0,0,.12); border: 1px solid rgba(255,255,255,.04);
+}
+#active-scoring-view .pace-assistant-grid span { font-size: 11px; color: var(--muted); }
+#active-scoring-view .pace-assistant-grid b { font-size: 15px; font-weight: 800; color: var(--white); }
+#active-scoring-view .pace-assistant-deadline { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+/* Hole nav — ровная сетка, хорошо на мобиле и ПК */
+#active-scoring-view .hole-nav { gap: 6px !important; }
+#active-scoring-view .hole-btn { border-radius: 10px; }
+
+/* Шапка лунки дублирует заголовок/навигатор/темп игры — скрываем, сохраняя DOM для JS. */
+#active-scoring-view .hole-display { display: none !important; }
+
+@media (max-width: 640px) {
+    #active-scoring-view .pace-assistant { padding: 12px; }
+    #active-scoring-view .pace-assistant-grid b { font-size: 14px; }
+    #active-scoring-view #group-finish-row { flex-direction: column; }
+    #active-scoring-view #group-pause-btn { width: 100%; min-width: 0; }
+}
+@media (min-width: 900px) {
+    #active-scoring-view .score-entry.card { padding: 20px !important; }
+}
+body.sun-mode #active-scoring-view .pace-assistant,
+body.sun-mode #active-scoring-view .pace-assistant-grid > div,
+body.sun-mode #active-scoring-view .field-more > summary { background:#fff; border-color:#000; color:#000; }
+body.sun-mode #active-scoring-view .pace-assistant-grid b,
+body.sun-mode #active-scoring-view .pace-assistant-grid span { color:#000; }

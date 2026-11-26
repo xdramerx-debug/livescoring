@@ -509,6 +509,8 @@
         if (document.getElementById('pv-recent')) return;
         var slots = document.getElementById('player-slots');
         if (!slots || !slots.parentNode) return;
+        // На странице создания раунда блок "Недавние игроки" не показываем.
+        if (document.body && document.body.classList.contains('round-setup-page')) return;
         var names = readRecentPlayers();
         if (!names.length) return;
         var box = el('div', 'pv-recent');

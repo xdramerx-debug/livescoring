@@ -121,14 +121,20 @@
         var remote = rowNameParts(row);
         if (local.length < 2 || remote.length < 2) return null;
 
+        // При запросе из 2 слов (имя+фамилия) отчество remote не участвует в
+        // матчинге: иначе "Сергей Петров" ошибочно совпадает с "Волощук Сергей
+        // Петрович" (отчество "Петрович" похоже на фамилию запроса).
+        var remoteCore = (local.length === 2 && remote.length >= 3) ? remote.slice(0, 2) : remote;
+        var remoteCoreFull = remoteCore.join(' ');
+
         var nm = (typeof root.NameVariants !== 'undefined' && root.NameVariants) ? root.NameVariants : null;
         var variant = null;
         if (nm && typeof nm.match === 'function' && nm.isOn && nm.isOn()) {
-            variant = nm.match(local[0], local[local.length - 1], remote[0], remote[1],
-                local.join(' '), remote.join(' '));
+            variant = nm.match(local[0], local[local.length - 1], remoteCore[0], remoteCore[1] || '',
+                local.join(' '), remoteCoreFull);
         }
 
-        var everyLocalInRemote = local.every(function (token) { return remote.indexOf(token) !== -1; });
+        var everyLocalInRemote = local.every(function (token) { return remoteCore.indexOf(token) !== -1; });
         var remoteMainInLocal = remote.slice(0, 2).every(function (token) { return local.indexOf(token) !== -1; });
         if (everyLocalInRemote || remoteMainInLocal || variant === 'strong') return 'strong';
         return variant === 'loose' ? 'loose' : null;

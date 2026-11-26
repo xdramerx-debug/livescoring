@@ -7395,6 +7395,11 @@ function toggleActiveScorecard(panelId) {
         if (icon) icon.className = 'fas fa-chevron-down';
         if (txt) txt.textContent = (typeof t === 'function') ? t('expand_scorecard') : (en ? 'Scorecard' : 'Карточка');
     }
+    // При развороте полной карточки прячем компактные строки имён сверху,
+    // чтобы не дублировать игроков (они уже есть в карточке).
+    var card = panel.closest ? panel.closest('.scoring-summary-card') : null;
+    var compact = card ? card.querySelector('.scoring-summary-compact') : null;
+    if (compact) compact.classList.toggle('hidden', isHidden);
     var foldBtn = (icon && icon.closest) ? icon.closest('button') : null;
     if (foldBtn) {
         foldBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');

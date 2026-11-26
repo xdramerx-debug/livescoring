@@ -437,79 +437,78 @@ function loadStats(refresh) {
         var diffOut = countOut > 0 ? ((sumOut / countOut * 9) - pOut) : null;
         var diffIn = countIn > 0 ? ((sumIn / countIn * 9) - pIn) : null;
 
-        var hHtml = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-        hHtml += '<div class="msc-tile-grid msc-grid-9">';
+        var diffClass = function (d) {
+            if (d === null || typeof d === 'undefined') return 'hole-diff-na';
+            if (d > 0.3) return 'hole-diff-pos';
+            if (d < -0.1) return 'hole-diff-neg';
+            return 'hole-diff-even';
+        };
+        var fmtDiffCell = function (d) {
+            if (d === null || typeof d === 'undefined') return '—';
+            return (d > 0 ? '+' : '') + d.toFixed(1);
+        };
+
+        var hHtml = '<div class="hole-diff-wrap">';
+        hHtml += '<div class="hole-diff-card"><div class="msc-tile-grid msc-grid-9 hole-diff-grid">';
         hHtml += '<div class="msc-tile msc-hdr-lbl">' + (langIsEn ? 'Hole' : 'Лунка') + '</div>';
         for (h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot">OUT</div>';
+
         hHtml += '<div class="msc-tile msc-lbl-par">' + parHeader + '</div>';
         for (h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par">' + pOut + '</div>';
+
         hHtml += '<div class="msc-tile msc-lbl-wh">' + avgHeader + '</div>';
         for (h = 1; h <= 9; h++) {
             hs = holeScores[h];
             var avg = (hs && hs.count > 0) ? (hs.sum / hs.count).toFixed(1) : '—';
-            hHtml += '<div class="msc-tile msc-val-wh">' + avg + '</div>';
+            hHtml += '<div class="msc-tile msc-val-wh' + (avg === '—' ? ' hole-diff-na' : '') + '">' + avg + '</div>';
         }
         var avgOutStr = (countOut > 0) ? (sumOut / (countOut / 9)).toFixed(1) : '—';
         hHtml += '<div class="msc-tile msc-tot-wh">' + avgOutStr + '</div>';
-        hHtml += '<div class="msc-tile msc-lbl-idx">±Par</div>';
+
+        hHtml += '<div class="msc-tile msc-lbl-idx">±' + (langIsEn ? 'Par' : 'Пар') + '</div>';
         for (h = 1; h <= 9; h++) {
             hs = holeScores[h];
-            if (!hs || hs.count === 0) {
-                hHtml += '<div class="msc-tile msc-val-idx">—</div>';
-            } else {
-                var diff = (hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4);
-                var diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
-                var colorStyle = diff > 0.3 ? 'color:#e74c3c;font-weight:800;' : diff < -0.1 ? 'color:#2ecc71;font-weight:800;' : 'color:var(--white);';
-                hHtml += '<div class="msc-tile msc-val-idx" style="' + colorStyle + '">' + diffStr + '</div>';
-            }
+            var d = (hs && hs.count > 0) ? ((hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4)) : null;
+            hHtml += '<div class="msc-tile msc-val-idx ' + diffClass(d) + '">' + fmtDiffCell(d) + '</div>';
         }
-        var diffOutStr = diffOut !== null ? (diffOut > 0 ? '+' : '') + diffOut.toFixed(1) : '—';
-        var colorOutStyle = (diffOut !== null && diffOut > 0) ? 'color:#e74c3c;font-weight:800;' : 'color:#2ecc71;font-weight:800;';
-        hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorOutStyle + '">' + diffOutStr + '</div>';
+        hHtml += '<div class="msc-tile msc-tot-idx ' + diffClass(diffOut) + '">' + fmtDiffCell(diffOut) + '</div>';
         hHtml += '</div></div>';
 
-        hHtml += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-        hHtml += '<div class="msc-tile-grid msc-grid-10">';
+        hHtml += '<div class="hole-diff-card"><div class="msc-tile-grid msc-grid-10 hole-diff-grid">';
         hHtml += '<div class="msc-tile msc-hdr-lbl">' + (langIsEn ? 'Hole' : 'Лунка') + '</div>';
         for (h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot">IN</div>';
-        hHtml += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + (langIsEn ? 'TOT' : 'ВСЕГО') + '</div>';
+        hHtml += '<div class="msc-tile msc-hdr-tot hole-diff-total-hdr">' + (langIsEn ? 'TOT' : 'ВСЕГО') + '</div>';
+
         hHtml += '<div class="msc-tile msc-lbl-par">' + parHeader + '</div>';
         for (h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par">' + pIn + '</div>';
-        hHtml += '<div class="msc-tile msc-tot-par" style="font-weight:900;">' + (pOut + pIn) + '</div>';
+        hHtml += '<div class="msc-tile msc-tot-par hole-diff-grand">' + (pOut + pIn) + '</div>';
+
         hHtml += '<div class="msc-tile msc-lbl-wh">' + avgHeader + '</div>';
         for (h = 10; h <= 18; h++) {
             hs = holeScores[h];
             avg = (hs && hs.count > 0) ? (hs.sum / hs.count).toFixed(1) : '—';
-            hHtml += '<div class="msc-tile msc-val-wh">' + avg + '</div>';
+            hHtml += '<div class="msc-tile msc-val-wh' + (avg === '—' ? ' hole-diff-na' : '') + '">' + avg + '</div>';
         }
         var avgInStr = (countIn > 0) ? (sumIn / (countIn / 9)).toFixed(1) : '—';
         hHtml += '<div class="msc-tile msc-tot-wh">' + avgInStr + '</div>';
         var totAvgStr = (countOut > 0 && countIn > 0) ? ((sumOut / (countOut / 9)) + (sumIn / (countIn / 9))).toFixed(1) : '—';
-        hHtml += '<div class="msc-tile msc-tot-wh" style="font-weight:900;">' + totAvgStr + '</div>';
-        hHtml += '<div class="msc-tile msc-lbl-idx">±Par</div>';
+        hHtml += '<div class="msc-tile msc-tot-wh hole-diff-grand">' + totAvgStr + '</div>';
+
+        hHtml += '<div class="msc-tile msc-lbl-idx">±' + (langIsEn ? 'Par' : 'Пар') + '</div>';
         for (h = 10; h <= 18; h++) {
             hs = holeScores[h];
-            if (!hs || hs.count === 0) {
-                hHtml += '<div class="msc-tile msc-val-idx">—</div>';
-            } else {
-                diff = (hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4);
-                diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
-                colorStyle = diff > 0.3 ? 'color:#e74c3c;font-weight:800;' : diff < -0.1 ? 'color:#2ecc71;font-weight:800;' : 'color:var(--white);';
-                hHtml += '<div class="msc-tile msc-val-idx" style="' + colorStyle + '">' + diffStr + '</div>';
-            }
+            d = (hs && hs.count > 0) ? ((hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4)) : null;
+            hHtml += '<div class="msc-tile msc-val-idx ' + diffClass(d) + '">' + fmtDiffCell(d) + '</div>';
         }
-        var diffInStr = diffIn !== null ? (diffIn > 0 ? '+' : '') + diffIn.toFixed(1) : '—';
-        var colorInStyle = (diffIn !== null && diffIn > 0) ? 'color:#e74c3c;font-weight:800;' : 'color:#2ecc71;font-weight:800;';
-        hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorInStyle + '">' + diffInStr + '</div>';
         var totDiff = (diffOut !== null && diffIn !== null) ? (diffOut + diffIn) : null;
-        var totDiffStr = totDiff !== null ? (totDiff > 0 ? '+' : '') + totDiff.toFixed(1) : '—';
-        var colorTotStyle = (totDiff !== null && totDiff > 0) ? 'color:#e74c3c;font-weight:900;' : 'color:#2ecc71;font-weight:900;';
-        hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorTotStyle + '">' + totDiffStr + '</div>';
+        hHtml += '<div class="msc-tile msc-tot-idx ' + diffClass(diffIn) + '">' + fmtDiffCell(diffIn) + '</div>';
+        hHtml += '<div class="msc-tile msc-tot-idx hole-diff-grand ' + diffClass(totDiff) + '">' + fmtDiffCell(totDiff) + '</div>';
         hHtml += '</div></div>';
+        hHtml += '</div>';
         safeSetHTML('hole-difficulty', hHtml);
         }
     }).catch(function(err){

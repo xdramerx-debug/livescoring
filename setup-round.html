@@ -503,8 +503,7 @@
         </div>
 
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
-        <details open class="field-more" id="group-officials" data-screen-display="scoring" data-display-key="officials">
-            <summary data-i18n="field_more">Вызов судьи и маршала</summary>
+        <div class="field-more" id="group-officials" data-screen-display="scoring" data-display-key="officials">
             <div style="display:flex;gap:10px;margin-bottom:6px;">
             <button id="group-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;padding:12px 8px;" data-act="callOfficial" data-arg="referee">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
@@ -513,7 +512,7 @@
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
             </div>
-        </details>
+        </div>
         <div id="group-referee-call-status" data-screen-display="scoring" data-display-key="officials" class="official-call-status hidden" aria-live="polite"></div>
         <div id="group-marshal-call-status" data-screen-display="scoring" data-display-key="officials" class="official-call-status hidden" aria-live="polite"></div>
 

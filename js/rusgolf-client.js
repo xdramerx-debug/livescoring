@@ -137,6 +137,18 @@
         var everyLocalInRemote = local.every(function (token) { return remoteCore.indexOf(token) !== -1; });
         var remoteMainInLocal = remote.slice(0, 2).every(function (token) { return local.indexOf(token) !== -1; });
         if (everyLocalInRemote || remoteMainInLocal || variant === 'strong') return 'strong';
+
+        // Fallback: точное совпадение всех токенов запроса в полном ФИО remote,
+        // но только если ни один токен запроса не совпал ИСКЛЮЧИТЕЛЬНО с
+        // отчеством (index >= 2). Это сохраняет защиту от ложного "Петров"~"Петрович".
+        if (local.length === 2 && remote.length >= 3) {
+            var everyInFull = local.every(function (token) { return remote.indexOf(token) !== -1; });
+            var patronymicOnly = local.some(function (token) {
+                return remote.indexOf(token) >= 2 && remoteCore.indexOf(token) === -1;
+            });
+            if (everyInFull && !patronymicOnly) return 'strong';
+        }
+
         return variant === 'loose' ? 'loose' : null;
     }
 

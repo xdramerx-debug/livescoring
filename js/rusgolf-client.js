@@ -269,6 +269,36 @@
         return proxies;
     }
 
+    // JSONP через AllOrigins /get?callback=... — обходит CORS, т.к. загружается
+    // как <script>. Это основной fallback для github.io, где fetch-прокси блокируются.
+    function fetchViaJsonp(target, timeoutMs) {
+        return new Promise(function (resolve, reject) {
+            var done = false;
+            var cbName = '__pestovoRusgolfJsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+            var script = root.document && root.document.createElement ? root.document.createElement('script') : null;
+            var timer = setTimeout(function () { cleanup(); if (!done) { done = true; reject(new Error('jsonp timeout')); } }, timeoutMs || 12000);
+            function cleanup() {
+                clearTimeout(timer);
+                try { delete root[cbName]; } catch (e) { root[cbName] = undefined; }
+                if (script && script.parentNode) script.parentNode.removeChild(script);
+            }
+            root[cbName] = function (data) {
+                if (done) return;
+                done = true;
+                cleanup();
+                var contents = data && (data.contents || data.body || '');
+                if (!contents) { reject(new Error('jsonp empty')); return; }
+                var parsed = parseResults(contents);
+                if (!parsed.valid) { reject(new Error('jsonp unparseable')); return; }
+                resolve({ rows: parsed.rows, proxy: 'allorigins-jsonp' });
+            };
+            if (!script) { cleanup(); reject(new Error('no document')); return; }
+            script.src = 'https://api.allorigins.win/get?url=' + encodeURIComponent(target) + '&callback=' + encodeURIComponent(cbName);
+            script.onerror = function () { if (done) return; done = true; cleanup(); reject(new Error('jsonp error')); };
+            (root.document.head || root.document.body || root.document.documentElement).appendChild(script);
+        });
+    }
+
     // opts.timeoutMs — таймаут одного прокси (по умолчанию 25 с, как раньше).
     // Все прокси запрашиваются параллельно, побеждает первый валидный ответ.
     // Раньше прокси шли по очереди: каждый мог висеть до таймаута, и поиск
@@ -277,18 +307,45 @@
     // Если она недоступна или не отдала таблицу — обычный поиск через прокси.
     function fetchViaProxy(query, attempt, opts) {
         var fnFactory = typeof root.pestovoFunctions === 'function' ? root.pestovoFunctions : null;
-        if (!fnFactory) return fetchViaPublicProxies(query, attempt, opts);
         var q = String(query || '').trim();
-        if (!q) return fetchViaPublicProxies(query, attempt, opts);
-        return Promise.resolve()
-            .then(function () { return fnFactory(); })
-            .then(function (fns) { return fns.httpsCallable('rusgolfSearch')({ query: q }); })
-            .then(function (res) {
-                var parsed = parseResults(res && res.data && res.data.html);
-                if (!parsed.valid) throw new Error('unparseable server response');
-                return { rows: parsed.rows, proxy: 'server' };
-            })
-            .catch(function () { return fetchViaPublicProxies(query, attempt, opts); });
+        var target = SEARCH_BASE + encodeURIComponent(q);
+        var perProxyMs = (opts && opts.timeoutMs > 0) ? opts.timeoutMs : 25000;
+        if (!q) return Promise.reject(new Error('empty query'));
+
+        // Запускаем серверную функцию, CORS-fetch прокси и JSONP параллельно.
+        // Первый валидный ответ побеждает.
+        var attempts = [];
+        if (fnFactory) {
+            attempts.push(Promise.resolve().then(function () { return fnFactory(); })
+                .then(function (fns) { return fns.httpsCallable('rusgolfSearch')({ query: q }); })
+                .then(function (res) {
+                    var parsed = parseResults(res && res.data && res.data.html);
+                    if (!parsed.valid) throw new Error('unparseable server response');
+                    return { rows: parsed.rows, proxy: 'server' };
+                }));
+        }
+        attempts.push(fetchViaPublicProxies(query, attempt, opts));
+        attempts.push(fetchViaJsonp(target, perProxyMs));
+
+        return new Promise(function (resolve, reject) {
+            var failed = 0;
+            var done = false;
+            attempts.forEach(function (p) {
+                Promise.resolve(p).then(function (result) {
+                    if (done) return;
+                    done = true;
+                    resolve(result);
+                }).catch(function () {
+                    failed++;
+                    if (!done && failed >= attempts.length) {
+                        done = true;
+                        reject(new Error(root.currentLang === 'en'
+                            ? 'RUSGOLF is unavailable. Try again later.'
+                            : 'RUSGOLF недоступен. Попробуйте позже.'));
+                    }
+                });
+            });
+        });
     }
 
     function fetchViaPublicProxies(query, attempt, opts) {

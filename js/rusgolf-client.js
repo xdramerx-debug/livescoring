@@ -316,12 +316,8 @@
         });
     }
 
-    // opts.timeoutMs — таймаут одного прокси (по умолчанию 25 с, как раньше).
-    // Все прокси запрашиваются параллельно, побеждает первый валидный ответ.
-    // Раньше прокси шли по очереди: каждый мог висеть до таймаута, и поиск
-    // не укладывался в лимит ожидания на странице раунда.
-    // Сначала серверная функция rusgolfSearch (без CORS и внешних прокси).
-    // Если она недоступна или не отдала таблицу — обычный поиск через прокси.
+    // Сначала пробуем серверную функцию rusgolfSearch (без CORS). При успехе
+    // прокси не трогаем. При сбое/отсутствии — fetch-прокси и JSONP параллельно.
     function fetchViaProxy(query, attempt, opts) {
         var fnFactory = typeof root.pestovoFunctions === 'function' ? root.pestovoFunctions : null;
         var q = String(query || '').trim();
@@ -329,40 +325,42 @@
         var perProxyMs = (opts && opts.timeoutMs > 0) ? opts.timeoutMs : 25000;
         if (!q) return Promise.reject(new Error('empty query'));
 
-        // Запускаем серверную функцию, CORS-fetch прокси и JSONP параллельно.
-        // Первый валидный ответ побеждает.
-        var attempts = [];
-        if (fnFactory) {
-            attempts.push(Promise.resolve().then(function () { return fnFactory(); })
-                .then(function (fns) { return fns.httpsCallable('rusgolfSearch')({ query: q }); })
-                .then(function (res) {
-                    var parsed = parseResults(res && res.data && res.data.html);
-                    if (!parsed.valid) throw new Error('unparseable server response');
-                    return { rows: parsed.rows, proxy: 'server' };
-                }));
-        }
-        attempts.push(fetchViaPublicProxies(query, attempt, opts));
-        attempts.push(fetchViaJsonp(target, perProxyMs));
-
-        return new Promise(function (resolve, reject) {
-            var failed = 0;
-            var done = false;
-            attempts.forEach(function (p) {
-                Promise.resolve(p).then(function (result) {
-                    if (done) return;
-                    done = true;
-                    resolve(result);
-                }).catch(function () {
-                    failed++;
-                    if (!done && failed >= attempts.length) {
+        function fallback() {
+            return new Promise(function (resolve, reject) {
+                var failed = 0;
+                var done = false;
+                var attempts = [
+                    fetchViaPublicProxies(query, attempt, opts),
+                    fetchViaJsonp(target, perProxyMs)
+                ];
+                attempts.forEach(function (p) {
+                    Promise.resolve(p).then(function (result) {
+                        if (done) return;
                         done = true;
-                        reject(new Error(root.currentLang === 'en'
-                            ? 'RUSGOLF is unavailable. Try again later.'
-                            : 'RUSGOLF недоступен. Попробуйте позже.'));
-                    }
+                        resolve(result);
+                    }).catch(function () {
+                        failed++;
+                        if (!done && failed >= attempts.length) {
+                            done = true;
+                            reject(new Error(root.currentLang === 'en'
+                                ? 'RUSGOLF is unavailable. Try again later.'
+                                : 'RUSGOLF недоступен. Попробуйте позже.'));
+                        }
+                    });
                 });
             });
-        });
+        }
+
+        if (!fnFactory) return fallback();
+        return Promise.resolve()
+            .then(function () { return fnFactory(); })
+            .then(function (fns) { return fns.httpsCallable('rusgolfSearch')({ query: q }); })
+            .then(function (res) {
+                var parsed = parseResults(res && res.data && res.data.html);
+                if (!parsed.valid) throw new Error('unparseable server response');
+                return { rows: parsed.rows, proxy: 'server' };
+            })
+            .catch(function () { return fallback(); });
     }
 
     function fetchViaPublicProxies(query, attempt, opts) {

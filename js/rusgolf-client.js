@@ -264,6 +264,8 @@
         proxies.push({ name: 'r.jina.ai', build: function (target) { return 'https://r.jina.ai/' + target; } });
         proxies.push({ name: 'allorigins', build: function (target) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target); } });
         proxies.push({ name: 'codetabs', build: function (target) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(target); } });
+        proxies.push({ name: 'corsproxy.io', build: function (target) { return 'https://corsproxy.io/?url=' + encodeURIComponent(target); } });
+        proxies.push({ name: 'everyorigin', build: function (target) { return 'https://everyorigin.jwvbremen.nl/api/raw?url=' + encodeURIComponent(target); } });
         return proxies;
     }
 

@@ -262,40 +262,57 @@
             proxies.push({ name: 'custom', build: function (target) { return custom.replace('{url}', encodeURIComponent(target)); } });
         }
         proxies.push({ name: 'r.jina.ai', build: function (target) { return 'https://r.jina.ai/' + target; } });
-        proxies.push({ name: 'allorigins', build: function (target) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target); } });
+        proxies.push({ name: 'allorigins-raw', build: function (target) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target); } });
         proxies.push({ name: 'codetabs', build: function (target) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(target); } });
-        proxies.push({ name: 'corsproxy.io', build: function (target) { return 'https://corsproxy.io/?url=' + encodeURIComponent(target); } });
-        proxies.push({ name: 'everyorigin', build: function (target) { return 'https://everyorigin.jwvbremen.nl/api/raw?url=' + encodeURIComponent(target); } });
+        proxies.push({ name: 'corsproxy.org', build: function (target) { return 'https://corsproxy.org/?url=' + encodeURIComponent(target); } });
+        proxies.push({ name: 'everyorigin-raw', build: function (target) { return 'https://everyorigin.jwvbremen.nl/api/raw?url=' + encodeURIComponent(target); } });
         return proxies;
     }
 
-    // JSONP через AllOrigins /get?callback=... — обходит CORS, т.к. загружается
-    // как <script>. Это основной fallback для github.io, где fetch-прокси блокируются.
+    // JSONP — обходит CORS (загружается как <script>). Основной fallback для github.io.
     function fetchViaJsonp(target, timeoutMs) {
+        function jsonpOnce(name, buildUrl) {
+            return new Promise(function (resolve, reject) {
+                var done = false;
+                var cbName = '__pestovoRusgolfJsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+                var script = root.document && root.document.createElement ? root.document.createElement('script') : null;
+                var timer = setTimeout(function () { cleanup(); if (!done) { done = true; reject(new Error('jsonp timeout')); } }, timeoutMs || 12000);
+                function cleanup() {
+                    clearTimeout(timer);
+                    try { delete root[cbName]; } catch (e) { root[cbName] = undefined; }
+                    if (script && script.parentNode) script.parentNode.removeChild(script);
+                }
+                root[cbName] = function (data) {
+                    if (done) return;
+                    done = true;
+                    cleanup();
+                    var contents = '';
+                    if (data && typeof data === 'object') contents = data.contents || data.body || data.responseText || '';
+                    else if (typeof data === 'string') contents = data;
+                    if (!contents) { reject(new Error('jsonp empty')); return; }
+                    var parsed = parseResults(contents);
+                    if (!parsed.valid) { reject(new Error('jsonp unparseable')); return; }
+                    resolve({ rows: parsed.rows, proxy: name });
+                };
+                if (!script) { cleanup(); reject(new Error('no document')); return; }
+                script.src = buildUrl(cbName);
+                script.onerror = function () { if (done) return; done = true; cleanup(); reject(new Error('jsonp error')); };
+                (root.document.head || root.document.body || root.document.documentElement).appendChild(script);
+            });
+        }
+        var endpoints = [
+            { name: 'allorigins-jsonp', url: function (cb) { return 'https://api.allorigins.win/get?url=' + encodeURIComponent(target) + '&callback=' + encodeURIComponent(cb); } },
+            { name: 'allorigins-jsonp2', url: function (cb) { return 'https://api.allorigins.win/get?url=' + encodeURIComponent(target) + '&callback=' + encodeURIComponent(cb) + '&disableCache=true'; } }
+        ];
         return new Promise(function (resolve, reject) {
+            var failed = 0;
             var done = false;
-            var cbName = '__pestovoRusgolfJsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
-            var script = root.document && root.document.createElement ? root.document.createElement('script') : null;
-            var timer = setTimeout(function () { cleanup(); if (!done) { done = true; reject(new Error('jsonp timeout')); } }, timeoutMs || 12000);
-            function cleanup() {
-                clearTimeout(timer);
-                try { delete root[cbName]; } catch (e) { root[cbName] = undefined; }
-                if (script && script.parentNode) script.parentNode.removeChild(script);
-            }
-            root[cbName] = function (data) {
-                if (done) return;
-                done = true;
-                cleanup();
-                var contents = data && (data.contents || data.body || '');
-                if (!contents) { reject(new Error('jsonp empty')); return; }
-                var parsed = parseResults(contents);
-                if (!parsed.valid) { reject(new Error('jsonp unparseable')); return; }
-                resolve({ rows: parsed.rows, proxy: 'allorigins-jsonp' });
-            };
-            if (!script) { cleanup(); reject(new Error('no document')); return; }
-            script.src = 'https://api.allorigins.win/get?url=' + encodeURIComponent(target) + '&callback=' + encodeURIComponent(cbName);
-            script.onerror = function () { if (done) return; done = true; cleanup(); reject(new Error('jsonp error')); };
-            (root.document.head || root.document.body || root.document.documentElement).appendChild(script);
+            endpoints.forEach(function (ep) {
+                jsonpOnce(ep.name, ep.url).then(function (r) { if (!done) { done = true; resolve(r); } }).catch(function () {
+                    failed++;
+                    if (!done && failed >= endpoints.length) { done = true; reject(new Error('jsonp all failed')); }
+                });
+            });
         });
     }
 

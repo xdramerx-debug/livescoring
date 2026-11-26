@@ -653,7 +653,19 @@ function refreshSetupPlayerHandicap(idx) {
         }
     }).catch(function (error) {
         console.warn('[setup hcp rusgolf]', error);
-        if (typeof toast === 'function') toast((currentLang === 'en' ? 'Could not sync RUSGOLF: ' : 'Не удалось синхронизировать RUSGOLF: ') + (error && error.message || error), 'error');
+        var msg = (error && error.message) || String(error || '');
+        if (typeof toast === 'function') toast((currentLang === 'en' ? 'Could not sync RUSGOLF: ' : 'Не удалось синхронизировать RUSGOLF: ') + msg, 'error');
+        // Fallback: все транспорты недоступны — предложить открыть АГР вручную.
+        var isUnavailable = /недоступ|unavailable|proxies|timeout/i.test(msg);
+        if (isUnavailable) {
+            var agrUrl = 'https://hcp.rusgolf.ru/public/player/ru/?search=' + encodeURIComponent(query || '');
+            var promptMsg = (typeof currentLang !== 'undefined' && currentLang === 'en')
+                ? 'Open AGR search in a new tab? You can copy the handicap manually.'
+                : 'Открыть поиск в АГР в новой вкладке? Гандикап можно будет ввести вручную.';
+            if (typeof window !== 'undefined' && window.confirm(promptMsg)) {
+                try { window.open(agrUrl, '_blank', 'noopener'); } catch (e) { console.warn('[silent]', e); }
+            }
+        }
     }).then(function () {
         if (timer) clearTimeout(timer);
         setupHcpRefreshRunning[idx] = false;

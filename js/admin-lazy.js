@@ -14,6 +14,8 @@
         scoreaudit: ['scoreaudit'],
         hcplog: ['hcplog'],
         groups: ['groups'],
+        // Пин-позиции лунок: данные и панель игрока (pin-position) + редактор.
+        pinpositions: ['pinpositions'],
         tnmanager: ['xlsx', 'rgclient', 'tnm'],
         // В карточке «Игроки и роли» есть кнопка «Удалить всех игроков» —
         // она живёт в js/admin-groups.js, поэтому группа грузится и здесь.

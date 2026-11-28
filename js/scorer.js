@@ -235,6 +235,8 @@ function renderHole() {
         setScore: function (v) { scScore = v; },
         update: updDisp
     });
+    // Пин-позиция справа: панель всегда показывает открытую лунку.
+    if (typeof pestovoPinPanelHole === 'function') pestovoPinPanelHole('scorer', scHole);
 }
 
 function adjSc(d) {

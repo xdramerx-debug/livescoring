@@ -147,7 +147,7 @@ function C(e, a) {
     active: !s && (i !== null || o !== null)
   };
 }
-function me(e, a) {
+function he(e, a) {
   return !a || !a.active ? e.slice() : e.filter(function(r) {
     var n = U(r && r[1]);
     return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
@@ -165,7 +165,7 @@ function q(e, a, r, n, i) {
   }
 }
 var P = /* @__PURE__ */ Object.create(null);
-function he(e) {
+function me(e) {
   if (!e) return null;
   var a = document.getElementById(e.fromId), r = document.getElementById(e.toId);
   if (!a || !r) return null;
@@ -204,7 +204,7 @@ function he(e) {
     var p = C(a, r).invalid;
     a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), o && (o.textContent = p ? t("date_filter_invalid") : "", o.classList.toggle("hidden", !p));
   }
-  function h() {
+  function m() {
     _(), typeof e.onChange == "function" && e.onChange(d.getRange());
   }
   var d = {
@@ -228,17 +228,17 @@ function he(e) {
     console.warn("[silent]", p);
   }
   return a.addEventListener("change", function() {
-    l(), f(), u(), h();
+    l(), f(), u(), m();
   }), r.addEventListener("change", function() {
-    l(), f(), u(), h();
+    l(), f(), u(), m();
   }), n && n.addEventListener("click", function(p) {
     var y = p.target && p.target.closest ? p.target.closest(".date-chip") : null, v = y && y.getAttribute("data-preset");
     if (v) {
       var S = M(v);
-      a.value = S.from, r.value = S.to, l(), f(), u(), h();
+      a.value = S.from, r.value = S.to, l(), f(), u(), m();
     }
   }), i && i.addEventListener("click", function() {
-    a.value = "", r.value = "", l(), f(), u(), h();
+    a.value = "", r.value = "", l(), f(), u(), m();
   }), l(), u(), _(), P[d.key] = d, d;
 }
 function ye(e) {
@@ -250,7 +250,7 @@ function ge() {
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: E, getRoundFilterTs: U, datePresetRange: M, readDateRange: C, filterEntriesByDateRange: me, renderRoundsPeriodSummary: q, dateRangeFilters: P, initDateRangeFilter: he, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: E, getRoundFilterTs: U, datePresetRange: M, readDateRange: C, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: P, initDateRangeFilter: me, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
 function j(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
@@ -266,12 +266,12 @@ function we(e, a) {
 }
 typeof window < "u" && Object.assign(window, { esc: j, html: ve, setSafeHtml: we });
 var N = 3e3;
-function K() {
+function z() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
   return e || (e = document.createElement("div"), e.id = "toast-root", e.className = "toast-root", e.setAttribute("aria-live", "polite"), document.body.appendChild(e)), e;
 }
-function z(e) {
+function K(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
 function L(e, a, r) {
@@ -279,7 +279,7 @@ function L(e, a, r) {
   var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : N;
   try {
     if (typeof document > "u" || !document.body) return null;
-    var i = K();
+    var i = z();
     if (!i) return null;
     for (; i.children.length >= 3; )
       try {
@@ -292,7 +292,7 @@ function L(e, a, r) {
     var s = document.createElement("div");
     s.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), s.setAttribute("role", "status");
     var f = r.html ? e == null ? "" : String(e) : W(e);
-    s.innerHTML = '<span class="toast-ico">' + z(a) + '</span><span class="toast-msg">' + f + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    s.innerHTML = '<span class="toast-ico">' + K(a) + '</span><span class="toast-msg">' + f + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
     var c = !1, u = function(l) {
       if (!c) {
         c = !0;
@@ -368,14 +368,14 @@ function W(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: z, toast: L, toastSequence: Se, isPlayerModeEnabled: Q, vib: ke, escapeHtml: W });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: z, toastIconFor: K, toast: L, toastSequence: Se, isPlayerModeEnabled: Q, vib: ke, escapeHtml: W });
 var b = function() {
   try {
     return localStorage.getItem("pestovo_lang") === "en" ? "en" : "ru";
   } catch {
     return "ru";
   }
-}(), m = {
+}(), h = {
   ru: {
     ui_bc997c1edb: "Управление клубом",
     ui_31e9780267: "Разделы админки",
@@ -1451,7 +1451,33 @@ var b = function() {
     total_players_label: "Всего игроков",
     free_holes_label: "Свободные лунки",
     busy_holes_label: "Занятые лунки",
-    tee_label: "ТИ"
+    tee_label: "ТИ",
+    tab_pin_positions: "Пин-позиции",
+    pin_pos_title: "Пин-позиции лунок",
+    pin_pos_sub: "Где стоит флажок на грине каждой лунки. Игрок разворачивает панель на экране ввода счёта свайпом влево и сворачивает свайпом вправо — ввод счёта при этом не сдвигается.",
+    pin_pos_badge: "для всех игроков",
+    pin_pos_note_hint: "Позицию меняет администратор — обычно перед раундом или после перестановки флажков. Лунки без изменений считаются центром грина и в базу не пишутся.",
+    pin_pos_enable: "Показывать пин-позицию игрокам",
+    pin_pos_enable_hint: "Если выключить, закладка исчезнет на всех экранах ввода счёта — например, когда флажки ещё не расставлены.",
+    pin_pos_choose_hole: "Лунка",
+    pin_pos_choose_hole_hint: "Выберите лунку, затем зону грина. Точка на кнопке показывает текущее положение флажка.",
+    pin_pos_zone_hint: "Зона грина: дальняя часть сверху, ближняя — снизу, к ти.",
+    pin_pos_hole_note: "Заметка к лунке (необязательно)",
+    pin_pos_hole_note_ph: "Например: флажок за бункером",
+    pin_pos_preview: "Как увидит игрок",
+    pin_pos_preview_title: "Пин-позиция",
+    pin_pos_club_note_title: "Общая подсказка на раунд",
+    pin_pos_club_note_hint: "Показывается игроку, если к лунке нет своей заметки.",
+    pin_pos_club_note: "Подсказка клуба (необязательно)",
+    pin_pos_club_note_ph: "Например: сегодня флажки в центре, грин быстрый",
+    pin_pos_save: "Сохранить пин-позиции",
+    pin_pos_reset: "Все лунки — в центр",
+    pin_pos_apply_hint: "Изменения уходят игрокам сразу после сохранения. Уже открытые экраны ввода счёта обновятся автоматически.",
+    pin_pos_dirty: "Есть несохранённые изменения",
+    pin_pos_hole_1: "Лунка 1",
+    pin_zone_mc: "Центр грина",
+    pin_pos_tee: "ти",
+    pin_pos_tab_aria: "Пин-позиция, открыть свайпом влево"
   },
   en: {
     ui_bc997c1edb: "Club management",
@@ -2505,20 +2531,46 @@ Catalina = Natalia`,
     total_players_label: "Total players",
     free_holes_label: "Free holes",
     busy_holes_label: "Busy holes",
-    tee_label: "Tee"
+    tee_label: "Tee",
+    tab_pin_positions: "Pin positions",
+    pin_pos_title: "Hole pin positions",
+    pin_pos_sub: "Where the flag sits on each green. Players open the panel on the score entry screen with a swipe left and collapse it with a swipe right — score entry never shifts.",
+    pin_pos_badge: "for all players",
+    pin_pos_note_hint: "The administrator sets positions — usually before a round or after the flags are moved. Holes without changes count as the middle of the green and are not written to the database.",
+    pin_pos_enable: "Show pin positions to players",
+    pin_pos_enable_hint: "When off, the tab disappears from every score entry screen — for example while the flags are not set yet.",
+    pin_pos_choose_hole: "Hole",
+    pin_pos_choose_hole_hint: "Pick a hole, then the zone on the green. The dot on the button shows the current flag position.",
+    pin_pos_zone_hint: "Green zones: back on top, front at the bottom, towards the tee.",
+    pin_pos_hole_note: "Hole note (optional)",
+    pin_pos_hole_note_ph: "For example: flag behind the bunker",
+    pin_pos_preview: "What the player sees",
+    pin_pos_preview_title: "Pin position",
+    pin_pos_club_note_title: "Round-wide hint",
+    pin_pos_club_note_hint: "Shown to the player when the hole has no note of its own.",
+    pin_pos_club_note: "Club hint (optional)",
+    pin_pos_club_note_ph: "For example: flags in the middle today, greens are fast",
+    pin_pos_save: "Save pin positions",
+    pin_pos_reset: "All holes to the middle",
+    pin_pos_apply_hint: "Changes reach players right after saving. Score entry screens already open update automatically.",
+    pin_pos_dirty: "Unsaved changes",
+    pin_pos_hole_1: "Hole 1",
+    pin_zone_mc: "Middle centre",
+    pin_pos_tee: "tee",
+    pin_pos_tab_aria: "Pin position, open with a swipe left"
   }
 };
 (function() {
   var e = (/* @__PURE__ */ new Date()).getFullYear();
-  m.ru && (m.ru.footer_club = "© " + e + " Пестово"), m.en && (m.en.footer_club = "© " + e + " Pestovo");
+  h.ru && (h.ru.footer_club = "© " + e + " Пестово"), h.en && (h.en.footer_club = "© " + e + " Pestovo");
 })();
 function Y(e) {
   var a = typeof b < "u" && b ? b : "ru";
   try {
-    if (m[a] && m[a][e] !== void 0)
-      return m[a][e];
-    if (m.ru && m.ru[e] !== void 0)
-      return m.ru[e];
+    if (h[a] && h[a][e] !== void 0)
+      return h[a][e];
+    if (h.ru && h.ru[e] !== void 0)
+      return h.ru[e];
   } catch (r) {
     console.warn("[silent]", r);
   }
@@ -2562,16 +2614,16 @@ function J() {
 function x() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
     var a = e.getAttribute("data-i18n");
-    a && m[b] && m[b][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = m[b][a] + " — " + Y("brand_name") : e.innerHTML = m[b][a]);
+    a && h[b] && h[b][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = h[b][a] + " — " + Y("brand_name") : e.innerHTML = h[b][a]);
   }), document.querySelectorAll("[data-i18n-placeholder]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-placeholder");
-    a && m[b] && m[b][a] !== void 0 && e.setAttribute("placeholder", m[b][a]);
+    a && h[b] && h[b][a] !== void 0 && e.setAttribute("placeholder", h[b][a]);
   }), document.querySelectorAll("[data-i18n-title]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-title");
-    a && m[b] && m[b][a] !== void 0 && e.setAttribute("title", m[b][a]);
+    a && h[b] && h[b][a] !== void 0 && e.setAttribute("title", h[b][a]);
   }), document.querySelectorAll("[data-i18n-aria-label]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-aria-label");
-    a && m[b] && m[b][a] !== void 0 && e.setAttribute("aria-label", m[b][a]);
+    a && h[b] && h[b][a] !== void 0 && e.setAttribute("aria-label", h[b][a]);
   }), typeof refreshDateRangeFilters == "function" && refreshDateRangeFilters());
 }
 try {
@@ -2585,9 +2637,9 @@ try {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  x(), F();
+  x(), H();
 });
-function F() {
+function H() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
     document.querySelectorAll(".footer-bottom p").forEach(function(a) {
@@ -2595,17 +2647,17 @@ function F() {
     });
   }
 }
-F();
-typeof window < "u" && Object.assign(window, { currentLang: b, I18N: m, t: Y, toggleLang: Pe, updateLangButtons: J, applyTranslations: x, updateFooterYear: F });
+H();
+typeof window < "u" && Object.assign(window, { currentLang: b, I18N: h, t: Y, toggleLang: Pe, updateLangButtons: J, applyTranslations: x, updateFooterYear: H });
 function D(e, a, r, n, i) {
   var o = !!i, s = o ? escapeHtml : function(d) {
     return String(d);
   }, f = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), c = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", u = o ? "<b>" : "", l = o ? "</b>" : "", _ = [];
   _.push(o ? "<b>" + c + "</b>" : c), _.push(u + "Кто вызвал:" + l + " " + s(r || "Игрок")), _.push(u + "Лунка:" + l + " №" + a), _.push(u + "Время:" + l + " " + f);
-  var h = (n || []).map(function(d) {
+  var m = (n || []).map(function(d) {
     return String(d || "").trim();
   }).filter(Boolean);
-  return h.length && _.push(u + "Состав флайта:" + l + " " + s(h.join(", "))), _.join(`
+  return m.length && _.push(u + "Состав флайта:" + l + " " + s(m.join(", "))), _.join(`
 `);
 }
 function A(e) {
@@ -2665,12 +2717,12 @@ function Te(e, a, r, n, i, o, s) {
     if (_ && _.ok)
       console.log("✅ Telegram alert delivered to " + r + ":", _.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
     else {
-      var h = _ && _.description ? _.description : "Ошибка Telegram API";
-      console.error("❌ Telegram Bot API Error (" + r + "):", h), toast("❌ Ошибка Telegram (" + (r || "чат") + "): " + h, "error");
+      var m = _ && _.description ? _.description : "Ошибка Telegram API";
+      console.error("❌ Telegram Bot API Error (" + r + "):", m), toast("❌ Ошибка Telegram (" + (r || "чат") + "): " + m, "error");
     }
   }).catch(function(_) {
     u && clearTimeout(u);
-    var h = _ && _.name === "AbortError", d = h ? "Таймаут соединения (6 сек)" : _ ? _.message : "Ошибка сети";
+    var m = _ && _.name === "AbortError", d = m ? "Таймаут соединения (6 сек)" : _ ? _.message : "Ошибка сети";
     console.error("❌ Telegram Fetch Error (" + r + "):", _), toast("❌ Ошибка сети / Таймаут Telegram: " + d, "error");
   });
 }
@@ -2702,7 +2754,7 @@ function I(e, a, r, n, i, o) {
 function Re(e, a, r, n, i, o) {
   return T(e, a, r, n, o);
 }
-function H(e, a, r, n) {
+function F(e, a, r, n) {
   return e = (e || "").trim(), a = (a || "").trim(), !e || !a ? (n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error"), Promise.resolve("not_configured")) : new Promise(function(i) {
     var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), s = Math.floor(Math.random() * 2e9), f = null, c = null, u = !1, l = function(d) {
       u || (u = !0, i(d));
@@ -2727,8 +2779,8 @@ function H(e, a, r, n) {
         console.error("❌ VK API Error " + g + ":", p, d), n ? console.warn("⚠️ VK silent send failed (code " + g + "):", p) : toast("❌ VK API: " + p, "error"), l("error: code " + (g || "?") + ": " + p);
       }
     };
-    var h = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + s + "&v=5.199&callback=" + o;
-    c = document.createElement("script"), c.src = h, c.onerror = function() {
+    var m = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + s + "&v=5.199&callback=" + o;
+    c = document.createElement("script"), c.src = m, c.onerror = function() {
       _(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error"), l("error: сеть/CSP (JSONP не загрузился)");
     }, f = setTimeout(function() {
       _(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error"), l("error: таймаут (10 сек)");
@@ -2744,12 +2796,12 @@ function Ce(e, a, r, n, i, o) {
     return;
   }
   var s = O(r, n, i, o);
-  H(e, a, s, !1);
+  F(e, a, s, !1);
 }
 function $(e, a, r, n, i, o) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) return Promise.resolve("not_configured");
   var s = O(r, n, i, o);
-  return H(e, a, s, !0);
+  return F(e, a, s, !0);
 }
 function Ae(e, a, r, n, i) {
   return T(e, a, r, n, i);
@@ -2763,16 +2815,16 @@ function T(e, a, r, n, i) {
     return u === !1 ? { skipped: "notifications_disabled" } : A().then(function(l) {
       if (l.mode === "server")
         return typeof console < "u" && console.debug && console.debug("[alerts] delivery mode = server, browser stays silent"), { skipped: "server_mode" };
-      var _ = l.telegram || {}, h = l.vk || {}, d = {}, g = {
+      var _ = l.telegram || {}, m = l.vk || {}, d = {}, g = {
         "telegram:group": !!(_.groupToken && _.groupId),
         "telegram:channel": !!(_.channelToken && _.channelId),
-        vk: !!(h.token && h.peerId)
+        vk: !!(m.token && m.peerId)
       }, p = [];
       return g["telegram:group"] ? p.push(I(_.groupToken, _.groupId, e, a, r, n).then(function(y) {
         d["telegram:group"] = y;
       })) : d["telegram:group"] = "not_configured", g["telegram:channel"] ? p.push(I(_.channelToken, _.channelId, e, a, r, n).then(function(y) {
         d["telegram:channel"] = y;
-      })) : d["telegram:channel"] = "not_configured", g.vk ? p.push($(h.token, h.peerId, e, a, r, n).then(function(y) {
+      })) : d["telegram:channel"] = "not_configured", g.vk ? p.push($(m.token, m.peerId, e, a, r, n).then(function(y) {
         d.vk = y;
       })) : d.vk = "not_configured", !g["telegram:group"] && !g["telegram:channel"] && !g.vk && console.warn("[alerts] в channels/ ничего не настроено — вызов никуда не отправлен"), Promise.all(p).then(function() {
         return X(i, d, g);
@@ -2800,14 +2852,14 @@ function X(e, a, r) {
     return console.warn("[alerts] delivery report not saved", o && o.message), n;
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, pestovoOfficialChannels: A, sendTelegramDirectAlert: Te, sendTelegramSilentAlert: I, sendTelegramOfficialAlert: Re, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Ce, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: T, pestovoRecordClientDelivery: X });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, pestovoOfficialChannels: A, sendTelegramDirectAlert: Te, sendTelegramSilentAlert: I, sendTelegramOfficialAlert: Re, vkSendMessageJsonp: F, vkBuildAlertText: O, sendVKDirectAlert: Ce, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: T, pestovoRecordClientDelivery: X });
 export {
   ee as ADDR,
   Z as CLUB,
   re as COURSE_RATINGS,
   R as DATE_RANGE_PRESETS,
   w as HOLES,
-  m as I18N,
+  h as I18N,
   ae as TEES,
   te as TEE_ORDER,
   G as TIMINGS,
@@ -2820,10 +2872,10 @@ export {
   B as dateInputToStartTs,
   M as datePresetRange,
   P as dateRangeFilters,
-  K as ensureToastRoot,
+  z as ensureToastRoot,
   j as esc,
   W as escapeHtml,
-  me as filterEntriesByDateRange,
+  he as filterEntriesByDateRange,
   ce as fmtDate,
   le as fmtScore,
   pe as fmtTime,
@@ -2836,7 +2888,7 @@ export {
   ue as holeResName,
   se as holeTiming,
   ve as html,
-  he as initDateRangeFilter,
+  me as initDateRangeFilter,
   Q as isPlayerModeEnabled,
   be as isTodayTimestamp,
   k as normalizeTimestampMs,
@@ -2857,13 +2909,13 @@ export {
   Y as t,
   fe as tnDateTs,
   L as toast,
-  z as toastIconFor,
+  K as toastIconFor,
   Se as toastSequence,
   Pe as toggleLang,
   E as tsToDateInputValue,
-  F as updateFooterYear,
+  H as updateFooterYear,
   J as updateLangButtons,
   ke as vib,
   O as vkBuildAlertText,
-  H as vkSendMessageJsonp
+  F as vkSendMessageJsonp
 };

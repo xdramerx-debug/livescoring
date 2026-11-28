@@ -9,8 +9,18 @@
 // кнопка «Свернуть», Esc или тап мимо панели.
 //
 // Кто задаёт позиции. Администратор в админ-панели (вкладка «Пин-позиции»,
-// js/admin-pin-positions.js): на каждую лунку выбирается зона грина 3×3
-// (передняя/середина/дальняя × левая/центр/правая) и необязательная заметка.
+// js/admin-pin-positions.js). На каждую лунку можно задать:
+//   • зону грина 3×3 (передняя/середина/дальняя × левая/центр/правая);
+//   • точные размеры грина в метрах — UP (глубина от переднего края),
+//     SIDE (ширина) и DEPTH (глубина грина от переднего до заднего края).
+//     Из них считается положение флажка: вперёд от переднего края (UP)
+//     и в сторону от центральной линии (SIDE). PLAYER PIN задаётся так же,
+//     как в приложениях измерения грина, поэтому админу не нужно пересчитывать
+//     координаты вручную;
+//   • схему грина — загруженное изображение с точкой «передний край», и
+//     тогда флажок рисуется поверх картинки по тем же числам.
+// Необязательная заметка («флажок за бункером, ветер в спину») — на лунку и
+// на весь раунд.
 // Хранится всё в settings/pin_positions — читают все (settings открыт на
 // чтение в database.rules.json), пишет только админ. Благодаря шине settings
 // (js/utils.js) подписка одна на всю ветку, отдельного Listen-а нет.
@@ -37,6 +47,130 @@ var PIN_ZONE_META = {
     bc: { ru: 'Дальняя середина', en: 'Back middle', x: 0.50, y: 0.25 },
     br: { ru: 'Дальняя правая', en: 'Back right', x: 0.69, y: 0.29 }
 };
+
+// ── Размеры грина: UP / SIDE / DEPTH ──────────────────────────────────────
+//
+// Админ вводит те же числа, что показывает приложение для измерения грина:
+//   UP    — насколько флажок отстоит от ПЕРЕДНЕГО края грина (вперёд), метры;
+//   SIDE  — насколько флажок смещён от центральной линии, метры.
+//           Знак: + вправо, − влево (когда смотришь с ти на грин);
+//   DEPTH — глубина грина от переднего края до заднего, метры.
+// Ширина грина нужна, чтобы перевести SIDE в долю картинки: её задаёт
+// WIDTH (сторона влево + вправо от центральной линии). Без WIDTH панель
+// показывает положение по UP/DEPTH, а SIDE — только числом.
+//
+// Что из этого получается: точные координаты флажка на схеме в долях (0..1),
+// где x — слева направо, y — от переднего края (0) к заднему (1). Если чисел
+// нет, работает прежняя зона 3×3 — она и есть запасной вариант.
+var PIN_MEASURE_DEFAULTS = { depth: 30, width: 24 };
+// Допустимые диапазоны, метры. SIDE — единственное число со знаком
+// (+ вправо / − влево), поэтому у него минимум отрицательный.
+var PIN_MEASURE_RANGE = {
+    depth: { min: 1, max: 120 },
+    up: { min: 0, max: 120 },
+    side: { min: -60, max: 60 },
+    width: { min: 0, max: 120 }
+};
+
+function pinNumberOrNull(value, range) {
+    if (value === null || value === undefined || value === '') return null;
+    var num = typeof value === 'number' ? value : parseFloat(String(value).replace(',', '.'));
+    if (!isFinite(num)) return null;
+    if (range) {
+        if (num < range.min || num > range.max) return null;
+    } else if (num < 0) {
+        return null;
+    }
+    return Math.round(num * 10) / 10;
+}
+
+function pinMeasureOrNull(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var depth = pinNumberOrNull(raw.depth, PIN_MEASURE_RANGE.depth);
+    var up = pinNumberOrNull(raw.up, PIN_MEASURE_RANGE.up);
+    var side = pinNumberOrNull(raw.side, PIN_MEASURE_RANGE.side);
+    // Ширина необязательна; 0 и отрицательная — то же, что «не задана».
+    var width = pinNumberOrNull(raw.width, PIN_MEASURE_RANGE.width);
+    if (width !== null && !(width > 0)) width = null;
+    if (depth === null || up === null || side === null) return null;
+    // UP не может быть больше глубины грина: такое число — опечатка, а не
+    // позиция, поэтому такую лунку считаем неизмеренной, а не «за грином».
+    if (up > depth) return null;
+    return { depth: depth, up: up, side: side, width: width };
+}
+
+// Доля по глубине: 0 — передний край, 1 — задний.
+function pinDepthRatio(measure) {
+    if (!measure || !measure.depth) return null;
+    var r = measure.up / measure.depth;
+    return Math.max(0, Math.min(1, r));
+}
+
+// Доля по ширине: 0.5 — центральная линия. Без WIDTH ширину не знаем.
+function pinSideRatio(measure) {
+    if (!measure || measure.width === null || measure.width === undefined) return null;
+    var half = measure.width / 2;
+    if (!(half > 0)) return null;
+    return Math.max(0, Math.min(1, 0.5 + measure.side / (2 * half)));
+}
+
+// Точка на схеме. null, если лунка не измерена: тогда рисуем зону 3×3.
+function pinMeasurePoint(measure) {
+    var rx = pinSideRatio(measure);
+    var ry = pinDepthRatio(measure);
+    if (ry === null) return null;
+    // Схема грина на экране — эллипс с передним краем внизу: y=0 в данных
+    // (передний край) соответствует y=1 на картинке. Переворачиваем.
+    return { x: rx === null ? 0.5 : rx, y: 1 - ry };
+}
+
+function pinMeasureText(measure) {
+    if (!measure) return '';
+    var en = pinPanelLangEn();
+    var parts = [
+        'UP ' + measure.up.toFixed(1) + (en ? ' m' : ' м'),
+        'SIDE ' + (measure.side > 0 ? '+' : '') + measure.side.toFixed(1).replace('-', '−') + (en ? ' m' : ' м'),
+        'DEPTH ' + measure.depth.toFixed(1) + (en ? ' m' : ' м')
+    ];
+    return parts.join(' · ');
+}
+
+// Куда смотрит флажок словами: сначала «сколько вперёд», потом сторона —
+// так игрок читает это на поле, а не как таблицу координат.
+function pinMeasureWords(measure) {
+    if (!measure) return '';
+    var en = pinPanelLangEn();
+    var depthWord;
+    var ratio = pinDepthRatio(measure) === null ? 0.5 : pinDepthRatio(measure);
+    if (ratio < 0.34) depthWord = en ? 'front' : 'ближняя часть';
+    else if (ratio > 0.66) depthWord = en ? 'back' : 'дальняя часть';
+    else depthWord = en ? 'middle' : 'середина';
+    var sideWord;
+    if (Math.abs(measure.side) <= 1.5) sideWord = en ? 'centre' : 'по центру';
+    else if (measure.side > 0) sideWord = en ? 'right of the centre line' : 'правее центральной линии';
+    else sideWord = en ? 'left of the centre line' : 'левее центральной линии';
+    var head = en
+        ? 'Flag ' + measure.up.toFixed(1) + ' m from the front, ' + depthWord
+        : 'Флажок ' + measure.up.toFixed(1) + ' м от переднего края, ' + depthWord;
+    return head + ', ' + sideWord;
+}
+
+// Схема грина картинкой. Принимаем data:URL (загружено админом, сжато до
+// 900 px) и https: — всё остальное отбрасываем: чужие схемы с непроверенным
+// протоколом игроку на поле не нужны.
+function normalizePinGreenImage(raw) {
+    if (typeof raw === 'string') {
+        var s = raw.trim();
+        if (/^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=\s]+$/i.test(s) && s.length <= 900000) return s;
+        return '';
+    }
+    if (!raw || typeof raw !== 'object') return '';
+    var url = typeof raw.url === 'string' ? raw.url.trim() : '';
+    if (!url) return '';
+    if (/^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=\s]+$/i.test(url) && url.length <= 900000) return url;
+    if (/^https:\/\//i.test(url) && url.length <= 900) return url;
+    return '';
+}
 
 function pinPanelLangEn() {
     return typeof currentLang !== 'undefined' && currentLang === 'en';
@@ -68,10 +202,24 @@ function normalizePinPositions(value) {
         var zone = typeof raw === 'string'
             ? raw
             : (raw && typeof raw === 'object' ? String(raw.zone == null ? '' : raw.zone) : '');
-        if (PIN_ZONES.indexOf(zone) === -1) return;
         var note = raw && typeof raw === 'object' && typeof raw.note === 'string'
             ? raw.note.slice(0, 120) : '';
-        out.holes[h] = { zone: zone, note: note };
+        var measure = raw && typeof raw === 'object' ? pinMeasureOrNull(raw.measure) : null;
+        var image = raw && typeof raw === 'object' ? normalizePinGreenImage(raw.image) : '';
+        // Неизвестная зона — это битые данные, а не «центр»: такую запись
+        // отбрасываем. Но лунка может быть описана только размерами или
+        // только схемой грина — тогда зона не нужна, достаточно UP/SIDE/DEPTH.
+        if (PIN_ZONES.indexOf(zone) === -1) {
+            if (!measure && !image) return;
+            zone = 'mc';
+        }
+        // Явно заданная зона без валидных чисел — не «лунка без данных», а
+        // битая запись (например, UP > DEPTH): отбрасываем её целиком.
+        if (!measure && raw && typeof raw === 'object' && raw.measure) return;
+        var entry = { zone: zone, note: note };
+        if (measure) entry.measure = measure;
+        if (image) entry.image = image;
+        out.holes[h] = entry;
     });
     return out;
 }
@@ -173,18 +321,52 @@ function pinPanelHTML(id, hole, pin) {
     var meta = PIN_ZONE_META[pin.zone];
     var zoneLabel = pinZoneLabel(pin.zone);
     var par = (typeof holePar === 'function') ? holePar(hole) : null;
+    var measure = pin.measure || null;
+    var image = pin.image || '';
+    // Точка флажка: из размеров грина, если они заданы; иначе — центр зоны.
+    var point = pinMeasurePoint(measure);
+    var flagX = point ? point.x : meta.x;
+    var flagY = point ? point.y : meta.y;
     var cells = PIN_ZONES.map(function (zone) {
         var m = PIN_ZONE_META[zone];
         var active = zone === pin.zone;
         return '<span class="pin-green__cell' + (active ? ' is-pin' : '') + '"' +
             ' style="left:' + (m.x * 100).toFixed(1) + '%;top:' + (m.y * 100).toFixed(1) + '%"' +
             ' aria-hidden="true">' +
-            (active ? '<i class="fas fa-flag"></i>' : '') +
+            (active && !point ? '<i class="fas fa-flag"></i>' : '') +
         '</span>';
     }).join('');
+    // Схема грина: загруженная картинка, если она есть (флажок рисуем поверх
+    // неё по тем же числам), иначе прежний эллипс-заглушка.
+    var flagMark = '<span class="pin-green__flag" style="left:' + (flagX * 100).toFixed(1) + '%;top:' +
+        (flagY * 100).toFixed(1) + '%" aria-hidden="true"><i class="fas fa-flag"></i></span>';
+    // С картинкой флажок живёт внутри .pin-green__canvas — прямоугольника
+    // самой схемы: только так его проценты совпадают с тем, что нарисовано.
+    var greenBody = image
+        ? '<span class="pin-green__canvas">' +
+              '<img class="pin-green__img" src="' + escapeHtml(image) + '" alt="" aria-hidden="true">' +
+              flagMark +
+              '<span class="pin-green__frontline" aria-hidden="true"></span>' +
+          '</span>' +
+          '<span class="pin-green__front" aria-hidden="true">' + (en ? 'front edge at the bottom' : 'передний край — снизу') + '</span>'
+        : '<span class="pin-green__ring" aria-hidden="true"></span>' + cells +
+          '<span class="pin-green__tee" aria-hidden="true">' + (en ? 'tee' : 'ти') + '</span>' + flagMark;
+
     var updated = pinFormatTime(pinPositionsState.updatedAt);
     var note = pin.note ? String(pin.note) : '';
     var clubNote = pinPositionsState.note ? String(pinPositionsState.note) : '';
+    var measureLine = measure
+        ? '<dl class="pin-measure">' +
+            '<div class="pin-measure__row"><dt>UP</dt><dd>' + measure.up.toFixed(1) + '<span>' + (en ? ' m' : ' м') + '</span></dd></div>' +
+            '<div class="pin-measure__row"><dt>SIDE</dt><dd>' + (measure.side > 0 ? '+' : '') +
+                measure.side.toFixed(1).replace('-', '−') + '<span>' + (en ? ' m' : ' м') + '</span></dd></div>' +
+            '<div class="pin-measure__row"><dt>DEPTH</dt><dd>' + measure.depth.toFixed(1) + '<span>' + (en ? ' m' : ' м') + '</span></dd></div>' +
+            (measure.width !== null && measure.width !== undefined
+                ? '<div class="pin-measure__row"><dt>WIDTH</dt><dd>' + measure.width.toFixed(1) + '<span>' + (en ? ' m' : ' м') + '</span></dd></div>'
+                : '') +
+          '</dl>'
+        : '';
+    var words = measure ? pinMeasureWords(measure) : '';
     return '' +
         '<button type="button" class="pin-tab" data-act="pestovoPinExpand" data-arg="' + escapeHtml(id) + '"' +
             ' aria-controls="' + escapeHtml(id) + '-sheet" aria-expanded="false"' +
@@ -205,15 +387,17 @@ function pinPanelHTML(id, hole, pin) {
             '</div>' +
             '<div class="pin-sheet__hole"><b>' + (en ? 'Hole ' : 'Лунка ') + escapeHtml(hole) + '</b>' +
                 (par ? '<span>· ' + (en ? 'par ' : 'пар ') + escapeHtml(par) + '</span>' : '') + '</div>' +
-            '<div class="pin-green" role="img" aria-label="' +
-                (en ? 'Green layout: flag at ' + meta.en.toLowerCase() : 'Схема грина: флажок — ' + meta.ru.toLowerCase()) + '">' +
-                '<span class="pin-green__ring" aria-hidden="true"></span>' +
-                cells +
-                '<span class="pin-green__tee" aria-hidden="true">' + (en ? 'tee' : 'ти') + '</span>' +
+            '<div class="pin-green' + (image ? ' pin-green--photo' : '') + '" role="img" aria-label="' +
+                escapeHtml(measure
+                    ? (en ? 'Green: ' + pinMeasureWords(measure) : 'Грин: ' + pinMeasureWords(measure))
+                    : (en ? 'Green layout: flag at ' + meta.en.toLowerCase() : 'Схема грина: флажок — ' + meta.ru.toLowerCase())) + '">' +
+                greenBody +
             '</div>' +
             '<div class="pin-sheet__zone">' + escapeHtml(zoneLabel) +
                 (pin.fallback ? '<span class="pin-sheet__default">' +
                     (en ? 'default position' : 'по умолчанию') + '</span>' : '') + '</div>' +
+            (words ? '<p class="pin-sheet__words">' + escapeHtml(words) + '</p>' : '') +
+            measureLine +
             (note ? '<p class="pin-sheet__note"><i class="fas fa-circle-info" aria-hidden="true"></i> ' +
                 escapeHtml(note) + '</p>' : '') +
             (clubNote && !note ? '<p class="pin-sheet__note"><i class="fas fa-circle-info" aria-hidden="true"></i> ' +
@@ -248,7 +432,8 @@ function renderPinPanel(inst) {
     }
     host.hidden = false;
     var langMark = (pinPanelLangEn() ? 'en' : 'ru') + ':' + hole + ':' + pin.zone + ':' +
-        (pin.note || '') + ':' + pinPositionsState.updatedAt + ':' + (pinPositionsState.note || '');
+        (pin.note || '') + ':' + pinPositionsState.updatedAt + ':' + (pinPositionsState.note || '') +
+        ':' + JSON.stringify(pin.measure || null) + ':' + (pin.image ? pin.image.length : 0);
     if (inst.markup !== langMark) {
         inst.markup = langMark;
         host.innerHTML = pinPanelHTML(inst.id, hole, pin);
@@ -458,6 +643,15 @@ if (typeof window !== 'undefined') {
     window.PIN_ZONES = PIN_ZONES;
     window.PIN_ZONE_META = PIN_ZONE_META;
     window.pinZoneLabel = pinZoneLabel;
+    window.PIN_MEASURE_DEFAULTS = PIN_MEASURE_DEFAULTS;
+    window.PIN_MEASURE_RANGE = PIN_MEASURE_RANGE;
+    window.pinMeasureOrNull = pinMeasureOrNull;
+    window.pinMeasurePoint = pinMeasurePoint;
+    window.pinMeasureText = pinMeasureText;
+    window.pinMeasureWords = pinMeasureWords;
+    window.pinDepthRatio = pinDepthRatio;
+    window.pinSideRatio = pinSideRatio;
+    window.normalizePinGreenImage = normalizePinGreenImage;
     window.normalizePinPositions = normalizePinPositions;
     window.pestovoPinPositions = pestovoPinPositions;
     window.pestovoPinForHole = pestovoPinForHole;

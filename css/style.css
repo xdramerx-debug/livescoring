@@ -7682,6 +7682,14 @@ body.sun-mode #active-scoring-view .pace-assistant-grid span { color:#000; }
     margin:10px 0 0;font-size:14px;font-weight:800;letter-spacing:.01em;
     color:var(--white,#f3f8f4);
 }
+/* Лунка ещё не отмечена админом: честно помечаем, что это центр грина. */
+.pin-sheet__default{
+    margin-left:7px;padding:2px 7px;border-radius:999px;
+    font-size:10px;font-weight:700;letter-spacing:.02em;vertical-align:2px;
+    color:var(--muted,#a2b7a8);background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.1);white-space:nowrap;
+}
+body.sun-mode .pin-sheet__default{color:#4a4a4a;background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.12);}
 .pin-sheet__note{
     display:flex;gap:7px;margin:8px 0 0;font-size:11.5px;line-height:1.45;
     color:var(--muted,#a2b7a8);

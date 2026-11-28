@@ -86,9 +86,15 @@ function pestovoPinPositions() {
     return pinPositionsState;
 }
 
+// Положение флажка для лунки. Если админ лунку не отмечал, это центр грина:
+// закладка должна быть видна на любой лунке с самого начала — иначе игрок не
+// знает, что фича вообще есть (а расставленные позже позиции всё равно
+// приедут подпиской). null — только когда показ выключен явно.
 function pestovoPinForHole(hole) {
     var h = parseInt(hole, 10);
-    return h ? (pinPositionsState.holes[h] || null) : null;
+    if (!(h >= 1 && h <= 18)) return null;
+    if (!pinPositionsState.enabled) return null;
+    return pinPositionsState.holes[h] || { zone: 'mc', note: '', fallback: true };
 }
 
 // Подписка на settings/pin_positions. Делегируется в bindRealtimeValue()
@@ -205,16 +211,21 @@ function pinPanelHTML(id, hole, pin) {
                 cells +
                 '<span class="pin-green__tee" aria-hidden="true">' + (en ? 'tee' : 'ти') + '</span>' +
             '</div>' +
-            '<div class="pin-sheet__zone">' + escapeHtml(zoneLabel) + '</div>' +
+            '<div class="pin-sheet__zone">' + escapeHtml(zoneLabel) +
+                (pin.fallback ? '<span class="pin-sheet__default">' +
+                    (en ? 'default position' : 'по умолчанию') + '</span>' : '') + '</div>' +
             (note ? '<p class="pin-sheet__note"><i class="fas fa-circle-info" aria-hidden="true"></i> ' +
                 escapeHtml(note) + '</p>' : '') +
             (clubNote && !note ? '<p class="pin-sheet__note"><i class="fas fa-circle-info" aria-hidden="true"></i> ' +
                 escapeHtml(clubNote) + '</p>' : '') +
             '<p class="pin-sheet__meta">' +
-                (updated
+                (pin.fallback
+                    ? (en ? 'The administrator has not set a pin for this hole yet' : 'Флажок этой лунки ещё не отмечен — показан центр грина')
+                    : '') +
+                (pin.fallback ? '' : (updated
                     ? (en ? 'Updated ' + escapeHtml(updated) : 'Обновлено ' + escapeHtml(updated))
-                    : (en ? 'Set by the club administrator' : 'Ставит администратор клуба')) +
-                '</p>' +
+                    : (en ? 'Set by the club administrator' : 'Ставит администратор клуба'))) +
+            '</p>' +
             '<button type="button" class="btn btn-ol btn-block pin-sheet__collapse" data-act="pestovoPinCollapse"' +
                 ' data-arg="' + escapeHtml(id) + '">' +
                 '<i class="fas fa-chevron-right" aria-hidden="true"></i> ' + (en ? 'Collapse' : 'Свернуть') +
@@ -227,7 +238,7 @@ function renderPinPanel(inst) {
     var host = inst.host;
     var hole = parseInt(inst.hole, 10) || 0;
     var pin = hole ? pestovoPinForHole(hole) : null;
-    var available = !!(pinPositionsState.enabled && pin && PIN_ZONE_META[pin.zone] && hole);
+    var available = !!(pin && PIN_ZONE_META[pin.zone] && hole);
     inst.available = available;
     if (!available || !pinPanelGateVisible(inst)) {
         host.hidden = true;

@@ -174,8 +174,14 @@ function swipe(win, el, dx) {
     win.pestovoPinMountPanels();
     const host = panelHost(win, 'sc-pin-panel');
 
-    // Без данных панель не висит на экране.
-    check(host.hidden === true, 'пока админ не задал позиции, закладка скрыта');
+    // Закладка видна сразу и на любой лунке: без данных лунки — центр грина.
+    // Иначе игрок не знает, что фича есть, пока админ не расставит все 18.
+    check(host.hidden === false, 'закладка видна сразу, ещё до данных из базы');
+    check(host.querySelector('.pin-tab') !== null, 'закладка отрисована без данных');
+    check(host.querySelector('.pin-sheet__zone').textContent.indexOf('Центр грина') !== -1,
+        'без данных лунки показывает центр грина');
+    check(host.querySelector('.pin-sheet__default') !== null,
+        'и честно помечает позицию как «по умолчанию»');
 
     win.pestovoPinPositionsApply({
         enabled: true, updatedAt: 1730000000000, updatedBy: 'Судья',
@@ -227,7 +233,11 @@ function swipe(win, el, dx) {
     check(host.querySelector('.pin-sheet').textContent.indexOf('Дальняя левая') !== -1,
         'на новой лунке показана её зона');
     win.pestovoPinPanelHole('scorer', 2);
-    check(host.hidden === true, 'лунка без заданной позиции прячет закладку');
+    check(host.hidden === false, 'лунка без своей позиции тоже показывает закладку');
+    check(host.querySelector('.pin-tab').textContent.indexOf('2') !== -1,
+        'номер лунки на закладке обновился');
+    check(host.querySelector('.pin-sheet__zone').textContent.indexOf('Центр грина') !== -1,
+        'для неотмеченной лунки — центр грина по умолчанию');
 
     // Выключенная настройка убирает закладку у всех.
     win.pestovoPinPositionsApply({ enabled: false, holes: { 1: { zone: 'mc' } } });

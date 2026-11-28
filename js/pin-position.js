@@ -645,6 +645,7 @@ if (typeof window !== 'undefined') {
     window.pinZoneLabel = pinZoneLabel;
     window.PIN_MEASURE_DEFAULTS = PIN_MEASURE_DEFAULTS;
     window.PIN_MEASURE_RANGE = PIN_MEASURE_RANGE;
+    window.pinNumberOrNull = pinNumberOrNull;
     window.pinMeasureOrNull = pinMeasureOrNull;
     window.pinMeasurePoint = pinMeasurePoint;
     window.pinMeasureText = pinMeasureText;

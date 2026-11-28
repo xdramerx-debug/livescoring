@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=3892671c">
+    <link rel="stylesheet" href="css/style.css?v=355de2fe">
     <link rel="stylesheet" href="css/theme-v2.css?v=265c7b83">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=dc2bdd18">
@@ -24,7 +24,7 @@
     <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=a9cfbaab">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=5c98ac03">
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/design-history.css?v=88bc27c1">
@@ -323,6 +323,49 @@
                         <p class="sev-sec-sub" data-i18n="pin_pos_zone_hint">Зона грина: дальняя часть сверху, ближняя — снизу, к ти.</p>
                         <div class="pin-pos-grid" id="pin-pos-grid" role="group" aria-label="Зона грина" data-i18n-aria-label="pin_pos_zone_hint"></div>
                         <p class="pin-pos-zone-label"><i class="fas fa-flag" aria-hidden="true"></i> <span id="pin-pos-zone-label" data-i18n="pin_zone_mc">Центр грина</span></p>
+
+                        <div class="sev-sec-title" data-i18n="pin_pos_measure_title">Размеры грина в метрах</div>
+                        <p class="sev-sec-sub" data-i18n="pin_pos_measure_hint">UP — сколько метров вперёд от переднего края, SIDE — сколько метров в сторону от центральной линии (+ вправо, − влево), DEPTH — глубина грина. По этим числам флажок встаёт на схеме точно, а не по зоне 3×3.</p>
+                        <div class="pin-pos-measure">
+                            <label class="pin-pos-measure__field" for="pin-pos-up">
+                                <span class="pin-pos-measure__name">UP</span>
+                                <span class="pin-pos-measure__sub" data-i18n="pin_pos_measure_up">вперёд</span>
+                                <input type="text" inputmode="decimal" id="pin-pos-up" class="form-input" data-act="pinAdminSetMeasure" data-arg="up" data-val="1" placeholder="8,0" autocomplete="off">
+                            </label>
+                            <label class="pin-pos-measure__field" for="pin-pos-side">
+                                <span class="pin-pos-measure__name">SIDE</span>
+                                <span class="pin-pos-measure__sub" data-i18n="pin_pos_measure_side">сторона</span>
+                                <input type="text" inputmode="decimal" id="pin-pos-side" class="form-input" data-act="pinAdminSetMeasure" data-arg="side" data-val="1" placeholder="-2,5" autocomplete="off">
+                            </label>
+                            <label class="pin-pos-measure__field" for="pin-pos-depth">
+                                <span class="pin-pos-measure__name">DEPTH</span>
+                                <span class="pin-pos-measure__sub" data-i18n="pin_pos_measure_depth">глубина</span>
+                                <input type="text" inputmode="decimal" id="pin-pos-depth" class="form-input" data-act="pinAdminSetMeasure" data-arg="depth" data-val="1" placeholder="31,0" autocomplete="off">
+                            </label>
+                            <label class="pin-pos-measure__field" for="pin-pos-width">
+                                <span class="pin-pos-measure__name">WIDTH</span>
+                                <span class="pin-pos-measure__sub" data-i18n="pin_pos_measure_width">ширина</span>
+                                <input type="text" inputmode="decimal" id="pin-pos-width" class="form-input" data-act="pinAdminSetMeasure" data-arg="width" data-val="1" placeholder="26,0" autocomplete="off">
+                            </label>
+                        </div>
+                        <p class="pin-pos-measure-hint" id="pin-pos-measure-hint" role="status" aria-live="polite"></p>
+                        <button type="button" class="btn btn-ol btn-sm pin-pos-measure-clear" id="pin-pos-measure-clear" data-act="pinAdminClearMeasure" hidden>
+                            <i class="fas fa-eraser" aria-hidden="true"></i> <span data-i18n="pin_pos_measure_clear">Очистить числа</span>
+                        </button>
+
+                        <div class="sev-sec-title" data-i18n="pin_pos_image_title">Схема грина для лунки</div>
+                        <p class="sev-sec-sub" data-i18n="pin_pos_image_hint">Загрузите картинку грина (скриншот из приложения, фото схемы): флажок будет нарисован прямо на ней по числам UP/SIDE/DEPTH. Передний край — снизу картинки.</p>
+                        <div class="pin-pos-image">
+                            <label class="btn btn-ol pin-pos-image__pick" for="pin-pos-image-input">
+                                <i class="fas fa-image" aria-hidden="true"></i> <span data-i18n="pin_pos_image_pick">Загрузить схему</span>
+                                <input type="file" id="pin-pos-image-input" accept="image/png,image/jpeg,image/webp" data-act="pinAdminImageChosen" data-self="1" hidden>
+                            </label>
+                            <button type="button" class="btn btn-ol" id="pin-pos-image-clear" data-act="pinAdminClearImage" hidden>
+                                <i class="fas fa-trash-can" aria-hidden="true"></i> <span data-i18n="pin_pos_image_clear">Убрать схему</span>
+                            </button>
+                            <p class="pin-pos-image-state" id="pin-pos-image-state"></p>
+                        </div>
+
                         <label class="pin-pos-field" for="pin-pos-hole-note">
                             <span data-i18n="pin_pos_hole_note">Заметка к лунке (необязательно)</span>
                             <input type="text" id="pin-pos-hole-note" class="form-input" maxlength="120" data-act="pinAdminSetHoleNote" data-val="1" placeholder="Например: флажок за бункером" data-i18n-placeholder="pin_pos_hole_note_ph">
@@ -334,7 +377,7 @@
                             <div class="pin-preview__tab" role="img" aria-label="Пин-позиция" data-i18n-aria-label="pin_pos_tab_aria" title="Пин-позиция" data-i18n-title="pin_pos_title"><i class="fas fa-flag"></i><b>7</b><i class="fas fa-chevron-left"></i></div>
                             <div class="pin-preview__sheet">
                                 <div class="pin-preview__kicker"><i class="fas fa-flag"></i> <span data-i18n="pin_pos_preview_title">Пин-позиция</span></div>
-                                <div class="pin-preview__green">
+                                <div class="pin-preview__green" id="pin-pos-preview-green">
                                     <span class="pin-preview__ring"></span>
                                     <span class="pin-preview__marker" id="pin-pos-preview-marker"><i class="fas fa-flag"></i></span>
                                     <span class="pin-preview__tee" data-i18n="pin_pos_tee">ти</span>
@@ -1225,12 +1268,12 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.141.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.142.0</span></p></div></div></footer>
 <script src="js/vendor/firebase-app-compat.js?v=3d08dff5"></script>
 <script src="js/vendor/firebase-database-compat.js?v=5d5044fc"></script>
 <script src="js/vendor/firebase-auth-compat.js?v=00a09fb2"></script>
 <script defer src="js/firebase-config.js?v=715c9693"></script>
-<script type="module" src="dist/livescoring-modules.js?v=9d86d192"></script>
+<script type="module" src="dist/livescoring-modules.js?v=7dcb6fcf"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=b99aae7a"></script>
 <script defer src="js/utils-scorecards.js?v=ddd77c34"></script>
@@ -1263,8 +1306,8 @@
 <script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-exports.js?v=089f4c04"></script>
 <script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-players-excel.js?v=b1441d0a"></script>
 <script type="text/plain" data-admin-lazy="rusgolf" data-admin-src="js/admin-agr.js?v=9a96fde3"></script>
-<script type="text/plain" data-admin-lazy="pinpositions" data-admin-src="js/pin-position.js?v=e726d8dd"></script>
-<script type="text/plain" data-admin-lazy="pinpositions" data-admin-src="js/admin-pin-positions.js?v=1cd48d9b"></script>
+<script type="text/plain" data-admin-lazy="pinpositions" data-admin-src="js/pin-position.js?v=4f2676f1"></script>
+<script type="text/plain" data-admin-lazy="pinpositions" data-admin-src="js/admin-pin-positions.js?v=4692f8ba"></script>
 <script type="text/plain" data-admin-lazy="display" data-admin-src="js/admin-display.js?v=a7eae245"></script>
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/admin-entry-scorecard.js?v=9e8944c5"></script>

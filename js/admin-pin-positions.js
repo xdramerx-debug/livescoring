@@ -11,8 +11,21 @@
 //     note: '',                   // общая подсказка клуба
 //     updatedAt: 1730000000000,   // время последнего сохранения
 //     updatedBy: 'Имя админа',
-//     holes: { 7: { zone: 'mc', note: 'Ветер в спину' }, … }   // 1..18
+//     holes: {
+//       7: {
+//         zone: 'mc',                        // зона 3×3 — запасной вариант
+//         note: 'Ветер в спину',
+//         measure: { up: 8, side: -2.5, depth: 31, width: 26 },  // метры
+//         image: 'data:image/jpeg;base64,…'  // схема грина (≤ 900 px)
+//       }, …
+//     }
 //   }
+// UP — вперёд от переднего края, SIDE — в сторону от центральной линии
+// (+ вправо, − влево), DEPTH — глубина грина. WIDTH — ширина грина: без неё
+// SIDE нельзя перевести в положение на картинке, и панель покажет только
+// глубину. Изображение сжимается в браузере (canvas → JPEG) и лежит прямо в
+// базе: отдельного Firebase Storage в проекте нет, а схема — одна картинка
+// на лунку, загружаемая раз в сезон.
 // Читают все (settings открыт на чтение в database.rules.json), пишет только
 // администратор — ветка /settings целиком закрыта на запись админом.
 //
@@ -45,6 +58,11 @@ function pinAdminClone(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
+function pinMeasureClone(measure) {
+    if (!measure) return null;
+    return { depth: measure.depth, up: measure.up, side: measure.side, width: measure.width };
+}
+
 // Черновик из сохранённого значения. Заполняем все 18 лунок: редактор должен
 // показывать зону для каждой лунки, а не пустоту.
 function pinAdminDraftFrom(value) {
@@ -56,6 +74,8 @@ function pinAdminDraftFrom(value) {
         holes[h] = {
             zone: pin ? pin.zone : 'mc',
             note: pin ? pin.note : '',
+            measure: pin && pin.measure ? pinMeasureClone(pin.measure) : null,
+            image: pin && pin.image ? pin.image : '',
             explicit: !!pin
         };
     });
@@ -123,12 +143,200 @@ function pinAdminSetHoleNote(value) {
     pinAdminDirty = true;
 }
 
+// ── Размеры грина ─────────────────────────────────────────────────────────
+//
+// Админ вводит метры, а не координаты: UP/SIDE/DEPTH — те же числа, что
+// показывает приложение для измерения грина. Пустое поле = неизвестно;
+// позиция считается заданной, когда есть UP, SIDE и DEPTH. UP больше DEPTH —
+// явная опечатка, такую позицию не сохраняем.
+
+function pinAdminMeasureInput(field) {
+    return pinAdminGet('pin-pos-' + field);
+}
+
+// Значение из формы: пусто → null, иначе число (запятая как разделитель).
+function pinAdminMeasureValue(field) {
+    var el = pinAdminMeasureInput(field);
+    if (!el) return null;
+    return pinNumberOrNull(el.value.trim(), PIN_MEASURE_RANGE[field]);
+}
+
+// Черновик измерения из полей формы. null — если заполнено не всё нужное.
+function pinAdminMeasureFromInputs() {
+    var depth = pinAdminMeasureValue('depth');
+    var up = pinAdminMeasureValue('up');
+    var side = pinAdminMeasureValue('side');
+    var width = pinAdminMeasureValue('width');
+    if (depth === null || up === null || side === null) return null;
+    if (up > depth) return null;
+    return { depth: depth, up: up, side: side, width: width };
+}
+
+// Подсказка под полями: что сейчас получается и что мешает.
+function pinAdminMeasureHint(measure) {
+    if (!measure) {
+        var anyFilled = ['depth', 'up', 'side', 'width'].some(function (f) {
+            var el = pinAdminMeasureInput(f);
+            return el && String(el.value || '').trim() !== '';
+        });
+        if (!anyFilled) return pinAdminRu(
+            'Необязательно. Заполните UP, SIDE и DEPTH — тогда флажок встанет по числам, а не по зоне 3×3.',
+            'Optional. Fill UP, SIDE and DEPTH — then the flag is placed by the numbers instead of the 3×3 zone.');
+        var up = pinAdminMeasureValue('up');
+        var depth = pinAdminMeasureValue('depth');
+        if (up !== null && depth !== null && up > depth) {
+            return pinAdminRu(
+                'UP больше DEPTH — такого не бывает: флажок не может стоять дальше заднего края.',
+                'UP is greater than DEPTH: the flag cannot stand past the back edge.');
+        }
+        return pinAdminRu(
+            'Нужны все три числа: UP, SIDE и DEPTH. Сейчас позиция считается по зоне 3×3.',
+            'All three numbers are required: UP, SIDE and DEPTH. The position uses the 3×3 zone for now.');
+    }
+    var text = pinMeasureWords(measure);
+    var width = pinAdminMeasureValue('width');
+    if (width === null || !(width > 0)) {
+        text += ' · ' + pinAdminRu(
+            'WIDTH не задан — на схеме покажем только глубину, по центру.',
+            'WIDTH is not set — the layout shows depth only, in the centre.');
+    }
+    return text;
+}
+
+// Правка одного числа. Пересобираем измерение целиком: «половина» чисел не
+// должна попадать в базу.
+function pinAdminSetMeasure(field) {
+    if (['up', 'side', 'depth', 'width'].indexOf(field) === -1) return;
+    var draft = pinAdminDraftOrLoad();
+    var pin = draft.holes[pinAdminActiveHole] || { zone: 'mc', note: '', measure: null, image: '' };
+    pin.measure = pinAdminMeasureFromInputs();
+    if (pin.measure) pin.explicit = true;
+    draft.holes[pinAdminActiveHole] = pin;
+    pinAdminDirty = true;
+    renderPinPositionsAdmin();
+}
+
+// Сброс чисел у лунки: позиция снова считается по зоне 3×3.
+function pinAdminClearMeasure() {
+    var draft = pinAdminDraftOrLoad();
+    var pin = draft.holes[pinAdminActiveHole] || { zone: 'mc', note: '', measure: null, image: '' };
+    pin.measure = null;
+    draft.holes[pinAdminActiveHole] = pin;
+    pinAdminDirty = true;
+    renderPinPositionsAdmin();
+    pinAdminStatus(pinAdminRu(
+        'Числа лунки очищены — работает зона 3×3. Не забудьте сохранить.',
+        'Hole numbers cleared — the 3×3 zone is used. Remember to save.'), 'info');
+}
+
+// ── Схема грина картинкой ────────────────────────────────────────────────
+//
+// Отдельного Firebase Storage в проекте нет, а схема грина — одна картинка
+// на лунку, которую меняют раз в сезон. Поэтому сжимаем её в браузере
+// (canvas → JPEG, длинная сторона ≤ 900 px) и кладём data:URL прямо в
+// settings/pin_positions рядом с числами. Это держит размер базы
+// предсказуемым (~60–120 КБ на лунку) и не требует новых правил и биллинга.
+
+var PIN_ADMIN_IMAGE_MAX_SIDE = 900;
+var PIN_ADMIN_IMAGE_MAX_CHARS = 900000;
+
+function pinAdminImageTooBig() {
+    pinAdminStatus(pinAdminRu(
+        'Картинка получилась слишком большой. Попробуйте файл поменьше или другую схему.',
+        'The image is too large. Try a smaller file or another layout.'), 'error');
+}
+
+// Пережатие в браузере. Колбэк получает data:URL или null, если файл не
+// похож на изображение.
+function pinAdminPrepareImage(file, callback) {
+    if (!file) { callback(null); return; }
+    if (!/^image\/(png|jpe?g|webp)$/i.test(file.type || '')) {
+        pinAdminStatus(pinAdminRu(
+            'Нужен файл PNG, JPEG или WebP.',
+            'A PNG, JPEG or WebP file is required.'), 'error');
+        callback(null);
+        return;
+    }
+    if (typeof FileReader === 'undefined' || typeof Image === 'undefined') { callback(null); return; }
+    var reader = new FileReader();
+    reader.onerror = function () { callback(null); };
+    reader.onload = function (e) {
+        var img = new Image();
+        img.onerror = function () { callback(null); };
+        img.onload = function () {
+            var w = img.width || img.naturalWidth || 0;
+            var h = img.height || img.naturalHeight || 0;
+            if (!w || !h) { callback(null); return; }
+            var scale = Math.min(1, PIN_ADMIN_IMAGE_MAX_SIDE / Math.max(w, h));
+            var cw = Math.max(1, Math.round(w * scale));
+            var ch = Math.max(1, Math.round(h * scale));
+            try {
+                var canvas = document.createElement('canvas');
+                canvas.width = cw;
+                canvas.height = ch;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, cw, ch);
+                var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                if (!dataUrl || dataUrl.length > PIN_ADMIN_IMAGE_MAX_CHARS) {
+                    dataUrl = canvas.toDataURL('image/jpeg', 0.62);
+                }
+                if (!dataUrl || dataUrl.length > PIN_ADMIN_IMAGE_MAX_CHARS) {
+                    pinAdminImageTooBig();
+                    callback(null);
+                    return;
+                }
+                callback(dataUrl);
+            } catch (err) {
+                console.warn('[pin-admin] image encode failed', err);
+                callback(null);
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Файл выбран в <input type="file">. Кнопка «Сохранить» отправит его в базу
+// вместе с числами — отдельного «загрузить» нет, чтобы не было двух шагов.
+function pinAdminImageChosen(input) {
+    var file = null;
+    if (input && input.files && input.files.length) file = input.files[0];
+    if (!file) return;
+    pinAdminStatus(pinAdminRu('Готовим схему грина…', 'Preparing the green layout…'), 'info');
+    pinAdminPrepareImage(file, function (dataUrl) {
+        if (!dataUrl) {
+            if (input) { try { input.value = ''; } catch (e) { /* не критично */ } }
+            return;
+        }
+        var draft = pinAdminDraftOrLoad();
+        var pin = draft.holes[pinAdminActiveHole] || { zone: 'mc', note: '', measure: null, image: '' };
+        pin.image = dataUrl;
+        pin.explicit = true;
+        draft.holes[pinAdminActiveHole] = pin;
+        pinAdminDirty = true;
+        if (input) { try { input.value = ''; } catch (e) { /* не критично */ } }
+        renderPinPositionsAdmin();
+        pinAdminStatus(pinAdminRu(
+            'Схема грина добавлена к лунке ' + pinAdminActiveHole + ' — сохраните пин-позиции.',
+            'Green layout added to hole ' + pinAdminActiveHole + ' — save the pin positions.'), 'info');
+    });
+}
+
+function pinAdminClearImage() {
+    var draft = pinAdminDraftOrLoad();
+    var pin = draft.holes[pinAdminActiveHole] || { zone: 'mc', note: '', measure: null, image: '' };
+    pin.image = '';
+    draft.holes[pinAdminActiveHole] = pin;
+    pinAdminDirty = true;
+    renderPinPositionsAdmin();
+}
+
 // «Центр на всех лунках» — самый частый сценарий нового дня: флажок в центре,
 // дальше админ правит только те лунки, где флажок перенесли.
 function pinAdminResetAll() {
     var draft = pinAdminDraftOrLoad();
     PIN_ADMIN_HOLES.forEach(function (h) {
-        draft.holes[h] = { zone: 'mc', note: '', explicit: false };
+        draft.holes[h] = { zone: 'mc', note: '', measure: null, image: '', explicit: false };
     });
     pinAdminDirty = true;
     pinAdminStatus(pinAdminRu(
@@ -145,8 +353,12 @@ function pinAdminPayload() {
         if (!pin || !PIN_ZONE_META[pin.zone]) return;
         // Не записываем лунки, где ничего не меняли: «нет записи» = центр,
         // а лишние ключи в базе только путают при следующем дежурстве.
-        if (!pin.explicit && pin.zone === 'mc' && !pin.note) return;
-        holes[h] = { zone: pin.zone, note: pin.note || '' };
+        var measure = pinMeasureClone(pin.measure);
+        if (!pin.explicit && pin.zone === 'mc' && !pin.note && !measure && !pin.image) return;
+        var entry = { zone: pin.zone, note: pin.note || '' };
+        if (measure) entry.measure = measure;
+        if (pin.image) entry.image = pin.image;
+        holes[h] = entry;
     });
     return {
         enabled: draft.enabled !== false,
@@ -294,11 +506,57 @@ function renderPinPositionsAdmin() {
     if (holeTitle) {
         holeTitle.textContent = pinAdminRu('Лунка ' + pinAdminActiveHole, 'Hole ' + pinAdminActiveHole);
     }
+    // Поля размеров грина. Пока админ печатает, не перебиваем ввод: значение
+    // пишем, только если оно реально другое (как у заметок выше).
+    var measure = pin.measure || null;
+    ['depth', 'up', 'side', 'width'].forEach(function (field) {
+        var el = pinAdminMeasureInput(field);
+        if (!el) return;
+        var next = measure && measure[field] !== null && measure[field] !== undefined
+            ? String(measure[field]).replace('.', ',')
+            : '';
+        if (document.activeElement !== el && el.value !== next) el.value = next;
+    });
+    var hint = pinAdminGet('pin-pos-measure-hint');
+    if (hint) hint.textContent = pinAdminMeasureHint(measure);
+    var clearMeasure = pinAdminGet('pin-pos-measure-clear');
+    if (clearMeasure) clearMeasure.hidden = !measure;
+
+    // Схема грина: превью, состояние и кнопка удаления.
+    var point = pinMeasurePoint(measure);
     var preview = pinAdminGet('pin-pos-preview-marker');
     if (preview) {
-        preview.style.left = (meta.x * 100).toFixed(1) + '%';
-        preview.style.top = (meta.y * 100).toFixed(1) + '%';
+        preview.style.left = ((point ? point.x : meta.x) * 100).toFixed(1) + '%';
+        preview.style.top = ((point ? point.y : meta.y) * 100).toFixed(1) + '%';
     }
+    var previewGreen = pinAdminGet('pin-pos-preview-green');
+    if (previewGreen) {
+        var img = pinAdminGet('pin-pos-preview-img');
+        if (pin.image) {
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'pin-pos-preview-img';
+                img.className = 'pin-preview__photo';
+                img.alt = '';
+                previewGreen.insertBefore(img, previewGreen.firstChild);
+            }
+            if (img.getAttribute('src') !== pin.image) img.setAttribute('src', pin.image);
+            previewGreen.classList.add('has-photo');
+        } else {
+            if (img && img.parentNode) img.parentNode.removeChild(img);
+            previewGreen.classList.remove('has-photo');
+        }
+    }
+    var imageState = pinAdminGet('pin-pos-image-state');
+    if (imageState) {
+        imageState.textContent = pin.image
+            ? pinAdminRu('Схема загружена (' + Math.round(pin.image.length / 1024) + ' КБ)',
+                'Layout uploaded (' + Math.round(pin.image.length / 1024) + ' KB)')
+            : pinAdminRu('Схемы грина пока нет — покажем схематичный эллипс.',
+                'No green layout yet — a schematic ellipse is shown.');
+    }
+    var clearImage = pinAdminGet('pin-pos-image-clear');
+    if (clearImage) clearImage.hidden = !pin.image;
     var metaLine = pinAdminGet('pin-pos-updated');
     if (metaLine) {
         metaLine.textContent = [updatedText, draft.updatedBy ? pinAdminRu('кто: ' + draft.updatedBy, 'by: ' + draft.updatedBy) : '']
@@ -341,6 +599,11 @@ if (typeof window !== 'undefined') {
     window.pinAdminSelectHole = pinAdminSelectHole;
     window.pinAdminSetZone = pinAdminSetZone;
     window.pinAdminSetHoleNote = pinAdminSetHoleNote;
+    window.pinAdminSetMeasure = pinAdminSetMeasure;
+    window.pinAdminClearMeasure = pinAdminClearMeasure;
+    window.pinAdminImageChosen = pinAdminImageChosen;
+    window.pinAdminClearImage = pinAdminClearImage;
+    window.pinAdminPrepareImage = pinAdminPrepareImage;
     window.pinAdminResetAll = pinAdminResetAll;
     window.pinAdminSave = pinAdminSave;
     window.pinAdminDraftFrom = pinAdminDraftFrom;

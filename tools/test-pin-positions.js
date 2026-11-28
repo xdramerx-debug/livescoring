@@ -405,7 +405,131 @@ function swipe(win, el, dx) {
         check(/\.pin-panel\.is-open \.pin-sheet\s*\{[^}]*visibility:visible/.test(css),
             'развёрнутая панель снова видима и кликабельна');
 
-        // ── 9. Скрипты страниц подключают панель до отрисовки шапки ──────
+        // ── 10. Размеры грина UP / SIDE / DEPTH и схема картинкой ────────
+        (function testMeasurements() {
+            const win = makeEnv(
+                '<div class="pin-panel" id="sc-pin-panel" data-pin-panel data-pin-source="scorer"' +
+                ' data-pin-gate="gate" data-pin-hole="1"></div>'
+            );
+            win.pestovoPinPositionsApply({
+                enabled: true, updatedAt: 1730000000000,
+                holes: { 1: { zone: 'mc', measure: { up: 7.5, side: -4, depth: 30, width: 24 } } }
+            });
+            win.pestovoPinMountPanels();
+            win.pestovoPinPanelHole('scorer', 1);
+            const host = panelHost(win, 'sc-pin-panel');
+            const sheet = host.querySelector('.pin-sheet');
+
+            check(sheet.querySelector('.pin-measure') !== null, 'панель показывает числа UP/SIDE/DEPTH');
+            check(sheet.querySelectorAll('.pin-measure__row').length === 4,
+                'UP, SIDE, DEPTH и WIDTH — четыре значения');
+            check(sheet.textContent.indexOf('7.5') !== -1 && sheet.textContent.indexOf('30.0') !== -1,
+                'числа выводятся с одной десятой метра');
+            check(sheet.querySelector('.pin-sheet__words').textContent.indexOf('7.5 м от переднего края') !== -1,
+                'положение описано словами: сколько метров вперёд');
+            check(sheet.querySelector('.pin-sheet__words').textContent.indexOf('левее центральной линии') !== -1,
+                'SIDE со знаком минус читается как «левее центральной линии»');
+
+            // Точка флажка: UP/DEPTH = 0.25 вглубь → y=0.75 на схеме (перед снизу),
+            // SIDE −4 при WIDTH 24 → x = 0.5 − 4/24 = 0.333.
+            const flag = sheet.querySelector('.pin-green__flag');
+            check(flag !== null, 'флажок на схеме рисуется отдельным маркером');
+            const fx = parseFloat(flag.style.left);
+            const fy = parseFloat(flag.style.top);
+            check(Math.abs(fx - 33.3) < 0.6, 'SIDE переводится в долю ширины грина (33.3%)');
+            check(Math.abs(fy - 75.0) < 0.6, 'UP от переднего края переводится в глубину схемы (75%)');
+            check(sheet.querySelectorAll('.pin-green__cell.is-pin').length >= 1 &&
+                sheet.querySelectorAll('.pin-green__cell.is-pin i').length === 0,
+                'зона 3×3 остаётся подсветкой, но флажок больше не дублируется в ней');
+
+            // Без WIDTH: глубина считается, сторона — по центру.
+            win.pestovoPinPositionsApply({
+                enabled: true,
+                holes: { 2: { zone: 'mc', measure: { up: 15, side: 5, depth: 30 } } }
+            });
+            win.pestovoPinPanelHole('scorer', 2);
+            const f2 = host.querySelector('.pin-green__flag');
+            check(Math.abs(parseFloat(f2.style.left) - 50) < 0.6,
+                'без WIDTH флажок стоит по центру ширины');
+            check(Math.abs(parseFloat(f2.style.top) - 50) < 0.6,
+                'половина глубины — середина схемы');
+
+            // Измерение важнее зоны: зона «дальняя левая» не сдвигает флажок.
+            win.pestovoPinPositionsApply({
+                enabled: true,
+                holes: { 3: { zone: 'bl', measure: { up: 3, side: 0, depth: 30, width: 30 } } }
+            });
+            win.pestovoPinPanelHole('scorer', 3);
+            check(Math.abs(parseFloat(host.querySelector('.pin-green__flag').style.top) - 90) < 0.6,
+                'при заданных числах зона 3×3 не подменяет положение флажка');
+
+            // Схема грина картинкой: data:URL принимается, флажок ложится поверх.
+            const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+            win.pestovoPinPositionsApply({
+                enabled: true,
+                holes: { 4: { zone: 'mc', measure: { up: 6, side: 0, depth: 24, width: 20 }, image: png } }
+            });
+            win.pestovoPinPanelHole('scorer', 4);
+            const green = host.querySelector('.pin-green');
+            check(green.classList.contains('pin-green--photo'), 'со схемой панель переключается на картинку');
+            check(green.querySelector('.pin-green__img').getAttribute('src') === png,
+                'картинка схемы подставляется в панель');
+            check(green.querySelector('.pin-green__flag') !== null, 'флажок остаётся поверх картинки');
+            check(green.querySelector('.pin-green__tee') === null,
+                'на картинке не рисуется эллипс-заглушка и подпись «ти»');
+
+            // Мусор в числах не должен ломать панель.
+            const dirty = win.normalizePinPositions({
+                holes: {
+                    5: { zone: 'mc', measure: { up: 99, side: 0, depth: 10 } },
+                    6: { zone: 'mc', measure: { up: 3, side: 'abc', depth: 10 } },
+                    // Только непроверенная схема: опасная ссылка должна быть
+                    // отброшена, а сама зона — остаться рабочей.
+                    7: { zone: 'mc', image: 'javascript' + ':alert(1)' }
+                }
+            });
+            check(dirty.holes[5] === undefined, 'UP больше DEPTH — измерение отбрасывается как опечатка');
+            check(dirty.holes[6] === undefined, 'нечисловой SIDE — измерение отбрасывается');
+            check(dirty.holes[7] !== undefined && dirty.holes[7].image === undefined,
+                'опасная ссылка вместо картинки отбрасывается, запись остаётся');
+            check(win.normalizePinGreenImage('http://example.com/green.jpg') === '',
+                'схемы по http не принимаются — только https и data:image');
+
+            // Полярность SIDE: + вправо, − влево.
+            check(win.pinSideRatio({ width: 20, side: 5 }) > 0.5, 'SIDE с плюсом — правая половина грина');
+            check(win.pinSideRatio({ width: 20, side: -5 }) < 0.5, 'SIDE с минусом — левая половина грина');
+            check(win.pinDepthRatio({ depth: 40, up: 0 }) === 0, 'UP=0 — передний край');
+            check(win.pinDepthRatio({ depth: 40, up: 40 }) === 1, 'UP=DEPTH — задний край');
+        })();
+
+        // ── 11. Админка: поля размеров и загрузка схемы ───────────────────
+        (function testMeasureAdmin() {
+            const adminHtml = read('admin.html');
+            const doc = new JSDOM(adminHtml).window.document;
+            const section = doc.getElementById('tab-pinpositions');
+            ['pin-pos-up', 'pin-pos-side', 'pin-pos-depth', 'pin-pos-width'].forEach(function (id) {
+                const el = section.querySelector('#' + id);
+                check(el !== null, 'в админке есть поле ' + id);
+                check(el.getAttribute('inputmode') === 'decimal', id + ': числовая клавиатура на телефоне');
+                check(el.getAttribute('data-act') === 'pinAdminSetMeasure', id + ': правка идёт через общий обработчик');
+            });
+            const file = section.querySelector('#pin-pos-image-input');
+            check(file !== null && file.getAttribute('type') === 'file', 'в админке есть загрузка схемы грина');
+            check(file.getAttribute('accept').indexOf('image/png') !== -1, 'принимаются только изображения');
+            check(file.getAttribute('data-act') === 'pinAdminImageChosen' && file.getAttribute('data-self') === '1',
+                'выбор файла передаёт сам input обработчику');
+            check(section.querySelector('.pin-preview__green') !== null &&
+                section.querySelector('.pin-preview__green').id === 'pin-pos-preview-green',
+                'превью игрока в админке принимает картинку схемы');
+            check(!/\son(change|click|input)=/i.test(section.outerHTML), 'в разметке редактора нет inline-обработчиков');
+
+            ["'up'", "'side'", "'depth'", "'width'"].forEach(function (field) {
+                check(section.innerHTML.indexOf('data-arg="' + field.slice(1, -1) + '"') !== -1,
+                    'поле ' + field + ' знает, какое число правит');
+            });
+        })();
+
+        // ── 12. Скрипты страниц подключают панель до отрисовки шапки ──────
         ['js/scorer.js', 'js/marker.js', 'js/live.js'].forEach(function (file) {
             const src = read(file);
             check(src.indexOf('pestovoPinPanelHole(') !== -1,

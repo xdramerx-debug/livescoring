@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.141.0-51e75360';
+const CACHE_NAME = 'pestovo-v1.142.0-eef7cf34';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -59,17 +59,17 @@ const STATIC_ASSETS = [
     'css/clarity.css?v=e5b0c97a',
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
-    'css/fontawesome-subset.css?v=a9cfbaab',
+    'css/fontawesome-subset.css?v=5c98ac03',
     'css/fonts-local.css?v=8523462a',
     'css/pr164-adapter.css?v=fc8b6b09',
     'css/pr164.css?v=a5317bf8',
     'css/product-ux.css?v=ad3d977a',
     'css/stats-page.css?v=6d122d45',
-    'css/style.css?v=3892671c',
+    'css/style.css?v=355de2fe',
     'css/theme-v2.css?v=265c7b83',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=dc2bdd18',
-    'dist/livescoring-modules.js?v=9d86d192',
+    'dist/livescoring-modules.js?v=7dcb6fcf',
     'js/app.js?v=477785d1',
     'js/auth.js?v=d568c5fb',
     'js/clarity.js?v=2804c967',
@@ -84,7 +84,7 @@ const STATIC_ASSETS = [
     'js/name-variants.js?v=2b58f796',
     'js/official-call.js?v=7ae05fbc',
     'js/page-filter-summary.js?v=a1d71c2b',
-    'js/pin-position.js?v=e726d8dd',
+    'js/pin-position.js?v=4f2676f1',
     'js/player-page.js?v=0ba584af',
     'js/players.js?v=e5973d18',
     'js/product-ux.js?v=7e3a34bc',
@@ -125,8 +125,8 @@ const STATIC_ASSETS = [
     'img/icon-512.png',
     'img/logo.png',
     'fonts/fa-brands-400-subset-d97c8617.woff2',
-    'fonts/fa-regular-400-subset-8779ffa1.woff2',
-    'fonts/fa-solid-900-subset-4d7f1b32.woff2',
+    'fonts/fa-regular-400-subset-86544528.woff2',
+    'fonts/fa-solid-900-subset-e1a47b02.woff2',
     'fonts/inter-cyrillic-400-normal.woff2',
     'fonts/inter-cyrillic-600-normal.woff2',
     'fonts/inter-cyrillic-700-normal.woff2',

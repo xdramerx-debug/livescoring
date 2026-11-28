@@ -1014,6 +1014,17 @@ var I18N = {
         pin_zone_mc: "Центр грина",
         pin_pos_tee: "ти",
         pin_pos_tab_aria: "Пин-позиция, открыть свайпом влево",
+        pin_pos_measure_title: "Размеры грина в метрах",
+        pin_pos_measure_hint: "UP — сколько метров вперёд от переднего края, SIDE — сколько метров в сторону от центральной линии (+ вправо, − влево), DEPTH — глубина грина. По этим числам флажок встаёт на схеме точно, а не по зоне 3×3.",
+        pin_pos_measure_up: "вперёд",
+        pin_pos_measure_side: "сторона",
+        pin_pos_measure_depth: "глубина",
+        pin_pos_measure_width: "ширина",
+        pin_pos_measure_clear: "Очистить числа",
+        pin_pos_image_title: "Схема грина для лунки",
+        pin_pos_image_hint: "Загрузите картинку грина (скриншот из приложения, фото схемы): флажок будет нарисован прямо на ней по числам UP/SIDE/DEPTH. Передний край — снизу картинки.",
+        pin_pos_image_pick: "Загрузить схему",
+        pin_pos_image_clear: "Убрать схему"
     },
     en: {
         ui_bc997c1edb: "Club management",
@@ -2013,6 +2024,17 @@ var I18N = {
         pin_zone_mc: "Middle centre",
         pin_pos_tee: "tee",
         pin_pos_tab_aria: "Pin position, open with a swipe left",
+        pin_pos_measure_title: "Green measurements in metres",
+        pin_pos_measure_hint: "UP is how many metres forward from the front edge, SIDE is how far from the centre line (+ right, − left), DEPTH is the depth of the green. These numbers place the flag precisely instead of using the 3×3 zone.",
+        pin_pos_measure_up: "forward",
+        pin_pos_measure_side: "side",
+        pin_pos_measure_depth: "depth",
+        pin_pos_measure_width: "width",
+        pin_pos_measure_clear: "Clear numbers",
+        pin_pos_image_title: "Green layout for the hole",
+        pin_pos_image_hint: "Upload a green image (an app screenshot, a photo of the layout): the flag is drawn on it using UP/SIDE/DEPTH. The front edge is at the bottom of the image.",
+        pin_pos_image_pick: "Upload layout",
+        pin_pos_image_clear: "Remove layout"
     }
 };
 

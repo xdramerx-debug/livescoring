@@ -430,6 +430,11 @@ function switchTabApply(t, b) {
     if (t === 'scoreentry' && typeof renderPestovoDisplayAdmin === 'function') {
         renderPestovoDisplayAdmin('scoring', true);
     }
+    // Пин-позиции лунок (js/admin-pin-positions.js): черновик из базы,
+    // затем отрисовка сетки 18 лунок и зон грина.
+    if (t === 'pinpositions' && typeof pinAdminInit === 'function') {
+        pinAdminInit();
+    }
     if (t === 'groups') {
         if (typeof renderAdmGroups === 'function') renderAdmGroups(); // js/admin-groups.js
     }

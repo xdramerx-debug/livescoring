@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="marker_title">Маркер — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=ebe9c892">
+    <link rel="stylesheet" href="css/style.css?v=f2b81c77">
     <link rel="stylesheet" href="css/theme-v2.css?v=265c7b83">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=3d524484"></script>
@@ -73,6 +73,9 @@
         <div class="marker-banner"><div style="font-size:28px;">👁️</div>
         <div><strong data-i18n="marker_notice_title">Вы — маркер</strong><p data-i18n="marker_notice_desc">Введите наблюдаемый счёт. Подтверждается только при совпадении.</p></div></div>
 
+        <!-- Пин-позиция лунки: свёрнутая закладка у правого края. Свайп влево
+             разворачивает, свайп вправо сворачивает (js/pin-position.js). -->
+        <div class="pin-panel" id="mk-pin-panel" data-pin-panel data-pin-source="marker" data-pin-gate="mk-body" data-pin-hole="1"></div>
         <div id="mk-verify"></div>
         <div class="score-entry card">
             <div class="hole-display" data-entry-block="info">
@@ -114,19 +117,20 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.140.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.141.0</span></p></div></div></footer>
 <script src="js/vendor/firebase-app-compat.js?v=3d08dff5"></script>
 <script src="js/vendor/firebase-database-compat.js?v=5d5044fc"></script>
 <script src="js/vendor/firebase-auth-compat.js?v=00a09fb2"></script>
 <script defer src="js/firebase-config.js?v=715c9693"></script>
-<script type="module" src="dist/livescoring-modules.js?v=55b95c7f"></script>
+<script type="module" src="dist/livescoring-modules.js?v=9d86d192"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=b99aae7a"></script>
 <script defer src="js/utils-scorecards.js?v=ddd77c34"></script>
 <script defer src="js/score-display.js?v=8c8f213a"></script>
 <script defer src="js/score-pad.js?v=03df3958"></script>
 <script defer src="js/official-call.js?v=7ae05fbc"></script>
-<script defer src="js/marker.js?v=1bad804f"></script>
+<script defer src="js/pin-position.js?v=d339604e"></script>
+<script defer src="js/marker.js?v=8172a62b"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 </body>

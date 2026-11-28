@@ -1306,6 +1306,8 @@ function goPlayHole(h) {
 
 function renderPlayHole() {
     if (!canEditGroup) return;
+    // Пин-позиция справа: панель показывает открытую лунку раунда.
+    if (typeof pestovoPinPanelHole === 'function') pestovoPinPanelHole('play', playHole);
     var par = holePar(playHole);
     var myPlayer = (curRoundData && curRoundData.players && curRoundData.players[myUid]) || {};
     var myTee = myPlayer.tee || curRoundData.tee || 'wh';

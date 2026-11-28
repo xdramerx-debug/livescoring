@@ -182,6 +182,14 @@
         }
         body.round-setup-page #player-slots .setup-player-card .spc-hcp-slot-head > .setup-hcp-refresh-body .fa-rotate { font-size: 10px; }
         body.round-setup-page #player-slots .setup-player-card .spc-hcp-slot-head > .setup-hcp-refresh-body.hidden { display: none; }
+        /* Тач-цель: в шапке карточки кнопка сжата до 26px ради плотности, но
+           палец по ней должен попадать. На сенсорных экранах возвращаем 44px
+           (правило выше специфичнее @media-правил базового слоя PR164). */
+        @media (pointer: coarse) {
+            body.round-setup-page #player-slots .setup-player-card .spc-hcp-slot-head > .setup-hcp-refresh-body {
+                min-width: 44px; min-height: 44px; padding: 0 12px;
+            }
+        }
         body.round-setup-page #player-slots .setup-player-card .spc-meta {
             flex: 1 1 auto; min-width: 0; margin: 0; font-size: 11px; line-height: 1.35;
             overflow-wrap: anywhere; white-space: normal;

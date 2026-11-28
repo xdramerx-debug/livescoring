@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru" class="relief-ui">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#121512">
+    <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,103 +18,57 @@
     <link rel="stylesheet" href="css/product-ux.css?v=ad3d977a">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=3d524484"></script>
-    <script src="js/design-system.js?v=ad08c5e2"></script>
+    <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=e2150fbf">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=a9cfbaab">
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
     <link rel="stylesheet" href="css/pr164-adapter.css?v=fc8b6b09">
-    <link rel="stylesheet" href="css/relief.css?v=aeaf3b89">
 </head>
 <body class="pv-ux pv-home pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
-<nav class="nav" id="main-nav" aria-label="Навигация" data-i18n-aria-label="nav_header"><div class="container nav-c">
+<nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
             <img src="img/logo.png" alt="Pestovo" class="nav-logo">
-            <span class="relief-brand-lockup">
-                <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
-                <span class="relief-only relief-brand-line" lang="en">Golf Club</span>
-            </span>
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
         </a>
         <div id="nav-weather-container"></div>
     </div>
-    <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Открыть меню" data-i18n-aria-label="ui_b2bbe98857"><span></span><span></span><span></span></button>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
         <div class="nav-menu" id="nav-menu">
-        <a href="index.html" class="nav-link active" aria-current="page" data-i18n="nav_home">Главная</a>
+        <a href="index.html" class="nav-link active" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
 <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
-        <div class="nav-auth" id="nav-auth">
-            <a class="relief-only relief-sign-in" href="auth.html" data-i18n="login_btn">Войти</a>
-        </div>
+        <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
 <main id="pv-main" tabindex="-1">
 
-<section class="hero" aria-labelledby="home-title">
-    <div class="relief-hero-layout">
-        <div class="hero-content">
-            <img src="img/logo.png" alt="" class="hero-logo relief-legacy-hero">
-            <p class="hero-sub relief-legacy-hero" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
-            <p class="relief-only relief-hero-kicker"><span class="relief-signal" aria-hidden="true"></span><span data-i18n="relief_club_board">Клубное табло</span></p>
-            <h1 class="hero-title" id="home-title">
-                <span class="relief-legacy-hero" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</span>
-                <span class="relief-only relief-wordmark" data-i18n="brand_name">Пестово</span>
-                <span class="relief-only relief-wordmark-sub" lang="en">Live Scoring</span>
-            </h1>
-            <p class="hero-desc">
-                <span class="relief-legacy-hero" data-i18n="hero_desc">18 лунок · Пар 72</span>
-                <span class="relief-only relief-hero-lead" data-i18n="relief_home_lead">Начните раунд, отмечайте удары в электронной карточке и следите за игрой в прямом эфире.</span>
-            </p>
-            <div class="hero-btns">
-                <a href="setup-round.html" class="btn btn-g btn-lg"><i class="fas fa-play" aria-hidden="true"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
-                <a href="leaderboard.html" class="btn btn-ol btn-lg"><span data-i18n="nav_leaderboard">Все раунды</span> <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
-            </div>
-        </div>
-        <div class="relief-only relief-scene">
-            <figure class="relief-scene-frame">
-                <div class="relief-scene-art"><img class="relief-scene-image" src="img/pestovo-relief-01.webp" alt="" width="1280" height="853" fetchpriority="high"></div>
-                <div class="relief-scene-label"><i class="fas fa-location-crosshairs" aria-hidden="true"></i> <span data-i18n="sec_course_card">Поле клуба</span></div>
-                <div class="relief-scene-metrics">
-                    <div class="relief-scene-metric"><strong>18</strong><span data-i18n="relief_holes">Лунок</span></div>
-                    <div class="relief-scene-metric"><strong>72</strong><span data-i18n="par">Пар</span></div>
-                </div>
-                <figcaption class="relief-scene-caption" data-i18n="relief_illustration">Объёмная иллюстрация</figcaption>
-            </figure>
+<section class="hero">
+    <div class="hero-content">
+        <img src="img/logo.png" alt="Pestovo" class="hero-logo">
+        <p class="hero-sub" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
+        <h1 class="hero-title" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</h1>
+        <p class="hero-desc" data-i18n="hero_desc">18 лунок · Пар 72</p>
+        <!-- Два действия и крупный логотип восстановлены из оформления PR #164. -->
+        <div class="hero-btns">
+            <a href="setup-round.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
+            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">Все раунды</span></a>
         </div>
     </div>
 </section>
-
-<div class="container relief-only relief-shortcut-container">
-    <nav class="relief-shortcuts" aria-label="Разделы клуба" data-i18n-aria-label="relief_sections">
-        <a class="relief-shortcut" href="tournaments.html">
-            <span class="relief-keycap" aria-hidden="true"><i class="fas fa-trophy"></i></span>
-            <span class="relief-shortcut-copy"><strong data-i18n="nav_tournaments">Турниры</strong><span data-i18n="relief_tournaments_short">Календарь и результаты</span></span>
-            <i class="fas fa-arrow-right relief-shortcut-arrow" aria-hidden="true"></i>
-        </a>
-        <a class="relief-shortcut" href="players.html">
-            <span class="relief-keycap" aria-hidden="true"><i class="fas fa-users"></i></span>
-            <span class="relief-shortcut-copy"><strong data-i18n="nav_players">Игроки</strong><span data-i18n="relief_players_short">Профили и гандикапы</span></span>
-            <i class="fas fa-arrow-right relief-shortcut-arrow" aria-hidden="true"></i>
-        </a>
-        <a class="relief-shortcut" href="stats.html">
-            <span class="relief-keycap" aria-hidden="true"><i class="fas fa-chart-column"></i></span>
-            <span class="relief-shortcut-copy"><strong data-i18n="nav_stats">Статистика</strong><span data-i18n="relief_stats_short">Рекорды и сложность лунок</span></span>
-            <i class="fas fa-arrow-right relief-shortcut-arrow" aria-hidden="true"></i>
-        </a>
-    </nav>
-</div>
-
-<section class="section relief-active" style="padding-bottom:10px;">
+<section class="section" style="padding-bottom:10px;">
     <div class="container">
         <div id="my-active-rounds-container" class="hidden"></div>
     </div>
 </section>
+
 
 <section class="section hidden" id="active-tournament-section" style="padding-bottom:10px;">
     <div class="container">
@@ -124,15 +78,11 @@
     </div>
 </section>
 
-<section class="section relief-feed" aria-labelledby="home-live-title">
+<!-- УРОВЕНЬ 2 ИЕРАРХИИ: СЕЙЧАС НА ПОЛЕ -->
+<section class="section">
     <div class="container">
-        <div class="sec-hdr">
-            <div>
-                <p class="relief-only relief-section-kicker"><span class="relief-signal" aria-hidden="true"></span> <span data-i18n="relief_live_feed">Трансляция</span></p>
-                <h2 class="sec-t" id="home-live-title"><span class="live-dot relief-legacy-hero" aria-hidden="true"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
-            </div>
-            <a href="leaderboard.html" class="sec-l"><span data-i18n="all_view">Смотреть все</span> <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
-        </div>
+        <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
+        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_view">Смотреть все</span> <i class="fas fa-arrow-right"></i></a></div>
         <div class="pv-chips pv-chips--home" role="group">
             <button type="button" class="pv-chip" id="pv-chip-live" data-act="setHomeLiveFilter" data-arg="live" aria-pressed="true">
                 <i class="fas fa-tower-broadcast" aria-hidden="true"></i> <span data-i18n="pv_filter_live">Live</span>
@@ -163,9 +113,22 @@
                 <div class="pv-skel-line"></div>
             </div>
         </div>
+        <!-- Карта лунок и старты — вторичная информация: она идёт после
+             живых карточек, а не перед ними. -->
+
     </div>
 </section>
 
+
+
+
+<!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" (УРОВЕНЬ 1 ИЕРАРХИИ) -->
+
+
+<!-- УРОВЕНЬ 1.5: АКТИВНЫЙ ТУРНИР (скрыт, если нет турнирных раундов) -->
+
+
+<!-- УРОВЕНЬ 3 ИЕРАРХИИ: ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ -->
 <section class="section section-alt">
     <div class="container">
         <!-- Ссылки «все раунды» здесь нет: тот же лидерборд уже в кадре выше
@@ -201,7 +164,7 @@
 
 <footer class="footer"><div class="container">
     <div class="footer-grid">
-        <div><span class="relief-only relief-footer-line" lang="en">Pestovo Golf Club / Live Scoring</span><h3 class="footer-title"><i class="fas fa-golf-ball-tee"></i> <span data-i18n="footer_club">Пестово</span></h3>
+        <div><h3 class="footer-title"><i class="fas fa-golf-ball-tee"></i> <span data-i18n="footer_club">Пестово</span></h3>
         <p class="footer-desc" data-i18n="hero_desc">18 лунок · Пар 72</p>
         <p class="footer-desc" style="margin-top:8px;" data-i18n="address_str">📍 МО, г. Мытищи, Никольская ул., 1, Румянцево</p></div>
         <div><h4 class="footer-sub" data-i18n="nav_header">Навигация</h4>
@@ -222,14 +185,13 @@
 <script src="js/vendor/firebase-database-compat.js?v=5d5044fc"></script>
 <script src="js/vendor/firebase-auth-compat.js?v=00a09fb2"></script>
 <script defer src="js/firebase-config.js?v=715c9693"></script>
-<script type="module" src="dist/livescoring-modules.js?v=6e519f27"></script>
+<script type="module" src="dist/livescoring-modules.js?v=55b95c7f"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=5850e4e9"></script>
+<script defer src="js/utils.js?v=b99aae7a"></script>
 <script defer src="js/utils-scorecards.js?v=ddd77c34"></script>
 <script defer src="js/app.js?v=477785d1"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 <script defer src="js/product-ux.js?v=7e3a34bc"></script>
-    <script defer src="js/relief-home.js?v=a3a74978"></script>
 </body>
 </html>

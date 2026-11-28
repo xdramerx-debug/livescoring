@@ -113,7 +113,7 @@ const root = path.join(__dirname, '..');
         }
         const file = path.resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
         if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end(); return; }
-        const mime = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp' };
+        const mime = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
         res.setHeader('Content-Type', mime[path.extname(file)] || 'application/octet-stream');
         res.end(fs.readFileSync(file));
     });
@@ -160,12 +160,6 @@ const root = path.join(__dirname, '..');
         await playerContext.setOffline(true);
         await player.reload();
         await player.waitForFunction(() => !!document.querySelector('#finished-card .club-sc'));
-        assert(await player.evaluate(async () => {
-            const home = await (await caches.match('index.html')).text();
-            const styleUrl = home.match(/css\/relief\.css\?v=[a-f0-9]+/)[0];
-            const [style, art] = await Promise.all([fetch(styleUrl), fetch('img/pestovo-relief-01.webp')]);
-            return style.ok && (await style.text()).includes('.relief-scene') && art.ok && (await art.blob()).size > 0;
-        }), 'Relief stylesheet and local artwork load from the service worker while offline');
         assert.strictEqual(await player.getAttribute('#finished-card .club-sc', 'data-sc-view'), '5', 'Offline PWA uses cached completed style');
         assert.strictEqual(await player.getAttribute('#active-card .club-sc', 'data-sc-view'), '3');
         assert.strictEqual(await admin.evaluate(async () => { previewCompletedScorecardView('inherit'); return saveClubScorecardView('2'); }), true);

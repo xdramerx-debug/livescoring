@@ -325,8 +325,7 @@ function snapshotScript() {
 function startServer() {
     const MIME = {
         '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-        '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
-        '.webp': 'image/webp', '.woff2': 'font/woff2'
+        '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon'
     };
     const server = http.createServer(function (req, res) {
         const url = new URL(req.url, 'http://127.0.0.1');
@@ -454,7 +453,7 @@ async function loadPage(launch, base, page, variant) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
-async function main() {
+(async function main() {
     let playwright = null, chromiumMod = null;
     try { playwright = require('playwright'); } catch (e) { /* не установлен */ }
     try { chromiumMod = require('@sparticuz/chromium'); } catch (e) { /* не установлен */ }
@@ -572,13 +571,7 @@ async function main() {
         process.exit(1);
     }
     console.log('browser-check: варианты classic и bundle идентичны на всех страницах ✔');
-}
-
-if (require.main === module) {
-    main().catch(function (e) {
-        console.error('browser-check: неожиданная ошибка — ' + ((e && e.stack) || e));
-        process.exit(1);
-    });
-}
-
-module.exports = { launchBrowser, FIREBASE_STUB };
+})().catch(function (e) {
+    console.error('browser-check: неожиданная ошибка — ' + ((e && e.stack) || e));
+    process.exit(1);
+});

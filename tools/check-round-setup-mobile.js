@@ -96,14 +96,25 @@ function extractPage() {
                 if (variant === '1' || variant === '5') await page.locator('#player-slots [data-pidx="2"] .setup-player-head').click();
 
                 await page.locator('#pl-name-2').fill('Анна Петрова');
-                await page.locator('#pl-mid-2').fill('Сергеевна');
+                // Отчество с 1.130.x — скрытое поле (заполняется из профиля/RUSGOLF),
+                // поэтому пишем значение напрямую: fill() по hidden-инпуту невозможен.
+                await page.evaluate(() => {
+                    const mid = document.getElementById('pl-mid-2');
+                    if (mid) mid.value = 'Сергеевна';
+                });
                 await page.locator('#pl-gender-2').selectOption('women');
                 await page.locator('#pl-tee-2').selectOption('rd');
                 await page.locator('#pl-hcp-2').fill('18.2');
-                if (variant === '1' || variant === '5') await page.locator('#player-slots [data-pidx="3"] .setup-player-head').click();
-                await page.locator('#pl-name-3').fill('Пётр Сидоров');
+                // Раскрываем карточку событием, а не кликом по координатам: после
+                // добавления игрока карточки перерисовываются (мета, полевой
+                // гандикап, кнопка «обновить из АГР»), и pointer-клик Playwright
+                // успевает уйти в контейнер по устаревшей геометрии. Здесь
+                // проверяется аккордеон; размеры тач-целей — отдельными assert'ами.
                 const head3 = page.locator('[data-pidx="3"] .setup-player-head');
-                await head3.click();
+                const toggleHead3 = () => head3.dispatchEvent('click');
+                if (variant === '1' || variant === '5') await toggleHead3();
+                await page.locator('#pl-name-3').fill('Пётр Сидоров');
+                await toggleHead3();
                 assert.strictEqual(await page.locator('#pl-name-3').isVisible(), false, 'collapse hides player fields');
                 await head3.focus();
                 await page.keyboard.press('Enter');

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="relief-ui">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0b1a0e">
+    <meta name="theme-color" content="#121512">
     <meta name="description" content="Сравнение шаблонов оформления сайта Пестово: текущий дизайн и 5 альтернативных шаблонов для страниц и блоков.">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,24 +17,28 @@
     <link rel="stylesheet" href="css/theme-v2.css?v=265c7b83">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=3d524484"></script>
-    <script src="js/design-system.js?v=b78132a0"></script>
+    <script src="js/design-system.js?v=ad08c5e2"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=a9cfbaab">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=e2150fbf">
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
     <link rel="stylesheet" href="css/pr164-adapter.css?v=fc8b6b09">
+    <link rel="stylesheet" href="css/relief.css?v=aeaf3b89">
 </head>
 <body>
-<nav class="nav" id="main-nav"><div class="container nav-c">
+<nav class="nav" id="main-nav" aria-label="Навигация" data-i18n-aria-label="nav_header"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
             <img src="img/logo.png" alt="Pestovo" class="nav-logo">
-            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
+            <span class="relief-brand-lockup">
+                <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
+                <span class="relief-only relief-brand-line" lang="en">Golf Club</span>
+            </span>
         </a>
         <div id="nav-weather-container"></div>
     </div>
-    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Открыть меню" data-i18n-aria-label="ui_b2bbe98857"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
@@ -43,12 +47,15 @@
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
         <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
-        <div class="nav-auth" id="nav-auth"></div>
+        <div class="nav-auth" id="nav-auth">
+            <a class="relief-only relief-sign-in" href="auth.html" data-i18n="login_btn">Войти</a>
+        </div>
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container">
-    <h1 class="page-title"><i class="fas fa-palette"></i> <span data-i18n="ui_1ba5263bd8">Шаблоны оформления</span></h1>
+<div class="page-head relief-mast"><div class="container relief-mast-frame">
+        <span class="relief-only relief-mast-mark" aria-hidden="true"><i class="fas fa-palette"></i></span>
+        <h1 class="page-title"><i class="fas fa-palette"></i> <span data-i18n="ui_1ba5263bd8">Шаблоны оформления</span></h1>
     <p class="page-sub" data-i18n="ui_3c4ef14e00">Текущий дизайн + 5 альтернативных шаблонов: для всего сайта, для каждой страницы и для каждого блока</p>
 </div></div>
 
@@ -120,9 +127,9 @@
 <script src="js/vendor/firebase-database-compat.js?v=5d5044fc"></script>
 <script src="js/vendor/firebase-auth-compat.js?v=00a09fb2"></script>
 <script defer src="js/firebase-config.js?v=715c9693"></script>
-<script type="module" src="dist/livescoring-modules.js?v=55b95c7f"></script>
+<script type="module" src="dist/livescoring-modules.js?v=6e519f27"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=b99aae7a"></script>
+<script defer src="js/utils.js?v=5850e4e9"></script>
 <script defer src="js/utils-scorecards.js?v=ddd77c34"></script>
 <script defer src="js/design-preview.js?v=eea0009d"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>

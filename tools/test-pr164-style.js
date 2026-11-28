@@ -12,14 +12,15 @@ for (const name of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
     if (!html.includes('css/style.css')) continue; // QR print document already uses its original standalone styling.
     pages++;
     assert(html.includes('css/pr164.css'), name + ': original design linked');
-    assert(html.indexOf('css/pr164.css') > html.indexOf('css/clarity.css'), name + ': historical appearance takes precedence');
+    assert(html.indexOf('css/pr164.css') > html.indexOf('css/clarity.css'), name + ': historical foundation loads after compatibility rules');
     assert(html.indexOf('css/pr164-adapter.css') > html.indexOf('css/pr164.css'));
     assert(!html.includes('clarity-nav-more'), name + ': direct legacy navigation');
 }
 assert.strictEqual(pages, 15);
 for (const name of ['theme-v2', 'product-ux', 'clarity']) assert(read('css/' + name + '.css').includes('@layer post164-compat'), name + ': new controls are subordinate to the historical design');
 const home = read('index.html');
-assert(home.indexOf('<section class="hero">') < home.indexOf('id="my-active-rounds-container"'));
+const heroStart = home.indexOf('<section class="hero"');
+assert(heroStart >= 0 && heroStart < home.indexOf('id="my-active-rounds-container"'));
 assert(home.indexOf('id="active-tournament-section"') < home.indexOf('id="live-rounds"'));
 assert.strictEqual((home.match(/<div class="hero-btns">([\s\S]*?)<\/div>/)[1].match(/<a /g) || []).length, 2);
 assert(read('js/clarity.js').includes("var method = 'stepper'"), 'legacy input default with explicit pad preference retained');

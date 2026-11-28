@@ -14,6 +14,25 @@ var currentLang = (function () {
 
 var I18N = {
     ru: {
+        relief_club_board: "Клубное табло",
+        relief_home_lead: "Начните раунд, отмечайте удары в электронной карточке и следите за игрой в прямом эфире.",
+        relief_holes: "Лунок",
+        relief_illustration: "Объёмная иллюстрация",
+        relief_sections: "Разделы клуба",
+        relief_tournaments_short: "Календарь и результаты",
+        relief_players_short: "Профили и гандикапы",
+        relief_stats_short: "Рекорды и сложность лунок",
+        relief_live_feed: "Трансляция",
+        relief_archive: "Архив игры",
+        relief_archive_desc: "Результаты, онлайн-счёт и карточки сыгранных раундов.",
+        relief_scorecard: "Счётная карточка",
+        relief_members: "Сообщество клуба",
+        relief_members_desc: "Профили, гандикапы и история игры.",
+        relief_calendar: "Календарь клуба",
+        relief_calendar_desc: "Старты, лидерборды и результаты турниров.",
+        relief_whs: "World Handicap System",
+        relief_ops: "Управление клубом",
+        relief_account: "Личный кабинет",
         ui_bc997c1edb: "Управление клубом",
         ui_31e9780267: "Разделы админки",
         ui_bcef39ebdf: "Иванов Пётр",
@@ -990,6 +1009,25 @@ var I18N = {
         tee_label: 'ТИ'
     },
     en: {
+        relief_club_board: "Club scoreboard",
+        relief_home_lead: "Start a round, record strokes on your digital scorecard, and follow play as it happens.",
+        relief_holes: "Holes",
+        relief_illustration: "Terrain illustration",
+        relief_sections: "Club sections",
+        relief_tournaments_short: "Calendar and results",
+        relief_players_short: "Profiles and handicaps",
+        relief_stats_short: "Records and hole difficulty",
+        relief_live_feed: "Live feed",
+        relief_archive: "Round archive",
+        relief_archive_desc: "Results, live scores and scorecards from past rounds.",
+        relief_scorecard: "Scorecard",
+        relief_members: "Club community",
+        relief_members_desc: "Player profiles, handicaps and playing history.",
+        relief_calendar: "Club calendar",
+        relief_calendar_desc: "Tee times, leaderboards and tournament results.",
+        relief_whs: "World Handicap System",
+        relief_ops: "Club operations",
+        relief_account: "Your account",
         ui_bc997c1edb: "Club management",
         ui_31e9780267: "Admin sections",
         ui_bcef39ebdf: "Peter Smith",
@@ -2039,7 +2077,8 @@ function toggleLang(event) {
 function updateLangButtons() {
     if (typeof document === 'undefined') return;
     document.querySelectorAll('.lang-btn').forEach(function(btn) {
-        btn.innerHTML = currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU';
+        btn.textContent = currentLang === 'en' ? 'EN' : 'RU';
+        btn.setAttribute('aria-label', currentLang === 'en' ? 'Switch to Russian' : 'Переключить на английский');
     });
 }
 

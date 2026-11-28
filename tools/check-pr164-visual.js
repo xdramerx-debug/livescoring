@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Compare retained PR164 components, excluding the explicitly redesigned statistics page and buttons.
+// Compare the preserved PR164 foundation with the new opt-in-on-HTML layer disabled.
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -34,7 +34,7 @@ function measure() {
             await page.evaluate(light => document.body.classList.toggle('sun-mode', light), light);
             const expected = await page.evaluate(measure);
             for (const name of fs.readdirSync(root).filter(f => f.endsWith('.html') && f !== 'stats.html' && fs.readFileSync(path.join(root, f), 'utf8').includes('css/pr164.css'))) {
-                let html = fs.readFileSync(path.join(root, name), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace('<head>', '<head>' + base).replace('</body>', sample + '</body>');
+                let html = fs.readFileSync(path.join(root, name), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace(' class="relief-ui"', '').replace('<head>', '<head>' + base).replace('</body>', sample + '</body>');
                 await page.setContent(html, { waitUntil: 'load' });
                 await page.evaluate(light => document.body.classList.toggle('sun-mode', light), light);
                 const actual = await page.evaluate(measure);
@@ -44,6 +44,6 @@ function measure() {
             await page.close();
           }
         }
-        console.log('PASS: PR164 shared visual components across all shared-theme pages at mobile and desktop widths');
+        console.log('PASS: preserved PR164 foundation across shared-theme pages at mobile and desktop widths');
     } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exit(1); });

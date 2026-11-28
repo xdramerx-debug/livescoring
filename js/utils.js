@@ -631,6 +631,7 @@ function updateSunModeButtons() {
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
     document.querySelectorAll('.sun-mode-btn').forEach(function(btn) {
         var text = isSun ? (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : (currentLang === 'en' ? 'Sun' : 'Солнце');
+        btn.setAttribute('aria-pressed', String(!!isSun));
         btn.innerHTML = (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') + ' <span class="sun-text">' + text + '</span>';
     });
 }
@@ -1138,6 +1139,11 @@ function initP0MobileEnhancements(){
     try { initScoreConfirmBar(); } catch (e) { console.warn('[P0] confirm bar', e); }
 }
 function initNav(){
+    // The server-independent header is usable while Firebase checks the session.
+    if (document.querySelector('#nav-auth > .relief-sign-in')) {
+        navAuth(typeof currentUser === 'undefined' ? null : currentUser,
+            typeof currentUserData === 'undefined' ? null : currentUserData);
+    }
     buildMobileDrawer();
 
     var tg = document.getElementById('nav-toggle');
@@ -1165,7 +1171,11 @@ function initNav(){
 
     // resize / orientationchange / visualViewport — высота шапки может
     // меняться (например, при повороте экрана или открытии клавиатуры).
-    window.addEventListener('resize', applyNavHeight);
+    window.addEventListener('resize', function() {
+        applyNavHeight();
+        var drawer = document.getElementById('mobile-drawer-root');
+        if (tg && !tg.offsetWidth && drawer && drawer.classList.contains('open')) closeMobileDrawer();
+    });
     window.addEventListener('orientationchange', function() {
         setTimeout(applyNavHeight, 250);
     });
@@ -1240,14 +1250,17 @@ function buildMobileDrawer() {
     var sunTxt = isSun ? (isEn ? 'Sun ✅' : 'Солнце ✅') : (isEn ? 'Sun' : 'Солнце');
     var sunPrefix = isSun ? 'fas' : 'far';
 
-    var authBtnMarkup = '';
+    var authBtnMarkup = reliefGuestLink();
     var isUserLoggedIn = (typeof currentUser !== 'undefined' && currentUser && typeof currentUserData !== 'undefined' && currentUserData);
 
     if (isUserLoggedIn) {
         var avatarMarkup = fmtUserAvatar(currentUserData, 32);
-        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" data-act="openPlayerProfileModal" data-then="closeMobileDrawer" data-arg="' + escapeHtml(currentUser.uid) + '">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + escapeHtml(navShortUserName(currentUserData)) + '</strong></div>' +
-            '<button class="btn btn-og btn-sm" data-act="doLogout" data-stop="1"><i class="fas fa-sign-out-alt"></i></button>' +
+        var name = String(currentUserData.name || navShortUserName(currentUserData)).trim();
+        var profileLabel = isEn ? 'Open profile' : 'Открыть профиль';
+        authBtnMarkup = '<div class="mobile-drawer-account">' +
+            '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name ? profileLabel + ': ' + name : profileLabel) + '" data-act="openPlayerProfileModal" data-then="closeMobileDrawer" data-arg="' + escapeHtml(currentUser.uid) + '">' +
+            avatarMarkup + '<span class="nav-uname">' + escapeHtml(navShortUserName(currentUserData)) + '</span></button>' +
+            '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (isEn ? 'Sign out' : 'Выйти из профиля') + '" data-act="doLogout"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     }
 
@@ -1281,20 +1294,28 @@ function buildMobileDrawer() {
 
             '<div class="mobile-drawer-footer">' +
             '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
-                '<button class="sun-mode-btn" style="flex:1;justify-content:center;" data-act="toggleSunMode"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
-                    '<button class="lang-btn" style="flex:1;justify-content:center;" data-act="toggleLang">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
+                '<button type="button" class="sun-mode-btn" style="flex:1;justify-content:center;" data-act="toggleSunMode" aria-pressed="' + !!isSun + '"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
+                    '<button type="button" class="lang-btn" style="flex:1;justify-content:center;" data-act="toggleLang">' + (isEn ? 'EN' : 'RU') + '</button>' +
                 '</div>' +
                 '<div id="mobile-drawer-auth">' + authBtnMarkup + '</div>' +
             '</div>' +
         '</div>';
 
+    var focused = document.activeElement;
+    var restoreFocus = container.classList.contains('open') && focused && container.contains(focused);
     container.innerHTML = html;
+    if (restoreFocus) {
+        var nextFocus = container.querySelector(focused.classList.contains('lang-btn') ? '.lang-btn' : '.mobile-drawer-close');
+        if (nextFocus) nextFocus.focus({ preventScroll: true });
+    }
+    if (typeof updateLangButtons === 'function') updateLangButtons();
 
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
     if (container.querySelectorAll) {
         container.querySelectorAll('.mobile-drawer-link').forEach(function(link) {
             if (link.getAttribute('href') === curPage) {
                 link.classList.add('active');
+                link.setAttribute('aria-current', 'page');
             }
         });
     }
@@ -1359,7 +1380,11 @@ function openMobileDrawer() {
     buildMobileDrawer();
     var container = document.getElementById('mobile-drawer-root');
     var tg = document.getElementById('nav-toggle');
-    if (container) container.classList.add('open');
+    if (container) {
+        container.classList.add('open');
+        var close = container.querySelector('.mobile-drawer-close');
+        if (close) close.focus({ preventScroll: true });
+    }
     if (tg) { tg.classList.add('active'); tg.setAttribute('aria-expanded', 'true'); }
     if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = 'hidden';
 }
@@ -1367,13 +1392,32 @@ function openMobileDrawer() {
 function closeMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');
     var tg = document.getElementById('nav-toggle');
+    var restoreFocus = container && container.classList.contains('open') && container.contains(document.activeElement);
     if (container) container.classList.remove('open');
-    if (tg) { tg.classList.remove('active'); tg.setAttribute('aria-expanded', 'false'); }
+    if (tg) {
+        tg.classList.remove('active');
+        tg.setAttribute('aria-expanded', 'false');
+        if (restoreFocus && tg.offsetWidth) tg.focus({ preventScroll: true });
+    }
     if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = '';
 }
 
-// A11Y: клавиша Esc закрывает открытую модалку (верхнюю) или боковое меню
+// A11Y: фокус остаётся в открытом меню, Esc закрывает меню или верхнюю модалку.
 document.addEventListener('keydown', function(e) {
+    var drawer = document.getElementById('mobile-drawer-root');
+    var isDrawerOpen = drawer && drawer.classList.contains('open');
+    if (e.key === 'Tab' && isDrawerOpen) {
+        var controls = Array.from(drawer.querySelectorAll('a[href], button:not([disabled])')).filter(function(el) {
+            return el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible';
+        });
+        var edge = e.shiftKey ? controls[0] : controls[controls.length - 1];
+        var next = e.shiftKey ? controls[controls.length - 1] : controls[0];
+        if (next && (document.activeElement === edge || !drawer.contains(document.activeElement))) {
+            e.preventDefault();
+            next.focus();
+        }
+        return;
+    }
     if (e.key !== 'Escape' && e.key !== 'Esc') return;
     var modals = document.querySelectorAll('.modal:not(.hidden)');
     if (modals.length) {
@@ -1382,8 +1426,7 @@ document.addEventListener('keydown', function(e) {
         if (closeBtn) { closeBtn.click(); } else { top.classList.add('hidden'); }
         return;
     }
-    var drawer = document.getElementById('mobile-drawer-root');
-    if (drawer && drawer.classList.contains('open')) closeMobileDrawer();
+    if (isDrawerOpen) closeMobileDrawer();
 });
 
 function toggleMobileDrawer() {
@@ -1466,6 +1509,11 @@ function navShortUserName(d) {
     return first || raw;
 }
 
+function reliefGuestLink() {
+    if (!document.documentElement.classList.contains('relief-ui')) return '';
+    return '<a class="relief-only relief-sign-in" href="auth.html" data-i18n="login_btn">' + t('login_btn') + '</a>';
+}
+
 function navAuth(u, d) {
     var footerProfile = document.getElementById('footer-profile');
     if (footerProfile) {
@@ -1483,10 +1531,10 @@ function navAuth(u, d) {
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
 
     var sunText = isSun ? (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : (currentLang === 'en' ? 'Sun' : 'Солнце');
-    var sunBtn = '<button type="button" class="sun-mode-btn" data-act="toggleSunMode" data-stop="1">' +
+    var sunBtn = '<button type="button" class="sun-mode-btn" data-act="toggleSunMode" data-stop="1" aria-pressed="' + !!isSun + '">' +
         (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') +
         ' <span class="sun-text">' + sunText + '</span></button>';
-    var langBtn = '<button type="button" class="lang-btn" data-act="toggleLang" data-stop="1">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var langBtn = '<button type="button" class="lang-btn" data-act="toggleLang" data-stop="1">' + (currentLang === 'en' ? 'EN' : 'RU') + '</button>';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
@@ -1499,8 +1547,9 @@ function navAuth(u, d) {
             '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" data-act="doLogout"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
-        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '</div>';
+        e.innerHTML = '<div class="relief-guest-controls" style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + reliefGuestLink() + '</div>';
     }
+    if (typeof updateLangButtons === 'function') updateLangButtons();
 }
 
 // Готовность авторизации: единая точка входа + реестр страничных хуков.

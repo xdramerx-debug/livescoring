@@ -16,7 +16,7 @@ const root = path.join(__dirname, '..');
             page.on('pageerror', error => errors.push(error.message));
             await page.route('**/*', route => route.abort());
             await page.setContent(fs.readFileSync(path.join(root, 'stats.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, ''));
-            for (const style of ['style', 'theme-v2', 'design-presets', 'product-ux', 'clarity', 'pr164', 'pr164-adapter', 'stats-page']) await page.addStyleTag({ path: path.join(root, 'css', style + '.css') });
+            for (const style of ['style', 'theme-v2', 'design-presets', 'product-ux', 'clarity', 'pr164', 'pr164-adapter', 'stats-page', 'relief']) await page.addStyleTag({ path: path.join(root, 'css', style + '.css') });
             await page.addScriptTag({ content: `
                 window.currentLang = 'ru'; window.initNav = function(){};
                 window.escapeHtml = function(s){var el=document.createElement('span');el.textContent=s;return el.innerHTML;};

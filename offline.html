@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="relief-ui">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0b1a0e">
+    <meta name="theme-color" content="#121512">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,18 +16,19 @@
     <link rel="stylesheet" href="css/theme-v2.css?v=265c7b83">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=3d524484"></script>
-    <script src="js/design-system.js?v=b78132a0"></script>
+    <script src="js/design-system.js?v=ad08c5e2"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=a9cfbaab">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=e2150fbf">
     <script defer src="js/clarity.js?v=2804c967"></script>
     <link rel="stylesheet" href="css/clarity.css?v=e5b0c97a">
     <link rel="stylesheet" href="css/pr164.css?v=a5317bf8">
     <link rel="stylesheet" href="css/pr164-adapter.css?v=fc8b6b09">
+    <link rel="stylesheet" href="css/relief.css?v=aeaf3b89">
 </head>
-<body>
-<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;">
-    <div style="max-width:500px;padding:40px;background:var(--card);border:1px solid var(--border);border-radius:20px;">
-        <div style="font-size:64px;color:var(--gold);margin-bottom:20px;"><i class="fas fa-wifi"></i></div>
+<body class="relief-offline">
+<div class="relief-offline-wrap" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;">
+    <div class="relief-offline-card" style="max-width:500px;padding:40px;background:var(--card);border:1px solid var(--border);border-radius:20px;">
+        <div class="relief-offline-icon" style="font-size:64px;color:var(--gold);margin-bottom:20px;" aria-hidden="true"><i class="fas fa-wifi"></i></div>
         <h1 style="font-family:var(--ff);font-size:28px;color:var(--white);margin-bottom:12px;" data-i18n="offline_title">Нет соединения</h1>
         <p style="color:var(--muted);font-size:15px;margin-bottom:24px;line-height:1.6;" data-clarity-text="offline" data-i18n="ui_b0e6eca51b">Нет соединения. Вернитесь к карточке, чтобы проверить состояние сохранения счёта. После восстановления сети проверьте отправку результатов.</p>
         <button class="btn btn-g" data-act="pestovoReload"><i class="fas fa-refresh"></i> <span data-i18n="refresh_btn">Обновить</span></button>
@@ -35,9 +36,9 @@
         <details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version" style="margin-top:20px;"><span data-i18n="ui_2449e9a501">Версия сайта:</span> <span class="version-number">1.140.0</span></p></details>
     </div>
 </div>
-<script type="module" src="dist/livescoring-modules.js?v=55b95c7f"></script>
+<script type="module" src="dist/livescoring-modules.js?v=6e519f27"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=b99aae7a"></script>
+<script defer src="js/utils.js?v=5850e4e9"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 </body>
 </html>

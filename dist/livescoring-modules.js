@@ -132,7 +132,7 @@ function E(e) {
 function U(e) {
   return !e || typeof e != "object" ? 0 : Number(e.startTime) || Number(e.createdAt) || 0;
 }
-function M(e) {
+function L(e) {
   var a = /* @__PURE__ */ new Date(), r = new Date(a.getFullYear(), a.getMonth(), a.getDate()), n = null;
   return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: E(n.getTime()), to: E(r.getTime()) } : { from: "", to: "" };
 }
@@ -183,7 +183,7 @@ function he(e) {
     for (var y = 0; y < R.length; y++) {
       var v = R[y];
       if (v !== "all") {
-        var S = M(v);
+        var S = L(v);
         if (S.from === p.fromValue && S.to === p.toValue) return v;
       }
     }
@@ -234,7 +234,7 @@ function he(e) {
   }), n && n.addEventListener("click", function(p) {
     var y = p.target && p.target.closest ? p.target.closest(".date-chip") : null, v = y && y.getAttribute("data-preset");
     if (v) {
-      var S = M(v);
+      var S = L(v);
       a.value = S.from, r.value = S.to, l(), f(), u(), h();
     }
   }), i && i.addEventListener("click", function() {
@@ -250,7 +250,7 @@ function ge() {
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: E, getRoundFilterTs: U, datePresetRange: M, readDateRange: C, filterEntriesByDateRange: me, renderRoundsPeriodSummary: q, dateRangeFilters: P, initDateRangeFilter: he, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: E, getRoundFilterTs: U, datePresetRange: L, readDateRange: C, filterEntriesByDateRange: me, renderRoundsPeriodSummary: q, dateRangeFilters: P, initDateRangeFilter: he, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
 function j(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
@@ -274,7 +274,7 @@ function K() {
 function z(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
-function L(e, a, r) {
+function M(e, a, r) {
   a = a || "success", r = r || {};
   var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : N;
   try {
@@ -339,7 +339,7 @@ function Se(e, a) {
     var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, i = N + n;
     r.forEach(function(o, s) {
       setTimeout(function() {
-        typeof o == "string" ? L(o, a.type || "warn", a.toastOpts || {}) : L(o.msg || o.html || "", o.type || a.type || "warn", o.opts || a.toastOpts || {});
+        typeof o == "string" ? M(o, a.type || "warn", a.toastOpts || {}) : M(o.msg || o.html || "", o.type || a.type || "warn", o.opts || a.toastOpts || {});
       }, s * i);
     });
   }
@@ -368,7 +368,7 @@ function W(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: z, toast: L, toastSequence: Se, isPlayerModeEnabled: Q, vib: ke, escapeHtml: W });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: z, toast: M, toastSequence: Se, isPlayerModeEnabled: Q, vib: ke, escapeHtml: W });
 var b = function() {
   try {
     return localStorage.getItem("pestovo_lang") === "en" ? "en" : "ru";
@@ -377,6 +377,25 @@ var b = function() {
   }
 }(), m = {
   ru: {
+    relief_club_board: "Клубное табло",
+    relief_home_lead: "Начните раунд, отмечайте удары в электронной карточке и следите за игрой в прямом эфире.",
+    relief_holes: "Лунок",
+    relief_illustration: "Объёмная иллюстрация",
+    relief_sections: "Разделы клуба",
+    relief_tournaments_short: "Календарь и результаты",
+    relief_players_short: "Профили и гандикапы",
+    relief_stats_short: "Рекорды и сложность лунок",
+    relief_live_feed: "Трансляция",
+    relief_archive: "Архив игры",
+    relief_archive_desc: "Результаты, онлайн-счёт и карточки сыгранных раундов.",
+    relief_scorecard: "Счётная карточка",
+    relief_members: "Сообщество клуба",
+    relief_members_desc: "Профили, гандикапы и история игры.",
+    relief_calendar: "Календарь клуба",
+    relief_calendar_desc: "Старты, лидерборды и результаты турниров.",
+    relief_whs: "World Handicap System",
+    relief_ops: "Управление клубом",
+    relief_account: "Личный кабинет",
     ui_bc997c1edb: "Управление клубом",
     ui_31e9780267: "Разделы админки",
     ui_bcef39ebdf: "Иванов Пётр",
@@ -1454,6 +1473,25 @@ var b = function() {
     tee_label: "ТИ"
   },
   en: {
+    relief_club_board: "Club scoreboard",
+    relief_home_lead: "Start a round, record strokes on your digital scorecard, and follow play as it happens.",
+    relief_holes: "Holes",
+    relief_illustration: "Terrain illustration",
+    relief_sections: "Club sections",
+    relief_tournaments_short: "Calendar and results",
+    relief_players_short: "Profiles and handicaps",
+    relief_stats_short: "Records and hole difficulty",
+    relief_live_feed: "Live feed",
+    relief_archive: "Round archive",
+    relief_archive_desc: "Results, live scores and scorecards from past rounds.",
+    relief_scorecard: "Scorecard",
+    relief_members: "Club community",
+    relief_members_desc: "Player profiles, handicaps and playing history.",
+    relief_calendar: "Club calendar",
+    relief_calendar_desc: "Tee times, leaderboards and tournament results.",
+    relief_whs: "World Handicap System",
+    relief_ops: "Club operations",
+    relief_account: "Your account",
     ui_bc997c1edb: "Club management",
     ui_31e9780267: "Admin sections",
     ui_bcef39ebdf: "Peter Smith",
@@ -2556,7 +2594,7 @@ function Pe() {
 }
 function J() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
-    e.innerHTML = b === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
+    e.textContent = b === "en" ? "EN" : "RU", e.setAttribute("aria-label", b === "en" ? "Switch to Russian" : "Переключить на английский");
   });
 }
 function x() {
@@ -2585,9 +2623,9 @@ try {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  x(), F();
+  x(), H();
 });
-function F() {
+function H() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
     document.querySelectorAll(".footer-bottom p").forEach(function(a) {
@@ -2595,8 +2633,8 @@ function F() {
     });
   }
 }
-F();
-typeof window < "u" && Object.assign(window, { currentLang: b, I18N: m, t: Y, toggleLang: Pe, updateLangButtons: J, applyTranslations: x, updateFooterYear: F });
+H();
+typeof window < "u" && Object.assign(window, { currentLang: b, I18N: m, t: Y, toggleLang: Pe, updateLangButtons: J, applyTranslations: x, updateFooterYear: H });
 function D(e, a, r, n, i) {
   var o = !!i, s = o ? escapeHtml : function(d) {
     return String(d);
@@ -2702,7 +2740,7 @@ function I(e, a, r, n, i, o) {
 function Re(e, a, r, n, i, o) {
   return T(e, a, r, n, o);
 }
-function H(e, a, r, n) {
+function F(e, a, r, n) {
   return e = (e || "").trim(), a = (a || "").trim(), !e || !a ? (n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error"), Promise.resolve("not_configured")) : new Promise(function(i) {
     var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), s = Math.floor(Math.random() * 2e9), f = null, c = null, u = !1, l = function(d) {
       u || (u = !0, i(d));
@@ -2744,12 +2782,12 @@ function Ce(e, a, r, n, i, o) {
     return;
   }
   var s = O(r, n, i, o);
-  H(e, a, s, !1);
+  F(e, a, s, !1);
 }
 function $(e, a, r, n, i, o) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) return Promise.resolve("not_configured");
   var s = O(r, n, i, o);
-  return H(e, a, s, !0);
+  return F(e, a, s, !0);
 }
 function Ae(e, a, r, n, i) {
   return T(e, a, r, n, i);
@@ -2800,7 +2838,7 @@ function X(e, a, r) {
     return console.warn("[alerts] delivery report not saved", o && o.message), n;
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, pestovoOfficialChannels: A, sendTelegramDirectAlert: Te, sendTelegramSilentAlert: I, sendTelegramOfficialAlert: Re, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Ce, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: T, pestovoRecordClientDelivery: X });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, pestovoOfficialChannels: A, sendTelegramDirectAlert: Te, sendTelegramSilentAlert: I, sendTelegramOfficialAlert: Re, vkSendMessageJsonp: F, vkBuildAlertText: O, sendVKDirectAlert: Ce, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: T, pestovoRecordClientDelivery: X });
 export {
   ee as ADDR,
   Z as CLUB,
@@ -2818,7 +2856,7 @@ export {
   b as currentLang,
   V as dateInputToEndTs,
   B as dateInputToStartTs,
-  M as datePresetRange,
+  L as datePresetRange,
   P as dateRangeFilters,
   K as ensureToastRoot,
   j as esc,
@@ -2856,14 +2894,14 @@ export {
   we as setSafeHtml,
   Y as t,
   fe as tnDateTs,
-  L as toast,
+  M as toast,
   z as toastIconFor,
   Se as toastSequence,
   Pe as toggleLang,
   E as tsToDateInputValue,
-  F as updateFooterYear,
+  H as updateFooterYear,
   J as updateLangButtons,
   ke as vib,
   O as vkBuildAlertText,
-  H as vkSendMessageJsonp
+  F as vkSendMessageJsonp
 };

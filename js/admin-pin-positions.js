@@ -71,10 +71,14 @@ function pinAdminDraftFrom(value) {
     var holes = {};
     PIN_ADMIN_HOLES.forEach(function (h) {
         var pin = normalized.holes[h];
+        var measure = pin && pin.measure ? pinMeasureClone(pin.measure) : null;
         holes[h] = {
             zone: pin ? pin.zone : 'mc',
             note: pin ? pin.note : '',
-            measure: pin && pin.measure ? pinMeasureClone(pin.measure) : null,
+            measure: measure,
+            // Сырые строки полей: из базы — из чисел, чтобы админ видел
+            // «8,5», а не «8.5», и мог продолжить правку с того же места.
+            rawMeasure: measure ? pinAdminMeasureFieldValues({ measure: measure }) : null,
             image: pin && pin.image ? pin.image : '',
             explicit: !!pin
         };
@@ -154,36 +158,70 @@ function pinAdminMeasureInput(field) {
     return pinAdminGet('pin-pos-' + field);
 }
 
-// Значение из формы: пусто → null, иначе число (запятая как разделитель).
-function pinAdminMeasureValue(field) {
+// Сырое значение поля, как его видит админ. Черновик хранит именно сырьё:
+// если писать в черновик только «валидное измерение целиком», то при наборе
+// первого числа (8 → 8, → 8,5) перерисовка обнуляла поля, и ввести данные
+// было невозможно — каждое следующее поле стирало предыдущее.
+function pinAdminMeasureRaw(field) {
     var el = pinAdminMeasureInput(field);
     if (!el) return null;
-    return pinNumberOrNull(el.value.trim(), PIN_MEASURE_RANGE[field]);
+    var raw = String(el.value == null ? '' : el.value).trim().slice(0, 8);
+    return raw === '' ? null : raw;
 }
 
-// Черновик измерения из полей формы. null — если заполнено не всё нужное.
-function pinAdminMeasureFromInputs() {
-    var depth = pinAdminMeasureValue('depth');
-    var up = pinAdminMeasureValue('up');
-    var side = pinAdminMeasureValue('side');
-    var width = pinAdminMeasureValue('width');
+// Черновик сырых полей лунки: { up, side, depth, width } в виде строк.
+function pinAdminMeasureRawFromInputs() {
+    var raw = {};
+    ['up', 'side', 'depth', 'width'].forEach(function (field) {
+        var value = pinAdminMeasureRaw(field);
+        if (value !== null) raw[field] = value;
+    });
+    return Object.keys(raw).length ? raw : null;
+}
+
+// Строки для полей из черновика. Сырьё важнее разобранного измерения: пока
+// админ печатает, в поле должно оставаться ровно то, что он набрал.
+function pinAdminMeasureFieldValues(pin) {
+    var raw = (pin && pin.rawMeasure) || null;
+    var measure = (pin && pin.measure) || null;
+    var out = {};
+    ['up', 'side', 'depth', 'width'].forEach(function (field) {
+        if (raw && raw[field] !== undefined && raw[field] !== null) {
+            out[field] = String(raw[field]);
+        } else if (measure && measure[field] !== null && measure[field] !== undefined) {
+            out[field] = String(measure[field]).replace('.', ',');
+        } else {
+            out[field] = '';
+        }
+    });
+    return out;
+}
+
+// Полное измерение из сырых строк. null — если заполнено не всё нужное.
+function pinAdminMeasureFromRaw(raw) {
+    if (!raw) return null;
+    var depth = pinNumberOrNull(raw.depth, PIN_MEASURE_RANGE.depth);
+    var up = pinNumberOrNull(raw.up, PIN_MEASURE_RANGE.up);
+    var side = pinNumberOrNull(raw.side, PIN_MEASURE_RANGE.side);
+    var width = pinNumberOrNull(raw.width, PIN_MEASURE_RANGE.width);
+    if (width !== null && !(width > 0)) width = null;
     if (depth === null || up === null || side === null) return null;
     if (up > depth) return null;
     return { depth: depth, up: up, side: side, width: width };
 }
 
 // Подсказка под полями: что сейчас получается и что мешает.
-function pinAdminMeasureHint(measure) {
+function pinAdminMeasureHint() {
+    var pin = pinAdminActivePin();
+    var raw = pin.rawMeasure || null;
+    var measure = pinAdminMeasureFromRaw(raw);
+    var anyFilled = !!raw;
+    if (!anyFilled) return pinAdminRu(
+        'Необязательно. Заполните UP, SIDE и DEPTH — тогда флажок встанет по числам, а не по зоне 3×3.',
+        'Optional. Fill UP, SIDE and DEPTH — then the flag is placed by the numbers instead of the 3×3 zone.');
     if (!measure) {
-        var anyFilled = ['depth', 'up', 'side', 'width'].some(function (f) {
-            var el = pinAdminMeasureInput(f);
-            return el && String(el.value || '').trim() !== '';
-        });
-        if (!anyFilled) return pinAdminRu(
-            'Необязательно. Заполните UP, SIDE и DEPTH — тогда флажок встанет по числам, а не по зоне 3×3.',
-            'Optional. Fill UP, SIDE and DEPTH — then the flag is placed by the numbers instead of the 3×3 zone.');
-        var up = pinAdminMeasureValue('up');
-        var depth = pinAdminMeasureValue('depth');
+        var up = raw ? pinNumberOrNull(raw.up, PIN_MEASURE_RANGE.up) : null;
+        var depth = raw ? pinNumberOrNull(raw.depth, PIN_MEASURE_RANGE.depth) : null;
         if (up !== null && depth !== null && up > depth) {
             return pinAdminRu(
                 'UP больше DEPTH — такого не бывает: флажок не может стоять дальше заднего края.',
@@ -194,8 +232,7 @@ function pinAdminMeasureHint(measure) {
             'All three numbers are required: UP, SIDE and DEPTH. The position uses the 3×3 zone for now.');
     }
     var text = pinMeasureWords(measure);
-    var width = pinAdminMeasureValue('width');
-    if (width === null || !(width > 0)) {
+    if (measure.width === null || measure.width === undefined) {
         text += ' · ' + pinAdminRu(
             'WIDTH не задан — на схеме покажем только глубину, по центру.',
             'WIDTH is not set — the layout shows depth only, in the centre.');
@@ -203,17 +240,38 @@ function pinAdminMeasureHint(measure) {
     return text;
 }
 
-// Правка одного числа. Пересобираем измерение целиком: «половина» чисел не
-// должна попадать в базу.
+// Правка одного числа. Черновик обновляем, но НЕ перерисовываем форму: иначе
+// фокус и курсор терялись бы на каждом нажатии клавиши. Обновляем только
+// подсказку, миниатюру и флаг «есть несохранённые изменения».
 function pinAdminSetMeasure(field) {
     if (['up', 'side', 'depth', 'width'].indexOf(field) === -1) return;
     var draft = pinAdminDraftOrLoad();
     var pin = draft.holes[pinAdminActiveHole] || { zone: 'mc', note: '', measure: null, image: '' };
-    pin.measure = pinAdminMeasureFromInputs();
+    pin.rawMeasure = pinAdminMeasureRawFromInputs();
+    pin.measure = pinAdminMeasureFromRaw(pin.rawMeasure);
     if (pin.measure) pin.explicit = true;
     draft.holes[pinAdminActiveHole] = pin;
     pinAdminDirty = true;
-    renderPinPositionsAdmin();
+    pinAdminRefreshMeasureFeedback();
+}
+
+// Точечное обновление того, что зависит от чисел, без перерисовки полей.
+function pinAdminRefreshMeasureFeedback() {
+    var pin = pinAdminActivePin();
+    var measure = pinAdminMeasureFromRaw(pin.rawMeasure || null);
+    var hint = pinAdminGet('pin-pos-measure-hint');
+    if (hint) hint.textContent = pinAdminMeasureHint();
+    var clear = pinAdminGet('pin-pos-measure-clear');
+    if (clear) clear.hidden = !(pin.rawMeasure || pin.measure);
+    var point = pinMeasurePoint(measure);
+    var meta = PIN_ZONE_META[pin.zone] || PIN_ZONE_META.mc;
+    var marker = pinAdminGet('pin-pos-preview-marker');
+    if (marker) {
+        marker.style.left = ((point ? point.x : meta.x) * 100).toFixed(1) + '%';
+        marker.style.top = ((point ? point.y : meta.y) * 100).toFixed(1) + '%';
+    }
+    var dirtyNote = pinAdminGet('pin-pos-dirty');
+    if (dirtyNote) dirtyNote.hidden = !pinAdminDirty;
 }
 
 // Сброс чисел у лунки: позиция снова считается по зоне 3×3.
@@ -221,6 +279,7 @@ function pinAdminClearMeasure() {
     var draft = pinAdminDraftOrLoad();
     var pin = draft.holes[pinAdminActiveHole] || { zone: 'mc', note: '', measure: null, image: '' };
     pin.measure = null;
+    pin.rawMeasure = null;
     draft.holes[pinAdminActiveHole] = pin;
     pinAdminDirty = true;
     renderPinPositionsAdmin();
@@ -336,7 +395,7 @@ function pinAdminClearImage() {
 function pinAdminResetAll() {
     var draft = pinAdminDraftOrLoad();
     PIN_ADMIN_HOLES.forEach(function (h) {
-        draft.holes[h] = { zone: 'mc', note: '', measure: null, image: '', explicit: false };
+        draft.holes[h] = { zone: 'mc', note: '', measure: null, rawMeasure: null, image: '', explicit: false };
     });
     pinAdminDirty = true;
     pinAdminStatus(pinAdminRu(
@@ -506,21 +565,23 @@ function renderPinPositionsAdmin() {
     if (holeTitle) {
         holeTitle.textContent = pinAdminRu('Лунка ' + pinAdminActiveHole, 'Hole ' + pinAdminActiveHole);
     }
-    // Поля размеров грина. Пока админ печатает, не перебиваем ввод: значение
-    // пишем, только если оно реально другое (как у заметок выше).
+    // Поля размеров грина. Источник значения — сырые строки черновика (то,
+    // что админ набрал), а не разобранное измерение: иначе недонабранное
+    // число (8, → 8,5) исчезало бы из поля. Поле в фокусе не трогаем вовсе —
+    // перерисовка не должна отнимать курсор.
     var measure = pin.measure || null;
+    var fieldValues = pinAdminMeasureFieldValues(pin);
     ['depth', 'up', 'side', 'width'].forEach(function (field) {
         var el = pinAdminMeasureInput(field);
         if (!el) return;
-        var next = measure && measure[field] !== null && measure[field] !== undefined
-            ? String(measure[field]).replace('.', ',')
-            : '';
-        if (document.activeElement !== el && el.value !== next) el.value = next;
+        if (document.activeElement === el) return;
+        var next = fieldValues[field];
+        if (el.value !== next) el.value = next;
     });
     var hint = pinAdminGet('pin-pos-measure-hint');
-    if (hint) hint.textContent = pinAdminMeasureHint(measure);
+    if (hint) hint.textContent = pinAdminMeasureHint();
     var clearMeasure = pinAdminGet('pin-pos-measure-clear');
-    if (clearMeasure) clearMeasure.hidden = !measure;
+    if (clearMeasure) clearMeasure.hidden = !(pin.rawMeasure || measure);
 
     // Схема грина: превью, состояние и кнопка удаления.
     var point = pinMeasurePoint(measure);

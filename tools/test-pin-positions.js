@@ -356,6 +356,59 @@ function swipe(win, el, dx) {
     check(saved.value.holes[7].note === 'Флажок за бункером', 'заметка к лунке сохраняется');
     check(saved.value.note === 'Сегодня грин быстрый', 'общая подсказка сохраняется');
     check(!saved.value.holes[1], 'лунки без изменений в базу не пишутся');
+
+    // ── Ввод в поля размеров (регрессия 1.142.1) ──────────────────────
+    // Раньше черновик хранил только «валидное измерение целиком», и
+    // перерисовка после первого же нажатия клавиши обнуляла поля: набрать
+    // 8,5 было невозможно — каждое следующее поле стирало предыдущее.
+    const typeInto = (id, text) => {
+        const el = doc.getElementById(id);
+        el.value = '';
+        for (const ch of text) {
+            el.value += ch;
+            el.dispatchEvent(new win.Event('input', { bubbles: true }));
+            el.dispatchEvent(new win.Event('change', { bubbles: true }));
+            win.pinAdminSetMeasure(id.replace('pin-pos-', ''));
+        }
+        return el.value;
+    };
+    win.pinAdminSelectHole(9);
+    check(typeInto('pin-pos-up', '8,5') === '8,5', 'набор «8,5» в UP не стирается на каждом символе');
+    check(typeInto('pin-pos-side', '-3,5') === '-3,5', 'отрицательный SIDE набирается с минусом');
+    check(typeInto('pin-pos-depth', '31') === '31', 'DEPTH остаётся в поле после ввода');
+    check(typeInto('pin-pos-width', '26') === '26', 'WIDTH остаётся в поле после ввода');
+    check(doc.getElementById('pin-pos-up').value === '8,5' &&
+        doc.getElementById('pin-pos-depth').value === '31',
+        'после ввода всех чисел ранее заполненные поля не обнулились');
+
+    const typedPayload = win.pinAdminPayload();
+    const typedMeasure = typedPayload.holes[9] && typedPayload.holes[9].measure;
+    check(typedMeasure && typedMeasure.up === 8.5 && typedMeasure.side === -3.5 &&
+        typedMeasure.depth === 31 && typedMeasure.width === 26,
+        'набранные числа попадают в сохраняемое измерение');
+    const hintText = doc.getElementById('pin-pos-measure-hint').textContent;
+    check(hintText.indexOf('Флажок 8.5 м от переднего края') !== -1,
+        'подсказка под полями объясняет получившееся положение: ' + hintText);
+
+    // Переключение лунки: у каждой лунки свои числа, ничего не теряется.
+    win.pinAdminSelectHole(10);
+    check(doc.getElementById('pin-pos-up').value === '',
+        'у лунки без чисел поля пустые');
+    win.pinAdminSelectHole(9);
+    check(doc.getElementById('pin-pos-up').value === '8,5' &&
+        doc.getElementById('pin-pos-side').value === '-3,5',
+        'возврат на лунку показывает её числа, а не пустоту');
+    check(win.pinAdminPayload().holes[9].measure.up === 8.5,
+        'после переключения лунок числа остаются в сохранении');
+
+    // Неполный набор чисел не уходит в базу как измерение.
+    win.pinAdminSelectHole(11);
+    typeInto('pin-pos-up', '5');
+    typeInto('pin-pos-depth', '30');
+    check(!win.pinAdminPayload().holes[11] || !win.pinAdminPayload().holes[11].measure,
+        'без SIDE измерение не сохраняется (нужны все три числа)');
+    check(doc.getElementById('pin-pos-measure-hint').textContent.indexOf('Нужны все три числа') !== -1,
+        'подсказка говорит, какого числа не хватает');
     check(typeof saved.value.updatedAt === 'number' && saved.value.updatedAt > 0,
         'сохранение проставляет время обновления');
     check(doc.getElementById('pin-pos-status').textContent.indexOf('сохранены') !== -1,

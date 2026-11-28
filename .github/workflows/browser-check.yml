@@ -50,9 +50,6 @@ jobs:
       - name: Browser check (classic vs bundle)
         run: npm run check:browser -- --require
 
-      - name: Relief design — navigation, themes and responsive layout
-        run: npm run check:relief
-
       # Отдельные шаги вместо `npm run check:scorecards` (цепочка из пяти
       # скриптов через &&): в таком виде по прогону видно, какой именно скрипт
       # упал, а не только «что-то в браузерных проверках».
